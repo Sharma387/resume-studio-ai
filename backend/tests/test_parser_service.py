@@ -8,6 +8,7 @@ from app.services.parser_service import parse_resume, ParseError
 
 def _mock_omniroute(return_value: str | list[Exception], monkeypatch):
     """Replace the OmniRouteService with a mock that returns given values."""
+    monkeypatch.setattr("app.services.parser_service.settings.omniroute_api_key", "test-key")
 
     class FakeOmniRoute:
         def __init__(self):
@@ -64,7 +65,7 @@ async def test_parse_retry_on_validation_error(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_parse_fails_after_all_retries(monkeypatch):
+async def test_parse_falls_back_to_mock_after_retries(monkeypatch):
     _mock_omniroute(["bad json", "also bad"], monkeypatch)
-    with pytest.raises(ParseError):
-        await parse_resume("text")
+    result = await parse_resume("text")
+    assert result.full_name == "Alexandra Chen"

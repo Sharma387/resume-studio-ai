@@ -71,6 +71,7 @@ export async function uploadResume(
 
 export interface ParseResult {
   success: boolean;
+  id?: string;
   data: Resume;
 }
 
@@ -87,11 +88,11 @@ export async function extractResume(filename: string): Promise<ExtractResult> {
   return res.json();
 }
 
-export async function parseResume(text: string): Promise<ParseResult> {
+export async function parseResume(text: string, filename?: string): Promise<ParseResult> {
   const res = await fetch(`${API_URL}/parse`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text }),
+    body: JSON.stringify({ text, filename }),
   });
   if (!res.ok) {
     const data = await res.json();

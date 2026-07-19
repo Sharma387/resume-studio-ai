@@ -35,6 +35,7 @@ def _make_mock_resume_json() -> str:
 @pytest.fixture(autouse=True)
 def mock_omniroute(monkeypatch):
     """Replace OmniRouteService so parse endpoint works without real API."""
+    monkeypatch.setattr("app.services.parser_service.settings.omniroute_api_key", "test-key")
     json_response = _make_mock_resume_json()
 
     class FakeOmniRoute:
@@ -81,9 +82,26 @@ async def test_parse_serializes_urls(client):
 
 
 @pytest.mark.asyncio
-async def test_parse_rejects_empty_text(client):
+async def test_parse_empty_text(client):
     async with client as ac:
         response = await ac.post("/api/v1/parse", json={"text": ""})
     assert response.status_code == 200
     data = response.json()
     assert data["success"] is True
+
+
+@pytest.mark.asyncio
+async def test_parse_with_filename_saves_resume(client):
+    async with client as ac:
+        response = await ac.post(
+            "/api/v1/parse",
+            json={"text": "dummy", "filename": "test-abc.pdf"},
+        )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["id"] == "test-abc"
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as get_client:
+        get_resp = await get_client.get(f"/api/v1/resume/{data['id']}")
+    assert get_resp.status_code == 200

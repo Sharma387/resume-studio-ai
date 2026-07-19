@@ -1,4 +1,5 @@
 import { useState, useRef, type DragEvent, type ChangeEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Typography,
@@ -21,9 +22,7 @@ import {
   type UploadProgress,
   type ExtractData,
 } from '../services/uploadService';
-import type { Resume } from '../types/resume';
 import ExtractResultCard from './ExtractResultCard';
-import ParsedResumeCard from './ParsedResumeCard';
 
 const SUPPORTED_FORMATS = ['PDF'];
 const MAX_SIZE_MB = 10;
@@ -32,6 +31,7 @@ type UploadStatus = 'idle' | 'dragging' | 'uploading' | 'extracting' | 'parsing'
 
 function UploadZone() {
   const { mode } = useThemeMode();
+  const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
   const [status, setStatus] = useState<UploadStatus>('idle');
   const [fileName, setFileName] = useState('');
@@ -39,7 +39,6 @@ function UploadZone() {
   const [errorMsg, setErrorMsg] = useState('');
   const [progress, setProgress] = useState(0);
   const [extractData, setExtractData] = useState<ExtractData | null>(null);
-  const [resume, setResume] = useState<Resume | null>(null);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false,
     message: '',
@@ -53,7 +52,6 @@ function UploadZone() {
     setErrorMsg('');
     setProgress(0);
     setExtractData(null);
-    setResume(null);
   };
 
   const handleProgress = (p: UploadProgress) => {
@@ -88,9 +86,11 @@ function UploadZone() {
       setExtractData(extractResult.data);
 
       setStatus('parsing');
-      const parseResult = await parseResume(extractResult.data.text);
-      setResume(parseResult.data);
+      const parseResult = await parseResume(extractResult.data.text, uploadResult.filename);
       setStatus('success');
+      if (parseResult.id) {
+        navigate(`/review?file=${parseResult.id}`);
+      }
     } catch (err) {
       setStatus('error');
       const msg = err instanceof Error ? err.message : 'Processing failed';
@@ -415,7 +415,6 @@ function UploadZone() {
       )}
 
       {extractData && <ExtractResultCard data={extractData} />}
-      {resume && <ParsedResumeCard resume={resume} />}
 
       <Snackbar
         open={snackbar.open}

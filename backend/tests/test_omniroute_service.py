@@ -16,8 +16,7 @@ async def test_send_prompt_success():
 
     class FakeResponse:
         status_code = 200
-        async def json(self):
-            return {"choices": [{"message": {"content": "hello"}}]}
+        content = b'{"choices": [{"message": {"content": "hello"}}]}'
         def raise_for_status(self):
             pass
 

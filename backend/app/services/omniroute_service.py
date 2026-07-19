@@ -52,8 +52,9 @@ class OmniRouteService:
         raise OmniRouteError("All retries exhausted") from last_error
 
     async def _call(self, system: str, user: str) -> str:
+        api_key = self.api_key if self.api_key else "not-needed"
         headers = {
-            "Authorization": f"Bearer {self.api_key}",
+            "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
         }
         body = {
@@ -63,12 +64,16 @@ class OmniRouteService:
                 {"role": "user", "content": user},
             ],
             "temperature": 0.1,
+            "stream": False,
         }
 
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             response = await client.post(self.api_url, headers=headers, json=body)
             response.raise_for_status()
-            data = await response.json()
+            raw = response.content
+            logger.info("OmniRoute raw response (%d bytes): %s", len(raw), raw[:300])
+            text = raw.decode("utf-8")
+            data = json.loads(text)
 
         content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
         return content.strip()
