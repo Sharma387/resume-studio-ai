@@ -9,6 +9,7 @@ import {
   IconButton,
   Toolbar,
   AppBar,
+  Drawer,
 } from '@mui/material';
 import ArrowBack from '@mui/icons-material/ArrowBack';
 import SaveOutlined from '@mui/icons-material/SaveOutlined';
@@ -22,6 +23,8 @@ import VerifiedOutlined from '@mui/icons-material/VerifiedOutlined';
 import FolderOutlined from '@mui/icons-material/FolderOutlined';
 import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined';
 import DownloadOutlined from '@mui/icons-material/DownloadOutlined';
+import TravelExploreOutlined from '@mui/icons-material/TravelExploreOutlined';
+import HistoryOutlined from '@mui/icons-material/HistoryOutlined';
 import type { Resume } from '../types/resume';
 import { fetchResume, saveResume, generatePdf, getPdfDownloadUrl } from '../services/resumeService';
 import SectionNav from '../components/review/SectionNav';
@@ -32,6 +35,8 @@ import ExperienceSection from '../components/review/ExperienceSection';
 import EducationSection from '../components/review/EducationSection';
 import CertificationsSection from '../components/review/CertificationsSection';
 import ProjectsSection from '../components/review/ProjectsSection';
+import MatchSection from '../components/review/MatchSection';
+import VersionHistory from '../components/review/VersionHistory';
 import type { NavItem } from '../components/review/SectionNav';
 
 const sections: NavItem[] = [
@@ -42,6 +47,7 @@ const sections: NavItem[] = [
   { id: 'education', label: 'Education', icon: <SchoolOutlined fontSize="small" /> },
   { id: 'projects', label: 'Projects', icon: <FolderOutlined fontSize="small" /> },
   { id: 'certifications', label: 'Certifications', icon: <VerifiedOutlined fontSize="small" /> },
+  { id: 'match', label: 'ATS Match', icon: <TravelExploreOutlined fontSize="small" /> },
 ];
 
 function ReviewPage() {
@@ -56,6 +62,7 @@ function ReviewPage() {
   const [saving, setSaving] = useState(false);
   const [pdfGenerating, setPdfGenerating] = useState(false);
   const [pdfReady, setPdfReady] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -107,6 +114,15 @@ function ReviewPage() {
 
   const handleCancel = () => {
     if (original) setResume(JSON.parse(JSON.stringify(original)) as Resume);
+  };
+
+  const handleResumeUpdated = () => {
+    if (fileParam) {
+      fetchResume(fileParam).then((res) => {
+        setResume(res.data);
+        setOriginal(JSON.parse(JSON.stringify(res.data)) as Resume);
+      });
+    }
   };
 
   if (loading) {
@@ -169,7 +185,7 @@ function ReviewPage() {
               startIcon={pdfGenerating ? <CircularProgress size={16} /> : <PictureAsPdfOutlined />}
               onClick={handleGeneratePdf}
               disabled={pdfGenerating}
-              sx={{ textTransform: 'none', borderRadius: 2 }}
+              sx={{ textTransform: 'none', borderRadius: 2, mr: 1 }}
             >
               {pdfGenerating ? 'Generating...' : 'Generate PDF'}
             </Button>
@@ -181,13 +197,21 @@ function ReviewPage() {
               component="a"
               href={getPdfDownloadUrl(fileParam || '')}
               download
-              sx={{ textTransform: 'none', borderRadius: 2 }}
+              sx={{ textTransform: 'none', borderRadius: 2, mr: 1 }}
             >
               Download PDF
             </Button>
           )}
+          <IconButton onClick={() => setHistoryOpen(true)} sx={{ color: 'text.secondary' }}>
+            <HistoryOutlined />
+          </IconButton>
         </Toolbar>
       </AppBar>
+
+      <Drawer anchor="right" open={historyOpen} onClose={() => setHistoryOpen(false)}
+        slotProps={{ paper: { sx: { width: 340, p: 2 } } }}>
+        <VersionHistory resumeId={fileParam || ''} onRestored={handleResumeUpdated} />
+      </Drawer>
 
       <Box sx={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <SectionNav items={sections} active={activeSection} onChange={setActiveSection} />
@@ -201,6 +225,7 @@ function ReviewPage() {
             {activeSection === 'education' && <EducationSection resume={resume} onChange={setResume} />}
             {activeSection === 'certifications' && <CertificationsSection resume={resume} onChange={setResume} />}
             {activeSection === 'projects' && <ProjectsSection resume={resume} onChange={setResume} />}
+            {activeSection === 'match' && <MatchSection resumeId={fileParam || ''} onResumeUpdated={handleResumeUpdated} />}
           </Box>
         </Box>
       </Box>

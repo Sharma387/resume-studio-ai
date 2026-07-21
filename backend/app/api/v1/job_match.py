@@ -1,0 +1,26 @@
+from fastapi import APIRouter, HTTPException
+
+from app.models.match import JobDescription, MatchResult
+from app.services.storage_service import save_match, load_match, load_resume
+from app.services.matching_service import analyze_match
+
+router = APIRouter()
+
+
+@router.post("/job-match")
+async def create_job_match(job: JobDescription):
+    resume = load_resume(job.resume_id)
+    if resume is None:
+        raise HTTPException(status_code=404, detail="Resume not found")
+
+    result = await analyze_match(job.resume_id, job.job_title, job.description, resume)
+    save_match(result)
+    return {"success": True, "data": result}
+
+
+@router.get("/job-match/{match_id}")
+async def get_job_match(match_id: str):
+    result = load_match(match_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Match not found")
+    return {"success": True, "data": result}

@@ -18,3 +18,9 @@ class PromptService:
         user_template = self._load("resume_parser_user.md")
         user = user_template.replace("{text}", text).replace("{schema}", schema)
         return system, user
+
+    def build_match_prompt(self, resume_json: str, job_description: str, match_schema: str) -> tuple[str, str]:
+        system = self._load("resume_matcher_system.md")
+        user_template = self._load("resume_matcher_user.md")
+        user = user_template.replace("{resume_json}", resume_json).replace("{job_description}", job_description).replace("{match_schema}", match_schema)
+        return system, user
