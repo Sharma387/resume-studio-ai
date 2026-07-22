@@ -14,5 +14,10 @@ class Settings(BaseSettings):
     omniroute_timeout: int = 60
     omniroute_max_retries: int = 1
 
+    jwt_secret_key: str = ""
+    jwt_algorithm: str = "HS256"
+    jwt_access_expire_minutes: int = 15
+    jwt_refresh_expire_days: int = 7
+
 
 settings = Settings()

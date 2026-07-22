@@ -6,6 +6,8 @@ email-validator
 python-multipart
 pymupdf
 reportlab
+passlib[bcrypt]
+python-jose[cryptography]
 python-docx
 httpx
 pytest
