@@ -27,25 +27,29 @@ async def test_upload_pdf_success(client):
 
 
 @pytest.mark.asyncio
-async def test_upload_rejects_docx(client):
+async def test_upload_docx_success(client):
     async with client as ac:
         response = await ac.post(
             "/api/v1/upload",
             files={"file": ("resume.docx", b"fake docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")},
         )
-    assert response.status_code == 400
-    assert "PDF" in response.json()["detail"]
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+    assert data["filename"].endswith(".docx")
 
 
 @pytest.mark.asyncio
-async def test_upload_rejects_txt(client):
+async def test_upload_txt_success(client):
     async with client as ac:
         response = await ac.post(
             "/api/v1/upload",
             files={"file": ("resume.txt", b"hello", "text/plain")},
         )
-    assert response.status_code == 400
-    assert "PDF" in response.json()["detail"]
+    assert response.status_code == 200
+    data = response.json()
+    assert data["success"] is True
+    assert data["filename"].endswith(".txt")
 
 
 @pytest.mark.asyncio
@@ -56,7 +60,6 @@ async def test_upload_rejects_doc(client):
             files={"file": ("resume.doc", b"fake doc", "application/msword")},
         )
     assert response.status_code == 400
-    assert "PDF" in response.json()["detail"]
 
 
 @pytest.mark.asyncio
@@ -67,7 +70,6 @@ async def test_upload_rejects_png(client):
             files={"file": ("image.png", b"fake png", "image/png")},
         )
     assert response.status_code == 400
-    assert "PDF" in response.json()["detail"]
 
 
 @pytest.mark.asyncio
@@ -78,7 +80,6 @@ async def test_upload_rejects_jpg(client):
             files={"file": ("image.jpg", b"fake jpg", "image/jpeg")},
         )
     assert response.status_code == 400
-    assert "PDF" in response.json()["detail"]
 
 
 @pytest.mark.asyncio

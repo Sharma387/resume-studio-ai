@@ -1,8 +1,9 @@
 from pathlib import Path
 
-import fitz
-
 from app.services.upload_service import UPLOAD_DIR
+from app.services.document.detector import get_extractor_for_filename, detect_file_type
+from app.services.document.normalizer import TextNormalizer
+from app.services.document.metadata import MetadataExtractor
 
 
 class ExtractResult:
@@ -22,47 +23,22 @@ class ExtractResult:
         }
 
 
-def _clean_text(text: str) -> str:
-    lines = text.split("\n")
-    cleaned = []
-    prev_blank = False
-    for line in lines:
-        stripped = line.strip()
-        if stripped == "":
-            if not prev_blank:
-                cleaned.append("")
-                prev_blank = True
-        else:
-            cleaned.append(stripped)
-            prev_blank = False
-    result = "\n".join(cleaned)
-    result = " ".join(result.split())
-    return result
-
-
-def extract_pdf(filename: str) -> ExtractResult:
+def extract_document(filename: str) -> ExtractResult:
     filepath = UPLOAD_DIR / filename
 
     if not filepath.exists():
         raise FileNotFoundError(f"File '{filename}' not found")
 
-    if filepath.stat().st_size == 0:
-        return ExtractResult(pages=0, characters=0, text="")
+    extractor = get_extractor_for_filename(filename)
+    raw = extractor.extract(filepath)
 
-    doc = fitz.open(str(filepath))
-    raw_pages = []
+    normalizer = TextNormalizer()
+    cleaned = normalizer.normalize(raw.content)
 
-    for page in doc:
-        text = page.get_text("text")
-        raw_pages.append(text)
-
-    doc.close()
-
-    full_text = "\n".join(raw_pages)
-    cleaned = _clean_text(full_text)
+    char_count = MetadataExtractor.character_count(cleaned)
 
     return ExtractResult(
-        pages=len(raw_pages),
-        characters=len(cleaned),
+        pages=raw.page_count,
+        characters=char_count,
         text=cleaned,
     )

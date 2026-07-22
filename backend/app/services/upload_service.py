@@ -7,8 +7,13 @@ UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
 
 MAX_SIZE = 10 * 1024 * 1024
-ALLOWED_EXTENSIONS = {".pdf"}
-ALLOWED_MIMETYPES = {"application/pdf"}
+
+ALLOWED_EXTENSIONS = {".pdf", ".docx", ".txt"}
+ALLOWED_MIMETYPES = {
+    "application/pdf",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "text/plain",
+}
 
 
 class UploadResult:
@@ -31,13 +36,13 @@ def validate_upload(file: UploadFile) -> None:
     if ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid file extension '{ext}'. Only PDF files are allowed.",
+            detail=f"Invalid file extension '{ext}'. Allowed: PDF, DOCX, TXT.",
         )
 
     if file.content_type not in ALLOWED_MIMETYPES:
         raise HTTPException(
             status_code=400,
-            detail=f"Invalid file type '{file.content_type}'. Only PDF files are allowed.",
+            detail=f"Invalid file type '{file.content_type}'. Allowed: PDF, DOCX, TXT.",
         )
 
 
