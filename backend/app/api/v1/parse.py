@@ -1,0 +1,31 @@
+from pathlib import Path
+
+from fastapi import APIRouter
+from pydantic import BaseModel
+
+from app.services.parser_service import parse_resume
+from app.services.storage_service import save_resume
+from app.models.resume import Resume
+
+router = APIRouter()
+
+
+class ParseRequest(BaseModel):
+    text: str
+    filename: str | None = None
+
+
+class ParseResponse(BaseModel):
+    success: bool
+    id: str | None = None
+    data: Resume
+
+
+@router.post("/parse", response_model=ParseResponse)
+async def parse(req: ParseRequest):
+    resume = await parse_resume(req.text)
+    resume_id = None
+    if req.filename:
+        resume_id = Path(req.filename).stem
+        save_resume(resume_id, resume)
+    return ParseResponse(success=True, id=resume_id, data=resume)
