@@ -1,16 +1,13 @@
 import json
 import logging
 import uuid
-from datetime import datetime, timezone
 
 from pydantic import ValidationError
 
-from app.core.config import settings
 from app.models.resume import Resume
 from app.models.writer import ResumeSuggestion, WriterRequest
-from app.services.ai_core import extract_json_array
 from app.services.prompt_service import PromptService
-from app.services.omniroute_service import OmniRouteService, OmniRouteError
+from app.services.ai_core import extract_json_array, call_with_retry, AIServiceUnavailable
 from app.services.storage_service import (
     load_resume,
     save_resume,
@@ -38,43 +35,35 @@ async def suggest(resume_id: str, request: WriterRequest) -> list[ResumeSuggesti
         raise FileNotFoundError(f"Resume '{resume_id}' not found")
 
     prompt_service = PromptService()
-    omniroute = OmniRouteService()
-
     resume_json = json.dumps(resume.model_dump(), indent=2, default=str)
-    system, user = prompt_service.build_writer_prompt(resume_json, request.prompt, request.focus_section)
 
-    last_error: Exception | None = None
-    for attempt in range(omniroute.max_retries + 1):
-        try:
-            raw = await omniroute.send_prompt(system, user)
-            cleaned = extract_json_array(raw)
-            data = json.loads(cleaned)
-            if not isinstance(data, list):
-                data = [data]
+    async def build() -> tuple[str, str]:
+        return prompt_service.build_writer_prompt(resume_json, request.prompt, request.focus_section)
 
-            suggestions = []
-            for item in data:
-                try:
-                    sug = ResumeSuggestion(
-                        id=uuid.uuid4().hex,
-                        resume_id=resume_id,
-                        **{k: v for k, v in item.items() if k in ResumeSuggestion.model_fields and k not in ("id", "resume_id", "created_at")},
-                    )
-                    save_writer_suggestion(sug)
-                    suggestions.append(sug)
-                except ValidationError as e:
-                    logger.warning("Skipping invalid suggestion: %s", e)
+    def parse(raw: str) -> list[ResumeSuggestion]:
+        cleaned = extract_json_array(raw)
+        data = json.loads(cleaned)
+        if not isinstance(data, list):
+            data = [data]
 
-            return suggestions
+        suggestions = []
+        for item in data:
+            try:
+                sug = ResumeSuggestion(
+                    id=uuid.uuid4().hex,
+                    resume_id=resume_id,
+                    **{k: v for k, v in item.items() if k in ResumeSuggestion.model_fields and k not in ("id", "resume_id", "created_at")},
+                )
+                save_writer_suggestion(sug)
+                suggestions.append(sug)
+            except ValidationError as e:
+                logger.warning("Skipping invalid suggestion: %s", e)
+        return suggestions
 
-        except (json.JSONDecodeError, ValidationError) as e:
-            logger.warning("Writer suggest failed (attempt %d/%d): %s", attempt + 1, omniroute.max_retries + 1, e)
-            last_error = e
-        except OmniRouteError as e:
-            logger.warning("OmniRoute error (attempt %d/%d): %s", attempt + 1, omniroute.max_retries + 1, e)
-            last_error = e
-
-    raise RuntimeError("AI writer service unavailable after retries") from last_error
+    try:
+        return await call_with_retry(build, parse, service_name="Writer")
+    except AIServiceUnavailable as e:
+        raise RuntimeError("AI writer service unavailable after retries") from e
 
 
 async def accept_suggestion(resume_id: str, suggestion_id: str) -> Resume:
@@ -109,7 +98,6 @@ async def accept_suggestion(resume_id: str, suggestion_id: str) -> Resume:
 
     save_resume(resume_id, resume)
     update_writer_suggestion(resume_id, suggestion_id, status="accepted")
-
     return resume
 
 
@@ -128,6 +116,5 @@ async def regenerate_suggestion(resume_id: str, suggestion_id: str) -> ResumeSug
         prompt=f"Improve the {suggestion.section} section, specifically: {suggestion.reason}",
         focus_section=suggestion.section,
     )
-
     results = await suggest(resume_id, request)
     return results[0] if results else suggestion
