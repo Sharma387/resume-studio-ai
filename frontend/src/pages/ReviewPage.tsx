@@ -25,6 +25,7 @@ import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined';
 import DownloadOutlined from '@mui/icons-material/DownloadOutlined';
 import TravelExploreOutlined from '@mui/icons-material/TravelExploreOutlined';
 import HistoryOutlined from '@mui/icons-material/HistoryOutlined';
+import AutoAwesomeOutlined from '@mui/icons-material/AutoAwesomeOutlined';
 import type { Resume } from '../types/resume';
 import { fetchResume, saveResume, generatePdf, getPdfDownloadUrl } from '../services/resumeService';
 import SectionNav from '../components/review/SectionNav';
@@ -37,6 +38,7 @@ import CertificationsSection from '../components/review/CertificationsSection';
 import ProjectsSection from '../components/review/ProjectsSection';
 import MatchSection from '../components/review/MatchSection';
 import VersionHistory from '../components/review/VersionHistory';
+import WriterSection from '../components/review/WriterSection';
 import type { NavItem } from '../components/review/SectionNav';
 
 const sections: NavItem[] = [
@@ -48,6 +50,7 @@ const sections: NavItem[] = [
   { id: 'projects', label: 'Projects', icon: <FolderOutlined fontSize="small" /> },
   { id: 'certifications', label: 'Certifications', icon: <VerifiedOutlined fontSize="small" /> },
   { id: 'match', label: 'ATS Match', icon: <TravelExploreOutlined fontSize="small" /> },
+  { id: 'writer', label: 'AI Writer', icon: <AutoAwesomeOutlined fontSize="small" /> },
 ];
 
 function ReviewPage() {
@@ -226,6 +229,7 @@ function ReviewPage() {
             {activeSection === 'certifications' && <CertificationsSection resume={resume} onChange={setResume} />}
             {activeSection === 'projects' && <ProjectsSection resume={resume} onChange={setResume} />}
             {activeSection === 'match' && <MatchSection resumeId={fileParam || ''} onResumeUpdated={handleResumeUpdated} />}
+            {activeSection === 'writer' && <WriterSection resumeId={fileParam || ''} onResumeUpdated={handleResumeUpdated} />}
           </Box>
         </Box>
       </Box>
