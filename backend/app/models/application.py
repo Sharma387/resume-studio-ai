@@ -31,6 +31,7 @@ class TimelineEventType(str, Enum):
     NOTE_ADDED = "note_added"
     INTERVIEW_SCHEDULED = "interview_scheduled"
     OFFER_RECEIVED = "offer_received"
+    MOCK_INTERVIEW_COMPLETED = "mock_interview_completed"
     CUSTOM = "custom"
 
 
@@ -84,6 +85,9 @@ class ApplicationView(BaseModel):
     cover_letter_count: int = 0
     match_count: int = 0
     version_count: int = 0
+    interview_count: int = 0
+    latest_interview_session: dict | None = None
+    latest_readiness: dict | None = None
     recent_timeline: list[TimelineEvent] = []
 
 

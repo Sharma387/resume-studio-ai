@@ -50,7 +50,7 @@ async def delete_letter(resume_id: str, letter_id: str):
     return {"success": True}
 
 
-@router.post("/resume/{resume_id}/cover-letter/{letter_id}/pdf")
+@router.get("/resume/{resume_id}/cover-letter/{letter_id}/pdf")
 async def export_letter_pdf(resume_id: str, letter_id: str):
     letter = load_cover_letter(resume_id, letter_id)
     if letter is None:

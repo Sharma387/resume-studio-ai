@@ -117,12 +117,22 @@ def get_view(app_id: str) -> ApplicationView | None:
 
     timeline = list_timeline_events(app_id)[:10]
 
+    from app.services.storage_service import list_interview_sessions, list_readiness_assessments
+    sessions = list_interview_sessions(app_id)
+    assessments = list_readiness_assessments(app_id)
+
+    latest_session = sessions[0].model_dump() if sessions else None
+    latest_readiness = assessments[0].model_dump() if assessments else None
+
     return ApplicationView(
         application=app,
         resume_name=resume_name,
         cover_letter_count=len(app.cover_letter_ids),
         match_count=len(app.match_ids),
         version_count=len(app.version_ids),
+        interview_count=len(sessions),
+        latest_interview_session=latest_session,
+        latest_readiness=latest_readiness,
         recent_timeline=timeline,
     )
 
