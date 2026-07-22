@@ -1,5 +1,4 @@
 import json
-import logging
 import uuid
 from datetime import datetime, timezone
 
@@ -37,7 +36,8 @@ from app.services.storage_service import (
 from app.services.prompt_service import PromptService
 from app.services.ai_core import call_with_retry, extract_json, AIServiceUnavailable
 
-logger = logging.getLogger(__name__)
+from app.core.logging import get_logger
+logger = get_logger(__name__)
 
 
 def _now() -> str:

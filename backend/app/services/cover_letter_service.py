@@ -1,6 +1,5 @@
 import hashlib
 import json
-import logging
 import uuid
 from datetime import datetime, timezone
 
@@ -16,7 +15,8 @@ from app.services.storage_service import (
     delete_cover_letter,
 )
 
-logger = logging.getLogger(__name__)
+from app.core.logging import get_logger
+logger = get_logger(__name__)
 
 
 def _hash_jd(text: str) -> str:

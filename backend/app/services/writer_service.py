@@ -1,5 +1,4 @@
 import json
-import logging
 import uuid
 
 from pydantic import ValidationError
@@ -16,7 +15,8 @@ from app.services.storage_service import (
     update_writer_suggestion,
 )
 
-logger = logging.getLogger(__name__)
+from app.core.logging import get_logger
+logger = get_logger(__name__)
 
 
 QUICK_ACTIONS = {

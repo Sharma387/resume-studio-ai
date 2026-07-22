@@ -1,16 +1,41 @@
+"""Prompt template loader with caching and validation."""
+
 from pathlib import Path
+from functools import lru_cache
+
+from app.core.exceptions import AppError
+
+
+class PromptNotFoundError(AppError):
+    code = "PROMPT_NOT_FOUND"
+    status_code = 500
 
 
 PROMPTS_DIR = Path(__file__).resolve().parent.parent.parent.parent / "prompts"
 
 
 class PromptService:
+    """Loads and caches prompt templates from the prompts/ directory."""
+
     def __init__(self, prompts_dir: str | Path = PROMPTS_DIR):
         self._dir = Path(prompts_dir)
+        if not self._dir.exists():
+            raise PromptNotFoundError(f"Prompts directory not found: {self._dir}")
 
     def _load(self, name: str) -> str:
         path = self._dir / name
+        if not path.exists():
+            raise PromptNotFoundError(f"Prompt file not found: {name}")
+        return self._read_prompt(path)
+
+    @lru_cache(maxsize=32)
+    def _read_prompt(self, path: Path) -> str:
         return path.read_text(encoding="utf-8")
+
+    def invalidate_cache(self) -> None:
+        self._read_prompt.cache_clear()
+
+    # ── Prompt builders ─────────────────────────────────────────
 
     def build_prompt(self, text: str, schema: str) -> tuple[str, str]:
         system = self._load("resume_parser_system.md")

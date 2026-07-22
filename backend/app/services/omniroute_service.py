@@ -1,11 +1,11 @@
-import logging
 import json
 
 import httpx
 
 from app.core.config import settings
+from app.core.logging import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class OmniRouteError(Exception):

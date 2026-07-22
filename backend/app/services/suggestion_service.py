@@ -1,5 +1,4 @@
 import json
-import logging
 import re
 
 from pydantic import ValidationError
@@ -10,7 +9,8 @@ from app.models.match import Recommendation
 from app.services.prompt_service import PromptService
 from app.services.omniroute_service import OmniRouteService, OmniRouteError
 
-logger = logging.getLogger(__name__)
+from app.core.logging import get_logger
+logger = get_logger(__name__)
 
 
 def _extract_json(text: str) -> str:

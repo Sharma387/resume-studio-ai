@@ -15,12 +15,20 @@ from app.api.v1.auth import router as auth_router
 from app.api.v1.interviews import router as interviews_router
 from app.api.v1.writer import router as writer_router
 from app.core.config import settings
-from app.core.logging import setup_logging
+from app.core.logging import setup_logging, get_logger
+from app.core.error_handler import setup_error_handlers
+from app.core.middleware.request_id import RequestIDMiddleware, TimingMiddleware
+from app.core.middleware.security import SecurityHeadersMiddleware
 
-setup_logging()
+setup_logging(json_mode=settings.debug is False)
+logger = get_logger(__name__)
 
 app = FastAPI(title=settings.app_name, version=settings.app_version)
 
+# Middleware (order matters)
+app.add_middleware(RequestIDMiddleware)
+app.add_middleware(TimingMiddleware)
+app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -28,6 +36,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Error handlers
+setup_error_handlers(app)
+
+# Routers
 app.include_router(health_router, prefix="/api/v1")
 app.include_router(upload_router, prefix="/api/v1")
 app.include_router(extract_router, prefix="/api/v1")

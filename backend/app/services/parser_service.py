@@ -1,12 +1,12 @@
 import json
-import logging
 
 from app.core.config import settings
 from app.models.resume import Resume, Education, Experience, Project, Skill, Certification
 from app.services.prompt_service import PromptService
 from app.services.ai_core import extract_json, call_with_retry, AIServiceUnavailable
 
-logger = logging.getLogger(__name__)
+from app.core.logging import get_logger
+logger = get_logger(__name__)
 
 
 class ParseError(Exception):

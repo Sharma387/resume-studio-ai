@@ -1,5 +1,4 @@
 import json
-import logging
 import uuid
 from datetime import datetime, timezone
 
@@ -9,7 +8,8 @@ from app.models.resume import Resume
 from app.services.prompt_service import PromptService
 from app.services.ai_core import extract_json, call_with_retry, AIServiceUnavailable
 
-logger = logging.getLogger(__name__)
+from app.core.logging import get_logger
+logger = get_logger(__name__)
 
 
 def _mock_match(resume_id: str, job_title: str | None, resume: Resume) -> MatchResult:
