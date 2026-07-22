@@ -9,6 +9,7 @@ from app.api.v1.pdf import router as pdf_router
 from app.api.v1.resume_crud import router as resume_crud_router
 from app.api.v1.suggestions import router as suggestions_router
 from app.api.v1.upload import router as upload_router
+from app.api.v1.writer import router as writer_router
 from app.core.config import settings
 from app.core.logging import setup_logging
 
@@ -31,3 +32,4 @@ app.include_router(resume_crud_router, prefix="/api/v1")
 app.include_router(pdf_router, prefix="/api/v1")
 app.include_router(job_match_router, prefix="/api/v1")
 app.include_router(suggestions_router, prefix="/api/v1")
+app.include_router(writer_router, prefix="/api/v1")
