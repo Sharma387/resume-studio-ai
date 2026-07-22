@@ -4,7 +4,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.colors import HexColor
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, KeepTogether
 from reportlab.lib.enums import TA_LEFT, TA_RIGHT
 
 from app.models.cover_letter import CoverLetter
@@ -58,13 +58,18 @@ def generate_cover_letter_pdf(resume_id: str, letter_id: str, letter: CoverLette
     if letter.subject:
         content.append(Paragraph(f"Subject: {letter.subject}", styles["Subject"]))
 
-    for para in letter.content.split("\n\n"):
-        para = para.strip()
-        if para:
-            content.append(Paragraph(para, styles["Body"]))
+    body_paras = [p.strip() for p in letter.content.split("\n\n") if p.strip()]
 
-    content.append(Spacer(1, 12))
-    content.append(Paragraph(resume.full_name, styles["Signature"]))
+    for i, para in enumerate(body_paras):
+        p = Paragraph(para, styles["Body"])
+        if i >= len(body_paras) - 2:
+            closing_paras = [p]
+            for j in range(i + 1, len(body_paras)):
+                closing_paras.append(Paragraph(body_paras[j], styles["Body"]))
+            closing_block = closing_paras + [Spacer(1, 12), Paragraph(resume.full_name, styles["Signature"])]
+            content.append(KeepTogether(closing_block))
+            break
+        content.append(p)
 
     doc.build(content)
     return path

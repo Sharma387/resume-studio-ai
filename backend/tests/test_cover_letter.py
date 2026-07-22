@@ -120,8 +120,23 @@ async def test_endpoint_delete(client, resume_id):
 @pytest.mark.asyncio
 async def test_endpoint_pdf_not_found(client):
     async with client as ac:
-        resp = await ac.post("/api/v1/resume/r1/cover-letter/nonexistent/pdf")
+        resp = await ac.get("/api/v1/resume/r1/cover-letter/nonexistent/pdf")
     assert resp.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_endpoint_pdf_success_get_method(client, resume_id):
+    """PDF export must respond to GET (frontend uses <a href download>)."""
+    from app.models.cover_letter import CoverLetter
+    from app.services.storage_service import save_cover_letter
+    letter = CoverLetter(id="pdf-get-test", resume_id=resume_id, content="Dear Hiring Manager, I am excited to apply...\n\nSincerely, Test")
+    save_cover_letter(letter)
+
+    async with client as ac:
+        resp = await ac.get(f"/api/v1/resume/{resume_id}/cover-letter/{letter.id}/pdf")
+    assert resp.status_code == 200
+    assert resp.headers.get("content-type") == "application/pdf"
+    assert len(resp.content) > 500
 
 
 @pytest.mark.asyncio
@@ -129,3 +144,30 @@ async def test_endpoint_regenerate_not_found(client):
     async with client as ac:
         resp = await ac.post("/api/v1/resume/r1/cover-letter/nonexistent/regenerate")
     assert resp.status_code == 404
+
+
+def test_cover_letter_pdf_signature_not_alone():
+    """Signature must never appear alone on a page — it should stay with the last paragraph."""
+    from app.models.cover_letter import CoverLetter
+    from app.models.resume import Resume
+    from app.services.cover_letter_pdf import generate_cover_letter_pdf
+
+    body = "Dear Hiring Manager,\n\n"
+    for i in range(4):
+        body += f"P{i+1}. " + "Lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. " * 8 + "\n\n"
+    body += "Sincerely"
+
+    resume = Resume(full_name="Test User", email="test@example.com")
+    letter = CoverLetter(id="layout-regression", resume_id="test", content=body)
+    path = generate_cover_letter_pdf("test", "layout-regression", letter, resume)
+
+    import fitz
+    doc = fitz.open(str(path))
+    for i, page in enumerate(doc):
+        text = page.get_text("text")
+        has_signature = "Test User" in text
+        has_body = any(f"P{j+1}." in text for j in range(4))
+        # If this page has the signature but no body paragraph, it's a layout bug
+        if has_signature and not has_body:
+            assert False, f"Signature found alone on page {i+1} without body content"
+    doc.close()
