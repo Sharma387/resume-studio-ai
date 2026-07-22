@@ -34,19 +34,13 @@ def _make_mock_resume_json() -> str:
 
 @pytest.fixture(autouse=True)
 def mock_omniroute(monkeypatch):
-    """Replace OmniRouteService so parse endpoint works without real API."""
-    monkeypatch.setattr("app.services.parser_service.settings.omniroute_api_key", "test-key")
+    """Mock call_with_retry so parse endpoint works without real API."""
     json_response = _make_mock_resume_json()
 
-    class FakeOmniRoute:
-        def __init__(self):
-            self.max_retries = 0
+    async def fake_call_with_retry(build_prompt, parse_response, omniroute=None, service_name="AI"):
+        return parse_response(json_response)
 
-        async def send_prompt(self, system: str, user: str) -> str:
-            return json_response
-
-    import app.services.parser_service as mod
-    monkeypatch.setattr(mod, "OmniRouteService", lambda *a, **kw: FakeOmniRoute())
+    monkeypatch.setattr("app.services.parser_service.call_with_retry", fake_call_with_retry)
 
 
 @pytest.mark.asyncio

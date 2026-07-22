@@ -1,30 +1,18 @@
 import json
 import logging
-import re
-
-from pydantic import ValidationError
 
 from app.core.config import settings
 from app.models.resume import Resume, Education, Experience, Project, Skill, Certification
 from app.services.prompt_service import PromptService
-from app.services.omniroute_service import OmniRouteService, OmniRouteError
+from app.services.ai_core import extract_json, call_with_retry, AIServiceUnavailable
 
 logger = logging.getLogger(__name__)
 
 
 class ParseError(Exception):
-    pass
+    """Raised when resume parsing fails irrecoverably."""
 
 
-def _extract_json(text: str) -> str:
-    match = re.search(r"```(?:json)?\s*\n?(.*?)\n?```", text, re.DOTALL)
-    if match:
-        return match.group(1).strip()
-    brace_start = text.find("{")
-    brace_end = text.rfind("}")
-    if brace_start != -1 and brace_end > brace_start:
-        return text[brace_start : brace_end + 1]
-    return text.strip()
 
 
 def _mock_resume() -> Resume:
@@ -114,28 +102,18 @@ async def parse_resume(text: str) -> Resume:
         return _mock_resume()
 
     prompt_service = PromptService()
-    omniroute = OmniRouteService()
-
     schema = json.dumps(Resume.model_json_schema(), indent=2)
-    system_prompt, user_prompt = prompt_service.build_prompt(text, schema)
 
-    last_error: Exception | None = None
+    async def build() -> tuple[str, str]:
+        return prompt_service.build_prompt(text, schema)
 
-    for attempt in range(omniroute.max_retries + 1):
-        try:
-            raw = await omniroute.send_prompt(system_prompt, user_prompt)
-            cleaned = _extract_json(raw)
-            data = json.loads(cleaned)
-            return Resume(**data)
-        except json.JSONDecodeError as e:
-            logger.warning("Invalid JSON from OmniRoute (attempt %d/%d): %s", attempt + 1, omniroute.max_retries + 1, e)
-            last_error = e
-        except ValidationError as e:
-            logger.warning("Pydantic validation failed (attempt %d/%d): %s", attempt + 1, omniroute.max_retries + 1, e)
-            last_error = e
-        except OmniRouteError as e:
-            logger.warning("OmniRoute request failed (attempt %d/%d): %s", attempt + 1, omniroute.max_retries + 1, e)
-            last_error = e
+    def parse(raw: str) -> Resume:
+        cleaned = extract_json(raw)
+        data = json.loads(cleaned)
+        return Resume(**data)
 
-    logger.warning("OmniRoute parsing failed after retries; falling back to mock data")
-    return _mock_resume()
+    try:
+        return await call_with_retry(build, parse, service_name="Parser")
+    except AIServiceUnavailable:
+        logger.warning("OmniRoute parsing failed after retries; falling back to mock data")
+        return _mock_resume()
