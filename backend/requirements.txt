@@ -6,6 +6,7 @@ email-validator
 python-multipart
 pymupdf
 reportlab
+python-docx
 httpx
 pytest
 pytest-asyncio
