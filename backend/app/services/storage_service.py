@@ -6,6 +6,7 @@ from app.models.match import MatchResult
 from app.models.version import ResumeVersion
 from app.models.writer import ResumeSuggestion
 from app.models.cover_letter import CoverLetter
+from app.models.application import Application, TimelineEvent
 
 RESUMES_DIR = Path("storage") / "resumes"
 RESUMES_DIR.mkdir(parents=True, exist_ok=True)
@@ -21,6 +22,12 @@ WRITER_DIR.mkdir(parents=True, exist_ok=True)
 
 COVER_LETTERS_DIR = Path("storage") / "cover_letters"
 COVER_LETTERS_DIR.mkdir(parents=True, exist_ok=True)
+
+APPLICATIONS_DIR = Path("storage") / "applications"
+APPLICATIONS_DIR.mkdir(parents=True, exist_ok=True)
+
+TIMELINE_DIR = Path("storage") / "timeline"
+TIMELINE_DIR.mkdir(parents=True, exist_ok=True)
 
 # ── Resume storage (unchanged) ──────────────────────────────────
 
@@ -174,3 +181,62 @@ def delete_cover_letter(resume_id: str, letter_id: str) -> bool:
         return False
     path.unlink()
     return True
+
+
+# ── Application storage ───────────────────────────────────────
+
+
+def save_application(app: Application) -> None:
+    path = APPLICATIONS_DIR / f"{app.id}.json"
+    path.write_text(app.model_dump_json(indent=2), encoding="utf-8")
+
+
+def load_application(app_id: str) -> Application | None:
+    path = APPLICATIONS_DIR / f"{app_id}.json"
+    if not path.exists():
+        return None
+    data = json.loads(path.read_text(encoding="utf-8"))
+    return Application(**data)
+
+
+def list_applications(status: str | None = None) -> list[Application]:
+    if not APPLICATIONS_DIR.exists():
+        return []
+    results = []
+    for f in sorted(APPLICATIONS_DIR.iterdir(), reverse=True):
+        if f.suffix == ".json":
+            data = json.loads(f.read_text(encoding="utf-8"))
+            app = Application(**data)
+            if status is None or app.status.value == status:
+                results.append(app)
+    return sorted(results, key=lambda a: a.created_at or "", reverse=True)
+
+
+def delete_application(app_id: str) -> bool:
+    path = APPLICATIONS_DIR / f"{app_id}.json"
+    if not path.exists():
+        return False
+    path.unlink()
+    return True
+
+
+# ── Timeline storage ───────────────────────────────────────
+
+
+def save_timeline_event(event: TimelineEvent) -> None:
+    dir_path = TIMELINE_DIR / event.application_id
+    dir_path.mkdir(parents=True, exist_ok=True)
+    path = dir_path / f"{event.id}.json"
+    path.write_text(event.model_dump_json(indent=2), encoding="utf-8")
+
+
+def list_timeline_events(application_id: str) -> list[TimelineEvent]:
+    dir_path = TIMELINE_DIR / application_id
+    if not dir_path.exists():
+        return []
+    results = []
+    for f in sorted(dir_path.iterdir(), reverse=True):
+        if f.suffix == ".json":
+            data = json.loads(f.read_text(encoding="utf-8"))
+            results.append(TimelineEvent(**data))
+    return sorted(results, key=lambda e: e.created_at or "", reverse=True)
