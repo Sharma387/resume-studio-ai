@@ -7,6 +7,7 @@ from app.models.version import ResumeVersion
 from app.models.writer import ResumeSuggestion
 from app.models.cover_letter import CoverLetter
 from app.models.application import Application, TimelineEvent
+from app.models.interview import InterviewSession, InterviewQuestion, InterviewAnswer, ReadinessAssessment, SessionSummary
 
 RESUMES_DIR = Path("storage") / "resumes"
 RESUMES_DIR.mkdir(parents=True, exist_ok=True)
@@ -28,6 +29,9 @@ APPLICATIONS_DIR.mkdir(parents=True, exist_ok=True)
 
 TIMELINE_DIR = Path("storage") / "timeline"
 TIMELINE_DIR.mkdir(parents=True, exist_ok=True)
+
+INTERVIEWS_DIR = Path("storage") / "interviews"
+INTERVIEWS_DIR.mkdir(parents=True, exist_ok=True)
 
 # ── Resume storage (unchanged) ──────────────────────────────────
 
@@ -240,3 +244,116 @@ def list_timeline_events(application_id: str) -> list[TimelineEvent]:
             data = json.loads(f.read_text(encoding="utf-8"))
             results.append(TimelineEvent(**data))
     return sorted(results, key=lambda e: e.created_at or "", reverse=True)
+
+
+# ── Interview storage ───────────────────────────────────────
+
+
+def _interview_subdir(application_id: str, sub: str) -> Path:
+    d = INTERVIEWS_DIR / application_id / sub
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def save_interview_session(session: InterviewSession) -> None:
+    path = _interview_subdir(session.application_id, "sessions") / f"{session.id}.json"
+    path.write_text(session.model_dump_json(indent=2), encoding="utf-8")
+
+
+def load_interview_session(application_id: str, session_id: str) -> InterviewSession | None:
+    path = INTERVIEWS_DIR / application_id / "sessions" / f"{session_id}.json"
+    if not path.exists():
+        return None
+    data = json.loads(path.read_text(encoding="utf-8"))
+    return InterviewSession(**data)
+
+
+def list_interview_sessions(application_id: str) -> list[InterviewSession]:
+    dir_path = INTERVIEWS_DIR / application_id / "sessions"
+    if not dir_path.exists():
+        return []
+    results = []
+    for f in sorted(dir_path.iterdir(), reverse=True):
+        if f.suffix == ".json":
+            data = json.loads(f.read_text(encoding="utf-8"))
+            results.append(InterviewSession(**data))
+    return sorted(results, key=lambda s: s.created_at or "", reverse=True)
+
+
+def delete_interview_session(application_id: str, session_id: str) -> bool:
+    path = INTERVIEWS_DIR / application_id / "sessions" / f"{session_id}.json"
+    if not path.exists():
+        return False
+    path.unlink()
+    return True
+
+
+def save_interview_question(question: InterviewQuestion) -> None:
+    sdir = INTERVIEWS_DIR / question.session_id.split("-")[0] / "questions"
+    sdir.mkdir(parents=True, exist_ok=True)
+    path = sdir / f"{question.id}.json"
+    path.write_text(question.model_dump_json(indent=2), encoding="utf-8")
+
+
+def list_interview_questions(session_id: str) -> list[InterviewQuestion]:
+    app_id = session_id.split("-")[0]
+    dir_path = INTERVIEWS_DIR / app_id / "questions"
+    if not dir_path.exists():
+        return []
+    results = []
+    for f in dir_path.iterdir():
+        if f.suffix == ".json":
+            data = json.loads(f.read_text(encoding="utf-8"))
+            if data.get("session_id") == session_id:
+                results.append(InterviewQuestion(**data))
+    return results
+
+
+def save_interview_answer(answer: InterviewAnswer) -> None:
+    app_id = answer.question_id.split("-")[0]
+    d = _interview_subdir(app_id, "answers")
+    path = d / f"{answer.question_id}.json"
+    path.write_text(answer.model_dump_json(indent=2), encoding="utf-8")
+
+
+def load_interview_answer(question_id: str) -> InterviewAnswer | None:
+    app_id = question_id.split("-")[0]
+    path = INTERVIEWS_DIR / app_id / "answers" / f"{question_id}.json"
+    if not path.exists():
+        return None
+    data = json.loads(path.read_text(encoding="utf-8"))
+    return InterviewAnswer(**data)
+
+
+def save_readiness_assessment(assessment: ReadinessAssessment) -> None:
+    d = _interview_subdir(assessment.application_id, "readiness")
+    path = d / f"{assessment.id}.json"
+    path.write_text(assessment.model_dump_json(indent=2), encoding="utf-8")
+
+
+def list_readiness_assessments(application_id: str) -> list[ReadinessAssessment]:
+    dir_path = INTERVIEWS_DIR / application_id / "readiness"
+    if not dir_path.exists():
+        return []
+    results = []
+    for f in sorted(dir_path.iterdir(), reverse=True):
+        if f.suffix == ".json":
+            data = json.loads(f.read_text(encoding="utf-8"))
+            results.append(ReadinessAssessment(**data))
+    return sorted(results, key=lambda a: a.created_at or "", reverse=True)
+
+
+def save_session_summary(summary: SessionSummary) -> None:
+    d = _interview_subdir(summary.application_id, "summaries")
+    path = d / f"{summary.session_id}.json"
+    path.write_text(summary.model_dump_json(indent=2), encoding="utf-8")
+
+
+def load_session_summary(session_id: str) -> SessionSummary | None:
+    app_id = session_id.split("-")[0]
+    path = INTERVIEWS_DIR / app_id / "summaries" / f"{session_id}.json"
+    if not path.exists():
+        return None
+    data = json.loads(path.read_text(encoding="utf-8"))
+    return SessionSummary(**data)
+
