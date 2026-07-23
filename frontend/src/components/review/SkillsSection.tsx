@@ -40,7 +40,7 @@ function SkillsSection({ resume, onChange }: SkillsSectionProps) {
         <Card key={ci} sx={{ p: 2, mb: 2 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
             <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>{cat.category}</Typography>
-            <IconButton size="small" color="error" onClick={() => removeCategory(ci)}>
+            <IconButton size="small" color="error" aria-label="Delete category" onClick={() => removeCategory(ci)}>
               <DeleteOutlined fontSize="small" />
             </IconButton>
           </Box>

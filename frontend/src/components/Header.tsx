@@ -65,7 +65,7 @@ function Header() {
       >
         <Toolbar sx={{ maxWidth: 1400, width: '100%', mx: 'auto', px: { xs: 2, md: 4 } }}>
           {isMobile && (
-            <IconButton edge="start" onClick={handleDrawerToggle} sx={{ mr: 1 }}>
+            <IconButton edge="start" onClick={handleDrawerToggle} aria-label="Open navigation menu" sx={{ mr: 1 }}>
               <MenuIcon />
             </IconButton>
           )}
@@ -103,7 +103,7 @@ function Header() {
 
           <Box sx={{ flexGrow: 1 }} />
 
-          <IconButton onClick={toggleTheme} sx={{ color: 'text.secondary' }}>
+          <IconButton onClick={toggleTheme} aria-label="Toggle theme" sx={{ color: 'text.secondary' }}>
             {mode === 'dark' ? <LightModeOutlined /> : <DarkModeOutlined />}
           </IconButton>
 
@@ -112,12 +112,13 @@ function Header() {
             href="https://github.com/Sharma387/resume-studio-ai"
             target="_blank"
             rel="noopener noreferrer"
+            aria-label="View project on GitHub"
             sx={{ color: 'text.secondary' }}
           >
             <GitHubIcon />
           </IconButton>
 
-          <IconButton sx={{ color: 'text.secondary' }}>
+          <IconButton aria-label="Settings" disabled sx={{ color: 'text.secondary' }}>
             <SettingsOutlined />
           </IconButton>
         </Toolbar>

@@ -1,25 +1,26 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import Depends,  APIRouter, HTTPException
 
 from app.models.interview import InterviewSession, SessionType
 from app.services import interview_service as svc
+from app.services.auth_deps import require_user
 
 router = APIRouter()
 
 
 @router.post("/applications/{app_id}/interview/sessions")
-async def create_session(app_id: str, body: InterviewSession):
+async def create_session(app_id: str, body: InterviewSession, _ = Depends(require_user)):
     session = svc.create_session(app_id, body.title or "Interview Prep", body.session_type)
     return {"success": True, "data": session}
 
 
 @router.get("/applications/{app_id}/interview/sessions")
-async def list_sessions(app_id: str):
+async def list_sessions(app_id: str, _ = Depends(require_user)):
     sessions = svc.list_sessions(app_id)
     return {"success": True, "data": [s.model_dump() for s in sessions]}
 
 
 @router.get("/applications/{app_id}/interview/sessions/{session_id}")
-async def get_session(app_id: str, session_id: str):
+async def get_session(app_id: str, session_id: str, _ = Depends(require_user)):
     session = svc.get_session(app_id, session_id)
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -27,7 +28,7 @@ async def get_session(app_id: str, session_id: str):
 
 
 @router.put("/applications/{app_id}/interview/sessions/{session_id}")
-async def update_session(app_id: str, session_id: str, body: InterviewSession):
+async def update_session(app_id: str, session_id: str, body: InterviewSession, _ = Depends(require_user)):
     updated = svc.update_session(app_id, session_id, **body.model_dump(exclude_unset=True))
     if updated is None:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -35,14 +36,14 @@ async def update_session(app_id: str, session_id: str, body: InterviewSession):
 
 
 @router.delete("/applications/{app_id}/interview/sessions/{session_id}")
-async def delete_session(app_id: str, session_id: str):
+async def delete_session(app_id: str, session_id: str, _ = Depends(require_user)):
     if not svc.delete_session(app_id, session_id):
         raise HTTPException(status_code=404, detail="Session not found")
     return {"success": True}
 
 
 @router.post("/applications/{app_id}/interview/sessions/{session_id}/complete")
-async def complete_session(app_id: str, session_id: str):
+async def complete_session(app_id: str, session_id: str, _ = Depends(require_user)):
     session = svc.complete_session(app_id, session_id)
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -50,7 +51,7 @@ async def complete_session(app_id: str, session_id: str):
 
 
 @router.post("/applications/{app_id}/interview/sessions/{session_id}/generate-questions")
-async def generate_questions(app_id: str, session_id: str, count: int = 5):
+async def generate_questions(app_id: str, session_id: str, count: int = 5, _ = Depends(require_user)):
     try:
         questions = await svc.generate_questions(app_id, session_id, count)
         return {"success": True, "data": [q.model_dump() for q in questions]}
@@ -59,13 +60,13 @@ async def generate_questions(app_id: str, session_id: str, count: int = 5):
 
 
 @router.get("/applications/{app_id}/interview/sessions/{session_id}/questions")
-async def list_questions(app_id: str, session_id: str):
+async def list_questions(app_id: str, session_id: str, _ = Depends(require_user)):
     questions = svc.list_questions(session_id)
     return {"success": True, "data": [q.model_dump() for q in questions]}
 
 
 @router.post("/applications/{app_id}/interview/questions/{question_id}/answer")
-async def submit_answer(app_id: str, question_id: str, body: dict):
+async def submit_answer(app_id: str, question_id: str, body: dict, _ = Depends(require_user)):
     question_text = body.get("question_text", "")
     user_answer = body.get("user_answer", "")
     if not user_answer:
@@ -79,7 +80,7 @@ async def submit_answer(app_id: str, question_id: str, body: dict):
 
 
 @router.get("/applications/{app_id}/interview/questions/{question_id}/answer")
-async def get_answer(app_id: str, question_id: str):
+async def get_answer(app_id: str, question_id: str, _ = Depends(require_user)):
     answer = svc.get_answer(question_id)
     if answer is None:
         raise HTTPException(status_code=404, detail="Answer not found")
@@ -87,7 +88,7 @@ async def get_answer(app_id: str, question_id: str):
 
 
 @router.post("/applications/{app_id}/interview/assess-readiness")
-async def assess_readiness(app_id: str):
+async def assess_readiness(app_id: str, _ = Depends(require_user)):
     try:
         assessment = await svc.assess_readiness(app_id)
         return {"success": True, "data": assessment}
@@ -96,13 +97,13 @@ async def assess_readiness(app_id: str):
 
 
 @router.get("/applications/{app_id}/interview/readiness")
-async def list_readiness(app_id: str):
+async def list_readiness(app_id: str, _ = Depends(require_user)):
     assessments = svc.list_readiness(app_id)
     return {"success": True, "data": [a.model_dump() for a in assessments]}
 
 
 @router.post("/applications/{app_id}/interview/sessions/{session_id}/summary")
-async def generate_summary(app_id: str, session_id: str):
+async def generate_summary(app_id: str, session_id: str, _ = Depends(require_user)):
     try:
         summary = await svc.generate_summary(session_id)
         return {"success": True, "data": summary}
@@ -111,7 +112,7 @@ async def generate_summary(app_id: str, session_id: str):
 
 
 @router.get("/applications/{app_id}/interview/sessions/{session_id}/summary")
-async def get_summary(app_id: str, session_id: str):
+async def get_summary(app_id: str, session_id: str, _ = Depends(require_user)):
     from app.services.storage_service import load_session_summary
     summary = load_session_summary(session_id)
     if summary is None:

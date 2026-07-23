@@ -93,7 +93,7 @@ async def generate_questions(application_id: str, session_id: str, count: int = 
         raise FileNotFoundError("Application not found")
     resume = load_resume(app.resume_id) if app.resume_id else None
     resume_json = json.dumps(resume.model_dump(), indent=2, default=str) if resume else "{}"
-    matches = list_matches(application_id)
+    matches = list_matches(app.resume_id) if app.resume_id else []
     ats_gaps = ", ".join(matches[0].missing_skills) if matches else ""
 
     job_context = f"{app.role_title} at {app.company}" if app.company else "N/A"

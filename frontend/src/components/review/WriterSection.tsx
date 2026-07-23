@@ -16,7 +16,7 @@ import HighlightOffOutlined from '@mui/icons-material/HighlightOffOutlined';
 import ReplayOutlined from '@mui/icons-material/ReplayOutlined';
 import type { ResumeSuggestion, QuickActions } from '../../types/writer';
 
-const API_URL = 'http://localhost:8000/api/v1';
+import API_URL from "../../config";
 
 interface WriterSectionProps {
   resumeId: string;

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import Depends,  APIRouter, HTTPException
 
 from app.models.writer import WriterRequest, BulkAcceptRequest
 from app.services.writer_service import (
@@ -9,6 +9,7 @@ from app.services.writer_service import (
     QUICK_ACTIONS,
 )
 from app.services.storage_service import list_writer_suggestions
+from app.services.auth_deps import require_user
 
 router = APIRouter()
 
@@ -19,7 +20,7 @@ async def get_quick_actions():
 
 
 @router.post("/resume/{resume_id}/writer/suggest")
-async def create_suggestions(resume_id: str, request: WriterRequest):
+async def create_suggestions(resume_id: str, request: WriterRequest, _ = Depends(require_user)):
     try:
         suggestions = await suggest(resume_id, request)
         return {"success": True, "suggestions": [s.model_dump() for s in suggestions]}
@@ -30,13 +31,13 @@ async def create_suggestions(resume_id: str, request: WriterRequest):
 
 
 @router.get("/resume/{resume_id}/writer/suggestions")
-async def list_suggestions(resume_id: str, status: str | None = None):
+async def list_suggestions(resume_id: str, status: str | None = None, _ = Depends(require_user)):
     suggestions = list_writer_suggestions(resume_id, status=status)
     return {"success": True, "data": [s.model_dump() for s in suggestions]}
 
 
 @router.post("/resume/{resume_id}/writer/suggestions/{suggestion_id}/accept")
-async def accept(resume_id: str, suggestion_id: str):
+async def accept(resume_id: str, suggestion_id: str, _ = Depends(require_user)):
     try:
         resume = await accept_suggestion(resume_id, suggestion_id)
         return {"success": True, "data": resume}
@@ -45,7 +46,7 @@ async def accept(resume_id: str, suggestion_id: str):
 
 
 @router.post("/resume/{resume_id}/writer/suggestions/{suggestion_id}/reject")
-async def reject(resume_id: str, suggestion_id: str):
+async def reject(resume_id: str, suggestion_id: str, _ = Depends(require_user)):
     try:
         await reject_suggestion(resume_id, suggestion_id)
         return {"success": True}
@@ -54,7 +55,7 @@ async def reject(resume_id: str, suggestion_id: str):
 
 
 @router.post("/resume/{resume_id}/writer/suggestions/{suggestion_id}/regenerate")
-async def regenerate(resume_id: str, suggestion_id: str):
+async def regenerate(resume_id: str, suggestion_id: str, _ = Depends(require_user)):
     try:
         suggestion = await regenerate_suggestion(resume_id, suggestion_id)
         return {"success": True, "data": suggestion.model_dump()}

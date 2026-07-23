@@ -1,7 +1,8 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
-from app.models.user import User
+from app.core.config import settings
+from app.models.user import User, UserRole
 from app.services.auth_service import AuthenticationService
 
 _bearer = HTTPBearer(auto_error=False)
@@ -22,8 +23,17 @@ async def get_current_user(
 
 
 async def require_user(current_user: User | None = Depends(get_current_user)) -> User:
-    """Require a valid authenticated user."""
+    """Require a valid authenticated user. In debug mode, returns a mock user."""
     if current_user is None:
+        if settings.debug:
+            mock = _auth_service.user_service.get_by_email("dev@resume-studio.ai")
+            if not mock:
+                mock = _auth_service.user_service.create_user(
+                    email="dev@resume-studio.ai",
+                    password="dev-password",
+                    full_name="Dev User",
+                )
+            return mock
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated",
@@ -34,7 +44,6 @@ async def require_user(current_user: User | None = Depends(get_current_user)) ->
 
 async def require_admin(current_user: User = Depends(require_user)) -> User:
     """Require an admin user."""
-    from app.models.user import UserRole
     if current_user.role != UserRole.ADMIN:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -45,11 +54,10 @@ async def require_admin(current_user: User = Depends(require_user)) -> User:
 
 def check_resource_owner(resource_user_id: str | None, current_user: User) -> None:
     """Verify the current user owns the resource (or is admin)."""
-    from app.models.user import UserRole
     if current_user.role == UserRole.ADMIN:
         return
     if resource_user_id is None:
-        return  # Allow during migration — resources without user_id
+        return
     if resource_user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

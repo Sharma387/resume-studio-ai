@@ -155,7 +155,7 @@ function ReviewPage() {
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       {/* Action bar — inline header, not an AppBar */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 0.5, pb: 2, flexWrap: 'wrap', borderBottom: '1px solid', borderColor: 'divider', mb: 2 }}>
-        <Typography variant="h6" sx={{ fontWeight: 700, mr: 'auto' }}>
+        <Typography variant="h1" sx={{ fontWeight: 700, mr: 'auto', fontSize: '1.5rem' }}>
           Review Resume
         </Typography>
         {changed && (
@@ -183,7 +183,7 @@ function ReviewPage() {
             Download
           </Button>
         )}
-        <IconButton size="small" onClick={() => setHistoryOpen(true)} sx={{ color: 'text.secondary' }}>
+        <IconButton size="small" onClick={() => setHistoryOpen(true)} aria-label="Open version history" sx={{ color: 'text.secondary' }}>
           <HistoryOutlined />
         </IconButton>
       </Box>

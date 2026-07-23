@@ -35,7 +35,7 @@ function ExperienceSection({ resume, onChange }: ExperienceSectionProps) {
         <Card key={i} sx={{ p: 2, mb: 2 }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5 }}>
             <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>Experience #{i + 1}</Typography>
-            <IconButton size="small" color="error" onClick={() => remove(i)}>
+            <IconButton size="small" color="error" aria-label="Delete item" onClick={() => remove(i)}>
               <DeleteOutlined fontSize="small" />
             </IconButton>
           </Box>

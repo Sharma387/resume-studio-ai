@@ -1,31 +1,32 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import Depends,  APIRouter, HTTPException, Query
 
 from app.models.application import Application, ApplicationStatus, TimelineEvent, TimelineEventType
 from app.services import application_service as svc
+from app.services.auth_deps import require_user
 
 router = APIRouter()
 
 
 @router.get("/dashboard")
-async def dashboard():
+async def dashboard(_ = Depends(require_user)):
     return {"success": True, "data": svc.get_dashboard()}
 
 
 @router.get("/applications")
-async def list_apps(status: str | None = Query(None)):
+async def list_apps(status: str | None = Query(None), _ = Depends(require_user)):
     from app.services.storage_service import list_applications
     apps = list_applications(status=status)
     return {"success": True, "data": apps}
 
 
 @router.post("/applications")
-async def create_app(body: Application):
+async def create_app(body: Application, _ = Depends(require_user)):
     created = svc.create(company=body.company, role_title=body.role_title, **body.model_dump(exclude={"company", "role_title", "id", "created_at", "updated_at"}))
     return {"success": True, "data": created}
 
 
 @router.get("/applications/{app_id}")
-async def get_app(app_id: str):
+async def get_app(app_id: str, _ = Depends(require_user)):
     view = svc.get_view(app_id)
     if view is None:
         raise HTTPException(status_code=404, detail="Application not found")
@@ -33,7 +34,7 @@ async def get_app(app_id: str):
 
 
 @router.put("/applications/{app_id}")
-async def update_app(app_id: str, body: Application):
+async def update_app(app_id: str, body: Application, _ = Depends(require_user)):
     updated = svc.update(app_id, **body.model_dump(exclude_unset=True))
     if updated is None:
         raise HTTPException(status_code=404, detail="Application not found")
@@ -41,14 +42,14 @@ async def update_app(app_id: str, body: Application):
 
 
 @router.delete("/applications/{app_id}")
-async def delete_app(app_id: str):
+async def delete_app(app_id: str, _ = Depends(require_user)):
     if not svc.delete(app_id):
         raise HTTPException(status_code=404, detail="Application not found")
     return {"success": True}
 
 
 @router.patch("/applications/{app_id}/status")
-async def change_status(app_id: str, body: dict):
+async def change_status(app_id: str, body: dict, _ = Depends(require_user)):
     new_status = body.get("status")
     if not new_status:
         raise HTTPException(status_code=400, detail="status is required")
@@ -63,7 +64,7 @@ async def change_status(app_id: str, body: dict):
 
 
 @router.post("/applications/{app_id}/notes")
-async def add_note(app_id: str, body: dict):
+async def add_note(app_id: str, body: dict, _ = Depends(require_user)):
     content = body.get("content", "")
     if not content:
         raise HTTPException(status_code=400, detail="content is required")
@@ -74,14 +75,14 @@ async def add_note(app_id: str, body: dict):
 
 
 @router.get("/applications/{app_id}/timeline")
-async def get_timeline(app_id: str):
+async def get_timeline(app_id: str, _ = Depends(require_user)):
     from app.services.storage_service import list_timeline_events
     events = list_timeline_events(app_id)
     return {"success": True, "data": events}
 
 
 @router.post("/applications/{app_id}/timeline")
-async def add_timeline_event(app_id: str, body: TimelineEvent):
+async def add_timeline_event(app_id: str, body: TimelineEvent, _ = Depends(require_user)):
     from app.services.storage_service import load_application, save_timeline_event
     app = load_application(app_id)
     if app is None:

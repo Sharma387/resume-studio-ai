@@ -24,7 +24,7 @@ import DeleteOutlined from '@mui/icons-material/DeleteOutlined';
 import ReplayOutlined from '@mui/icons-material/ReplayOutlined';
 import type { CoverLetter, CoverLetterRequest } from '../../types/cover_letter';
 
-const API_URL = 'http://localhost:8000/api/v1';
+import API_URL from "../../config";
 
 interface CoverLetterSectionProps {
   resumeId: string;
@@ -186,12 +186,12 @@ function CoverLetterSection({ resumeId }: CoverLetterSectionProps) {
                 {currentLetter.company_name && <Chip label={currentLetter.company_name} size="small" variant="outlined" sx={{ borderRadius: 1 }} />}
               </Box>
               <Box sx={{ display: 'flex', gap: 0.5 }}>
-                <IconButton size="small" onClick={() => setEditMode(!editMode)}><EditOutlined fontSize="small" /></IconButton>
-                <IconButton size="small" onClick={handleCopy} sx={{ color: copied ? 'success.main' : undefined }}>
+                <IconButton size="small" onClick={() => setEditMode(!editMode)} aria-label="Edit cover letter"><EditOutlined fontSize="small" /></IconButton>
+                <IconButton size="small" onClick={handleCopy} aria-label="Copy to clipboard" sx={{ color: copied ? 'success.main' : undefined }}>
                   <ContentCopyOutlined fontSize="small" />
                 </IconButton>
-                <IconButton size="small" onClick={handleRegenerate} disabled={generating}><ReplayOutlined fontSize="small" /></IconButton>
-                <IconButton size="small" onClick={() => handleDelete(currentLetter.id)} color="error"><DeleteOutlined fontSize="small" /></IconButton>
+                <IconButton size="small" onClick={handleRegenerate} disabled={generating} aria-label="Regenerate"><ReplayOutlined fontSize="small" /></IconButton>
+                <IconButton size="small" onClick={() => handleDelete(currentLetter.id)} color="error" aria-label="Delete cover letter"><DeleteOutlined fontSize="small" /></IconButton>
               </Box>
             </Box>
 
@@ -238,7 +238,7 @@ function CoverLetterSection({ resumeId }: CoverLetterSectionProps) {
                   </Typography>
                   <Typography variant="caption" sx={{ color: 'text.secondary' }}>{l.tone} · {l.content?.length || 0} chars</Typography>
                 </Box>
-                <IconButton size="small" color="error" onClick={(e) => { e.stopPropagation(); handleDelete(l.id); }}>
+                <IconButton size="small" color="error" aria-label="Delete cover letter" onClick={(e) => { e.stopPropagation(); handleDelete(l.id); }}>
                   <DeleteOutlined fontSize="small" />
                 </IconButton>
               </Box>

@@ -118,6 +118,7 @@ function ExtractResultCard({ data }: ExtractResultCardProps) {
           <IconButton
             size="small"
             onClick={handleCopy}
+            aria-label="Copy text"
             sx={{ color: copied ? 'success.main' : 'text.secondary' }}
           >
             {copied ? <CheckOutlined fontSize="small" /> : <ContentCopyOutlined fontSize="small" />}

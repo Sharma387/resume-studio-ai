@@ -1,27 +1,16 @@
 import json
-import re
 
 from pydantic import ValidationError
 
 from app.core.config import settings
 from app.models.resume import Resume
 from app.models.match import Recommendation
+from app.services.ai_core import extract_json
 from app.services.prompt_service import PromptService
 from app.services.omniroute_service import OmniRouteService, OmniRouteError
 
 from app.core.logging import get_logger
 logger = get_logger(__name__)
-
-
-def _extract_json(text: str) -> str:
-    match = re.search(r"```(?:json)?\s*\n?(.*?)\n?```", text, re.DOTALL)
-    if match:
-        return match.group(1).strip()
-    brace_start = text.find("{")
-    brace_end = text.rfind("}")
-    if brace_start != -1 and brace_end > brace_start:
-        return text[brace_start : brace_end + 1]
-    return text.strip()
 
 
 async def apply_suggestion(resume: Resume, recommendation: Recommendation) -> Resume:
@@ -57,7 +46,7 @@ async def apply_suggestion(resume: Resume, recommendation: Recommendation) -> Re
     for attempt in range(omniroute.max_retries + 1):
         try:
             raw = await omniroute.send_prompt(system, user)
-            cleaned = _extract_json(raw)
+            cleaned = extract_json(raw)
             data = json.loads(cleaned)
             return Resume(**data)
         except (json.JSONDecodeError, ValidationError) as e:

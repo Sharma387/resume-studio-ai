@@ -1,11 +1,12 @@
 from pathlib import Path
 
-from fastapi import APIRouter
+from fastapi import Depends,  APIRouter
 from pydantic import BaseModel
 
 from app.services.parser_service import parse_resume
 from app.services.storage_service import save_resume
 from app.models.resume import Resume
+from app.services.auth_deps import require_user
 
 router = APIRouter()
 
@@ -22,7 +23,7 @@ class ParseResponse(BaseModel):
 
 
 @router.post("/parse", response_model=ParseResponse)
-async def parse(req: ParseRequest):
+async def parse(req: ParseRequest, _ = Depends(require_user)):
     resume = await parse_resume(req.text)
     resume_id = None
     if req.filename:

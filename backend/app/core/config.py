@@ -54,7 +54,6 @@ class Settings(BaseSettings):
         return Path(self.upload_dir)
 
     @property
-    @property
     def allowed_extensions_set(self) -> set[str]:
         return set(self.allowed_extensions.split(","))
 

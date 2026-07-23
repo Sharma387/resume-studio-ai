@@ -1,6 +1,6 @@
 import type { Resume } from '../types/resume';
 
-const API_URL = 'http://localhost:8000/api/v1';
+import API_URL from '../config';
 
 export interface ResumeResponse {
   success: boolean;

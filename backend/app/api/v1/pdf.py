@@ -1,9 +1,10 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import Depends,  APIRouter, HTTPException, Query
 from fastapi.responses import FileResponse
 
 from app.services.storage_service import load_resume
 from app.services.pdf_service import generate_pdf, PDF_DIR
 from app.services.pdf_templates.registry import TemplateRegistry
+from app.services.auth_deps import require_user
 
 router = APIRouter()
 
@@ -27,7 +28,7 @@ async def create_pdf(resume_id: str, template: str = Query(default="executive", 
 
 
 @router.get("/resume/{resume_id}/pdf/download")
-async def download_pdf(resume_id: str):
+async def download_pdf(resume_id: str, _ = Depends(require_user)):
     path = PDF_DIR / f"{resume_id}.pdf"
     if not path.exists():
         raise HTTPException(status_code=404, detail="PDF not found. Generate it first.")
