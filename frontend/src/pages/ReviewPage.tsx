@@ -155,7 +155,7 @@ function ReviewPage() {
   const changed = hasChanges();
 
   return (
-    <Box sx={{ height: '100vh', display: 'flex', flexDirection: 'column', bgcolor: 'background.default' }}>
+    <Box sx={{ height: '100%', minHeight: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'background.default' }}>
       <AppBar position="static" elevation={0} sx={{ bgcolor: 'background.paper', borderBottom: 1, borderColor: 'divider' }}>
         <Toolbar>
           <IconButton edge="start" onClick={() => navigate('/')} sx={{ mr: 1 }}>
