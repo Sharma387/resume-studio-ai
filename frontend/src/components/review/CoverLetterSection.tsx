@@ -25,6 +25,7 @@ import ReplayOutlined from '@mui/icons-material/ReplayOutlined';
 import type { CoverLetter, CoverLetterRequest } from '../../types/cover_letter';
 
 import API_URL from "../../config";
+import { authDownload } from "../../services/authDownload";
 import { authFetch } from "../../services/authFetch";
 
 interface CoverLetterSectionProps {
@@ -218,7 +219,10 @@ function CoverLetterSection({ resumeId }: CoverLetterSectionProps) {
                 </Button>
               )}
               <Button size="small" variant="outlined" startIcon={<DownloadOutlined />}
-                component="a" href={`${API_URL}/resume/${resumeId}/cover-letter/${currentLetter.id}/pdf`} download
+                onClick={() => authDownload(
+                  `${API_URL}/resume/${resumeId}/cover-letter/${currentLetter.id}/pdf`,
+                  'cover_letter.pdf',
+                )}
                 sx={{ textTransform: 'none', borderRadius: 1.5 }}>
                 Download PDF
               </Button>

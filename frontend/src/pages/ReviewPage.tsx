@@ -26,6 +26,7 @@ import AutoAwesomeOutlined from '@mui/icons-material/AutoAwesomeOutlined';
 import MailOutlined from '@mui/icons-material/MailOutlined';
 import type { Resume } from '../types/resume';
 import { fetchResume, saveResume, generatePdf, getPdfDownloadUrl } from '../services/resumeService';
+import { authDownload } from '../services/authDownload';
 import SectionNav from '../components/review/SectionNav';
 import PersonalInfoSection from '../components/review/PersonalInfoSection';
 import SummarySection from '../components/review/SummarySection';
@@ -179,7 +180,8 @@ function ReviewPage() {
           </Button>
         ) : (
           <Button size="small" variant="contained" color="success" startIcon={<DownloadOutlined />}
-            component="a" href={getPdfDownloadUrl(fileParam || '')} download sx={{ textTransform: 'none', borderRadius: 2 }}>
+            onClick={() => authDownload(getPdfDownloadUrl(fileParam || ''), `resume_${(resume?.full_name || 'download').toLowerCase().replace(/\s+/g, '_')}.pdf`)}
+            sx={{ textTransform: 'none', borderRadius: 2 }}>
             Download
           </Button>
         )}
