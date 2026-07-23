@@ -6,11 +6,6 @@ from app.services import application_service as svc
 router = APIRouter()
 
 
-@router.get("/dashboard")
-async def dashboard():
-    return {"success": True, "data": svc.get_dashboard()}
-
-
 @router.get("/applications")
 async def list_apps(status: str | None = Query(None)):
     from app.services.storage_service import list_applications

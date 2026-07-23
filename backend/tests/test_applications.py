@@ -152,4 +152,4 @@ class TestEndpoints:
             resp = await ac.get("/api/v1/dashboard")
         assert resp.status_code == 200
         data = resp.json()["data"]
-        assert "total" in data
+        assert "resumes" in data
