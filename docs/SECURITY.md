@@ -113,6 +113,18 @@ check_resource_owner(resource.user_id, current_user)
 | `OMNIROUTE_API_KEY` | No | API key for AI gateway |
 | `ALLOW_MOCK_AI_DATA` | No | Enable mock data fallback (default: false) |
 
+## Known Issues
+
+### passlib + bcrypt Compatibility Warning
+
+`passlib` currently emits a deprecation warning when used with `bcrypt>=5.0`:
+```
+(trapped) error reading bcrypt version
+AttributeError: module 'bcrypt' has no attribute '__about__'
+```
+
+Authentication continues to function correctly despite this warning. The warning originates from the `passlib` library's backend detection, not from the application code. This is a dependency ecosystem issue rather than an application defect. Planned to be reviewed during the next dependency upgrade cycle.
+
 ## Future Improvements
 
 - Rate limiting per user/IP

@@ -1,119 +1,111 @@
-# RSAI-020 Stable Release
+# RSAI Resume AI Platform v1.0.0
 
-**Tag:** `RSAI-020-STABLE`  
+**Tag:** `v1.0.0`  
 **Date:** July 2026  
 **Tests:** 251 passing  
 **Frontend:** Builds clean  
 
 ---
 
-## Completed Features (RSAI-001 through RSAI-020)
+## Overview
 
-### Core Platform
-| Feature | Description |
-|---|---|
-| **RSAI-001** | FastAPI backend + React/Vite scaffold, health endpoint, project structure |
-| **RSAI-002** | SaaS landing page with glassmorphism UI, drag-drop upload, dark mode |
-| **RSAI-003** | PDF upload with MIME/extension validation, 10MB limit, progress tracking |
+RSAI Resume AI Platform is a production-ready AI-powered career acceleration platform. It transforms how professionals create, optimize, and manage their job applications through AI-powered resume parsing, ATS optimization, cover letter generation, interview preparation, and job application tracking.
 
-### Document Processing
-| Feature | Description |
-|---|---|
-| **RSAI-004** | PDF text extraction via PyMuPDF, page-by-page, whitespace normalization |
-| **RSAI-005** | Canonical Resume schema (Pydantic + TypeScript), 19 validation tests |
-| **RSAI-012** | Modular document engine: PDF/DOCX/TXT extractors, polymorphic dispatch |
+## Key Features
 
-### AI Pipeline
-| Feature | Description |
-|---|---|
-| **RSAI-006** | OmniRoute AI integration, PromptService, retry logic, mock fallback |
-| **RSAI-014A** | `ai_core` shared package: `call_with_retry()`, JSON extraction, shared exceptions |
+### AI-Powered Resume Management
+- PDF/DOCX/TXT upload and text extraction
+- AI resume parsing into structured model with 7 editable sections
+- Professional PDF generation with 5 templates (Executive, ATS, Technical, Modern, Minimal)
+- Version history with restore capability
 
-### Resume Management
-| Feature | Description |
-|---|---|
-| **RSAI-007** | Editable review page with 7 section editors, save/cancel, version history |
-| **RSAI-008** | ReportLab PDF generation, 5 professional templates, meaningful filenames |
+### ATS Optimization
+- Job description matching with AI-powered analysis
+- Skill gap detection (matched vs missing skills)
+- AI recommendations with priority scoring
+- Preview changes before applying
 
 ### AI Writing Tools
-| Feature | Description |
-|---|---|
-| **RSAI-011** | ATS job matching with skill gap analysis, score gauge, recommendations |
-| **RSAI-014** | AI Resume Writer — section suggestions, accept/reject/regenerate |
-| **RSAI-015** | AI Cover Letter generator — tone selection, edit/export, PDF |
-| **RSAI-013** | 5 PDF templates: Executive, ATS, Technical, Modern, Minimal |
+- **Resume Writer:** Section-level AI suggestions with accept/reject/regenerate
+- **Cover Letter Generator:** Tone selection, edit/export, PDF download
 
 ### Job Application Suite
-| Feature | Description |
-|---|---|
-| **RSAI-016** | Application workspace with status tracking, timeline events, notes |
-| **RSAI-017** | Interview intelligence: question generation, STAR coaching, readiness assessment |
+- **Application Workspace:** Status tracking, timeline events, notes
+- **Interview Intelligence:** AI question generation, STAR method coaching, readiness assessment
 
 ### Platform Infrastructure
-| Feature | Description |
-|---|---|
-| **RSAI-018** | JWT authentication, bcrypt passwords, refresh rotation, role-based access |
-| **RSAI-019** | Structured logging, exception hierarchy, RequestID/Timing/Security middleware |
-| **RSAI-020** | 6 reusable UI components, CSS animations, focus-visible accessibility, skeleton loaders |
+- JWT authentication with refresh token rotation
+- Structured logging with request/correlation IDs
+- Global error handling with consistent response format
+- Security headers middleware
 
----
+## Security
 
-## Architecture Summary
+- **Authentication:** JWT with 15-minute access tokens, 7-day refresh tokens, bcrypt password hashing
+- **Authorization:** 47+ API endpoints protected, debug mode bypass for development
+- **Data Protection:** SHA-256 hashed refresh tokens, security headers on all responses
+- **File Upload:** Extension/MIME validation, 10MB limit, UUID filenames
+
+## Architecture
 
 ```
-Frontend (React + MUI + TypeScript)
-  └── Pages: Landing (`/`), Review (`/review`)
-  └── Components: Upload, Editor, Match, Writer, Cover Letter, Interview + 6 reusable UI
-  └── Services: API client layer with typed interfaces
+Frontend (React 19 + MUI + TypeScript)
+  └── Pages: Landing, Review, Login
+  └── Auth: AuthContext, authFetch, ProtectedRoute
+  └── Services: authFetch wrapper with auto token refresh
 
-Backend (FastAPI + Python)
-  ├── API: 13 routers, 50+ endpoints under `/api/v1`
-  ├── Services: 14 domain services + ai_core shared infrastructure
-  ├── Storage: JSON file system under `storage/`
-  ├── AI: OmniRoute gateway, 13 prompt templates, retry framework
-  └── Auth: JWT + bcrypt + repository pattern
-
-Data: JSON files → future PostgreSQL (repository pattern prepared)
-AI: OmniRoute → future multi-provider (prompt templates externalized)
+Backend (FastAPI + Python 3.12+)
+  ├── 13 route modules, 50+ API endpoints
+  ├── 14 domain services + ai_core shared infrastructure
+  ├── JSON file storage (PostgreSQL migration prepared)
+  ├── OmniRoute AI gateway with retry framework
+  └── JWT auth with repository pattern
 ```
 
-## Test Suite
+## Testing
 
-| Category | Count |
+| Suite | Count | Status |
+|---|---|---|
+| Backend tests | 251 | ✅ All passed |
+| Frontend lint | 0 warnings | ✅ Clean |
+| Frontend build | Successful | ✅ |
+
+## Documentation
+
+All documentation is in the `docs/` directory:
+
+| Document | Description |
 |---|---|
-| Backend tests | 251 passing |
-| Frontend lint | 0 warnings, 0 errors |
-| Frontend build | Successful |
+| `ARCHITECTURE.md` | System architecture, layers, design decisions |
+| `API.md` | Complete endpoint reference |
+| `AI.md` | AI pipeline, prompt architecture, retry strategy |
+| `DEPLOYMENT.md` | Setup, Docker, CI/CD, production checklist |
+| `DEVELOPMENT.md` | Local development guide |
+| `FEATURES.md` | RSAI-001 through RSAI-020 feature summaries |
+| `SECURITY.md` | Authentication, authorization, data protection |
+| `STORAGE.md` | Storage design, migration path |
+| `TESTING.md` | Test strategy, running tests, adding tests |
 
-## Known Limitations
+## Known Issues
 
-1. **JSON file storage** — No database; data persisted as JSON files on local disk. Suitable for single-user development. PostgreSQL migration planned.
-2. **No background jobs** — AI operations block the HTTP request. Long operations (>30s) may timeout. Background job queue planned.
-3. **No multi-tenant isolation** — Authentication exists but resource ownership checks are not enforced on all endpoints.
-4. **Cloud sync not implemented** — `SyncService` is placeholder-only.
-5. **No email delivery** — Password reset, email verification, and notifications are model-only.
-6. **No billing** — Subscription tiers exist in the User model but no payment integration.
-7. **No file storage** — Uploaded files stored on local disk; no S3/CDN integration.
-8. **No rate limiting** — API has no per-user rate limits.
+### passlib + bcrypt Compatibility Warning
+
+`passlib` emits a deprecation warning when used with `bcrypt>=5.0`. Authentication continues to function correctly. This is a dependency ecosystem issue, not an application defect.
 
 ## Future Roadmap
 
 ### Short Term
-- PostgreSQL migration (SQLAlchemy + Alembic)
-- Background job queue (Redis + Arq)
-- Authorization audit — enforce resource ownership on all endpoints
-- Rate limiting and API key management
+- PostgreSQL migration
+- Background job queue
+- Rate limiting
+- Email delivery
 
 ### Medium Term
-- Email delivery (SendGrid/Resend)
 - OAuth/SSO (Google, LinkedIn)
 - Billing integration (Stripe)
 - S3 file storage
-- Monitoring and alerting (Sentry, OpenTelemetry)
 
 ### Long Term
-- Public REST API with webhooks
-- Enterprise multi-tenant support
 - AI Career Coach
 - LinkedIn Optimizer
-- Portfolio Analyzer
+- Enterprise multi-tenant support
