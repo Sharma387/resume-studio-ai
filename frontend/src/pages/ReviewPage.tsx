@@ -38,6 +38,7 @@ import EducationSection from '../components/review/EducationSection';
 import CertificationsSection from '../components/review/CertificationsSection';
 import ProjectsSection from '../components/review/ProjectsSection';
 import MatchSection from '../components/review/MatchSection';
+import SkeletonLoader from '../components/ui/SkeletonLoader';
 import VersionHistory from '../components/review/VersionHistory';
 import WriterSection from '../components/review/WriterSection';
 import CoverLetterSection from '../components/review/CoverLetterSection';
@@ -133,8 +134,9 @@ function ReviewPage() {
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
-        <CircularProgress />
+      <Box sx={{ p: 4, maxWidth: 800, mx: 'auto' }}>
+        <SkeletonLoader type="form" count={4} />
+        <Box sx={{ mt: 2 }}><SkeletonLoader type="list" count={3} /></Box>
       </Box>
     );
   }

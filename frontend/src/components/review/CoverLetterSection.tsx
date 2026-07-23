@@ -46,14 +46,10 @@ function CoverLetterSection({ resumeId }: CoverLetterSectionProps) {
   const [editMode, setEditMode] = useState(false);
   const [editContent, setEditContent] = useState('');
 
-  const loadLetters = () => {
-    fetch(`${API_URL}/resume/${resumeId}/cover-letters`)
+  useEffect(() => { fetch(`${API_URL}/resume/${resumeId}/cover-letters`)
       .then((r) => r.json())
       .then((data) => setLetters(data.data || []))
-      .catch(() => {});
-  };
-
-  useEffect(() => { loadLetters(); }, [resumeId]);
+      .catch(() => {}); }, [resumeId]);
 
   const handleGenerate = async () => {
     if (!jd.trim()) return;
@@ -70,12 +66,19 @@ function CoverLetterSection({ resumeId }: CoverLetterSectionProps) {
       setCurrentLetter(data.data);
       setEditContent(data.data.content);
       setEditMode(false);
-      loadLetters();
+      refreshLetters();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Cover letter generation failed');
     } finally {
       setGenerating(false);
     }
+  };
+
+  const refreshLetters = () => {
+    fetch(`${API_URL}/resume/${resumeId}/cover-letters`)
+      .then((r) => r.json())
+      .then((data) => setLetters(data.data || []))
+      .catch(() => {});
   };
 
   const handleSave = async () => {
@@ -91,7 +94,7 @@ function CoverLetterSection({ resumeId }: CoverLetterSectionProps) {
       const data = await res.json();
       setCurrentLetter(data.data);
       setEditMode(false);
-      loadLetters();
+      refreshLetters();
     } catch {
       setError('Failed to save');
     } finally {
@@ -102,7 +105,7 @@ function CoverLetterSection({ resumeId }: CoverLetterSectionProps) {
   const handleDelete = async (id: string) => {
     await fetch(`${API_URL}/resume/${resumeId}/cover-letter/${id}`, { method: 'DELETE' });
     if (currentLetter?.id === id) setCurrentLetter(null);
-    loadLetters();
+    refreshLetters();
   };
 
   const handleCopy = async () => {
@@ -129,7 +132,7 @@ function CoverLetterSection({ resumeId }: CoverLetterSectionProps) {
       if (data.success) {
         setCurrentLetter(data.data);
         setEditContent(data.data.content);
-        loadLetters();
+        refreshLetters();
       }
     } catch {
       setError('Regeneration failed');

@@ -15,6 +15,7 @@ import { matchResume } from '../../services/resumeService';
 import type { MatchResult } from '../../types/match';
 import ATSScoreGauge from './ATSScoreGauge';
 import SkillMatchList from './SkillMatchList';
+import LoadingOverlay from '../ui/LoadingOverlay';
 import RecommendationsList from './RecommendationsList';
 
 interface MatchSectionProps {
@@ -96,14 +97,7 @@ function MatchSection({ resumeId, onResumeUpdated }: MatchSectionProps) {
         </Alert>
       )}
 
-      {loading && (
-        <Box sx={{ textAlign: 'center', py: 6 }}>
-          <CircularProgress size={48} sx={{ mb: 2 }} />
-          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-            Analyzing resume against job description...
-          </Typography>
-        </Box>
-      )}
+      {loading && <LoadingOverlay message="Analyzing resume against job description..." />}
 
       {result && !loading && (
         <Box>

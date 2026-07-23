@@ -13,22 +13,69 @@ body {
   min-height: 100vh;
 }
 
+#root {
+  animation: pageIn 0.3s ease-out;
+}
+
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pageIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes float {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-8px);
-  }
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Utility classes */
+.fade-in { animation: fadeIn 0.4s ease-out both; }
+.slide-up { animation: slideUp 0.4s ease-out both; }
+.scale-in { animation: scaleIn 0.3s ease-out both; }
+
+/* Focus visible for accessibility */
+:focus-visible {
+  outline: 2px solid #7c4dff;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Button press animation */
+button:active {
+  transform: scale(0.97);
+  transition: transform 0.1s ease;
+}
+
+/* Smooth card hover */
+.MuiCard-root {
+  transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+/* Smooth dialog appearance */
+.MuiDialog-paper {
+  animation: scaleIn 0.2s ease-out !important;
+}
+
+/* Smooth snackbar */
+.MuiSnackbar-root {
+  animation: slideUp 0.3s ease-out !important;
 }
