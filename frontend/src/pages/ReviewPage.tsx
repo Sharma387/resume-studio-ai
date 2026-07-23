@@ -7,11 +7,8 @@ import {
   CircularProgress,
   Alert,
   IconButton,
-  Toolbar,
-  AppBar,
   Drawer,
 } from '@mui/material';
-import ArrowBack from '@mui/icons-material/ArrowBack';
 import SaveOutlined from '@mui/icons-material/SaveOutlined';
 import CancelOutlined from '@mui/icons-material/CancelOutlined';
 import PersonOutlined from '@mui/icons-material/PersonOutlined';
@@ -155,66 +152,41 @@ function ReviewPage() {
   const changed = hasChanges();
 
   return (
-    <Box sx={{ height: '100%', minHeight: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'background.default' }}>
-      <AppBar position="static" elevation={0} sx={{ bgcolor: 'background.paper', borderBottom: 1, borderColor: 'divider' }}>
-        <Toolbar>
-          <IconButton edge="start" onClick={() => navigate('/')} sx={{ mr: 1 }}>
-            <ArrowBack />
-          </IconButton>
-          <Typography variant="h6" sx={{ fontWeight: 700, flexGrow: 1 }}>
-            Review Resume
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      {/* Action bar — inline header, not an AppBar */}
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 0.5, pb: 2, flexWrap: 'wrap', borderBottom: '1px solid', borderColor: 'divider', mb: 2 }}>
+        <Typography variant="h6" sx={{ fontWeight: 700, mr: 'auto' }}>
+          Review Resume
+        </Typography>
+        {changed && (
+          <Typography variant="caption" sx={{ color: 'warning.main', mr: 1 }}>
+            Unsaved changes
           </Typography>
-          {changed && (
-            <Typography variant="caption" sx={{ color: 'warning.main', mr: 2 }}>
-              Unsaved changes
-            </Typography>
-          )}
-          <Button
-            variant="outlined"
-            startIcon={<CancelOutlined />}
-            onClick={handleCancel}
-            disabled={!changed}
-            sx={{ mr: 1, textTransform: 'none', borderRadius: 2 }}
-          >
-            Cancel
+        )}
+        <Button size="small" variant="outlined" startIcon={<CancelOutlined />} onClick={handleCancel} disabled={!changed}
+          sx={{ textTransform: 'none', borderRadius: 2 }}>
+          Cancel
+        </Button>
+        <Button size="small" variant="contained" startIcon={saving ? <CircularProgress size={14} /> : <SaveOutlined />}
+          onClick={handleSave} disabled={!changed || saving} sx={{ textTransform: 'none', borderRadius: 2 }}>
+          {saving ? 'Saving...' : 'Save'}
+        </Button>
+        {!pdfReady ? (
+          <Button size="small" variant="outlined"
+            startIcon={pdfGenerating ? <CircularProgress size={14} /> : <PictureAsPdfOutlined />}
+            onClick={handleGeneratePdf} disabled={pdfGenerating} sx={{ textTransform: 'none', borderRadius: 2 }}>
+            {pdfGenerating ? 'Generating...' : 'PDF'}
           </Button>
-          <Button
-            variant="contained"
-            startIcon={saving ? <CircularProgress size={16} /> : <SaveOutlined />}
-            onClick={handleSave}
-            disabled={!changed || saving}
-            sx={{ textTransform: 'none', borderRadius: 2, mr: 1 }}
-          >
-            {saving ? 'Saving...' : 'Save'}
+        ) : (
+          <Button size="small" variant="contained" color="success" startIcon={<DownloadOutlined />}
+            component="a" href={getPdfDownloadUrl(fileParam || '')} download sx={{ textTransform: 'none', borderRadius: 2 }}>
+            Download
           </Button>
-          {!pdfReady ? (
-            <Button
-              variant="outlined"
-              startIcon={pdfGenerating ? <CircularProgress size={16} /> : <PictureAsPdfOutlined />}
-              onClick={handleGeneratePdf}
-              disabled={pdfGenerating}
-              sx={{ textTransform: 'none', borderRadius: 2, mr: 1 }}
-            >
-              {pdfGenerating ? 'Generating...' : 'Generate PDF'}
-            </Button>
-          ) : (
-            <Button
-              variant="contained"
-              color="success"
-              startIcon={<DownloadOutlined />}
-              component="a"
-              href={getPdfDownloadUrl(fileParam || '')}
-              download
-              sx={{ textTransform: 'none', borderRadius: 2, mr: 1 }}
-            >
-              Download PDF
-            </Button>
-          )}
-          <IconButton onClick={() => setHistoryOpen(true)} sx={{ color: 'text.secondary' }}>
-            <HistoryOutlined />
-          </IconButton>
-        </Toolbar>
-      </AppBar>
+        )}
+        <IconButton size="small" onClick={() => setHistoryOpen(true)} sx={{ color: 'text.secondary' }}>
+          <HistoryOutlined />
+        </IconButton>
+      </Box>
 
       <Drawer anchor="right" open={historyOpen} onClose={() => setHistoryOpen(false)}
         slotProps={{ paper: { sx: { width: 340, p: 2 } } }}>
