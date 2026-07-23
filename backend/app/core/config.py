@@ -8,7 +8,7 @@ class Settings(BaseSettings):
 
     # ── App ─────────────────────────────────────────────────────
     app_name: str = "Resume Studio AI"
-    app_version: str = "0.9.1"
+    app_version: str = "1.0.0"
     debug: bool = False
 
     # ── Storage paths ───────────────────────────────────────────

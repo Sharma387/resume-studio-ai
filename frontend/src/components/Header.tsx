@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   AppBar,
   Toolbar,
@@ -19,12 +20,17 @@ import DarkModeOutlined from '@mui/icons-material/DarkModeOutlined';
 import LightModeOutlined from '@mui/icons-material/LightModeOutlined';
 import GitHubIcon from '@mui/icons-material/GitHub';
 import SettingsOutlined from '@mui/icons-material/SettingsOutlined';
+import LogoutOutlined from '@mui/icons-material/LogoutOutlined';
+import LoginOutlined from '@mui/icons-material/LoginOutlined';
 import { useThemeMode } from '../contexts/useThemeMode';
+import { useAuth } from '../contexts/AuthContext';
 
 const navItems = ['Features', 'Pricing', 'About'];
 
 function Header() {
   const { mode, toggleTheme } = useThemeMode();
+  const { isAuthenticated, user, logout } = useAuth();
+  const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -102,6 +108,22 @@ function Header() {
           )}
 
           <Box sx={{ flexGrow: 1 }} />
+
+          {isAuthenticated ? (
+            <>
+              <Typography variant="caption" sx={{ color: 'text.secondary', mr: 1, display: { xs: 'none', sm: 'block' } }}>
+                {user?.full_name}
+              </Typography>
+              <IconButton onClick={logout} aria-label="Logout" sx={{ color: 'text.secondary' }}>
+                <LogoutOutlined />
+              </IconButton>
+            </>
+          ) : (
+            <Button onClick={() => navigate('/login')} startIcon={<LoginOutlined />}
+              sx={{ textTransform: 'none', borderRadius: 2 }} size="small">
+              Login
+            </Button>
+          )}
 
           <IconButton onClick={toggleTheme} aria-label="Toggle theme" sx={{ color: 'text.secondary' }}>
             {mode === 'dark' ? <LightModeOutlined /> : <DarkModeOutlined />}

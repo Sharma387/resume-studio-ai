@@ -17,6 +17,7 @@ import ReplayOutlined from '@mui/icons-material/ReplayOutlined';
 import type { ResumeSuggestion, QuickActions } from '../../types/writer';
 
 import API_URL from "../../config";
+import { authFetch } from "../../services/authFetch";
 
 interface WriterSectionProps {
   resumeId: string;
@@ -32,7 +33,7 @@ function WriterSection({ resumeId, onResumeUpdated }: WriterSectionProps) {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`${API_URL}/resume/${resumeId}/writer/quick-actions`)
+    authFetch(`${API_URL}/resume/${resumeId}/writer/quick-actions`)
       .then((r) => r.json())
       .then((data) => setQuickActions(data.data || {}))
       .catch(() => {});
@@ -43,7 +44,7 @@ function WriterSection({ resumeId, onResumeUpdated }: WriterSectionProps) {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch(`${API_URL}/resume/${resumeId}/writer/suggest`, {
+      const res = await authFetch(`${API_URL}/resume/${resumeId}/writer/suggest`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt: userPrompt }),
@@ -61,7 +62,7 @@ function WriterSection({ resumeId, onResumeUpdated }: WriterSectionProps) {
   const handleAccept = async (s: ResumeSuggestion) => {
     setActionLoading(`accept-${s.id}`);
     try {
-      await fetch(`${API_URL}/resume/${resumeId}/writer/suggestions/${s.id}/accept`, { method: 'POST' });
+      await authFetch(`${API_URL}/resume/${resumeId}/writer/suggestions/${s.id}/accept`, { method: 'POST' });
       setSuggestions((prev) => prev.filter((x) => x.id !== s.id));
       onResumeUpdated();
     } catch {
@@ -74,7 +75,7 @@ function WriterSection({ resumeId, onResumeUpdated }: WriterSectionProps) {
   const handleReject = async (s: ResumeSuggestion) => {
     setActionLoading(`reject-${s.id}`);
     try {
-      await fetch(`${API_URL}/resume/${resumeId}/writer/suggestions/${s.id}/reject`, { method: 'POST' });
+      await authFetch(`${API_URL}/resume/${resumeId}/writer/suggestions/${s.id}/reject`, { method: 'POST' });
       setSuggestions((prev) => prev.filter((x) => x.id !== s.id));
     } catch {
       setError('Failed to reject suggestion');
@@ -86,7 +87,7 @@ function WriterSection({ resumeId, onResumeUpdated }: WriterSectionProps) {
   const handleRegenerate = async (s: ResumeSuggestion) => {
     setActionLoading(`regen-${s.id}`);
     try {
-      const res = await fetch(`${API_URL}/resume/${resumeId}/writer/suggestions/${s.id}/regenerate`, { method: 'POST' });
+      const res = await authFetch(`${API_URL}/resume/${resumeId}/writer/suggestions/${s.id}/regenerate`, { method: 'POST' });
       const data = await res.json();
       if (data.success) {
         setSuggestions((prev) => prev.map((x) => (x.id === s.id ? data.data : x)));

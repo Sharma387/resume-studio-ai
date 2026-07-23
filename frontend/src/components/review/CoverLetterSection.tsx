@@ -25,6 +25,7 @@ import ReplayOutlined from '@mui/icons-material/ReplayOutlined';
 import type { CoverLetter, CoverLetterRequest } from '../../types/cover_letter';
 
 import API_URL from "../../config";
+import { authFetch } from "../../services/authFetch";
 
 interface CoverLetterSectionProps {
   resumeId: string;
@@ -46,7 +47,7 @@ function CoverLetterSection({ resumeId }: CoverLetterSectionProps) {
   const [editMode, setEditMode] = useState(false);
   const [editContent, setEditContent] = useState('');
 
-  useEffect(() => { fetch(`${API_URL}/resume/${resumeId}/cover-letters`)
+  useEffect(() => { authFetch(`${API_URL}/resume/${resumeId}/cover-letters`)
       .then((r) => r.json())
       .then((data) => setLetters(data.data || []))
       .catch(() => {}); }, [resumeId]);
@@ -56,7 +57,7 @@ function CoverLetterSection({ resumeId }: CoverLetterSectionProps) {
     setGenerating(true);
     setError('');
     try {
-      const res = await fetch(`${API_URL}/resume/${resumeId}/cover-letter`, {
+      const res = await authFetch(`${API_URL}/resume/${resumeId}/cover-letter`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ job_description: jd, company_name: company || null, role_title: role || null, hiring_manager: manager || null, tone }),
@@ -75,7 +76,7 @@ function CoverLetterSection({ resumeId }: CoverLetterSectionProps) {
   };
 
   const refreshLetters = () => {
-    fetch(`${API_URL}/resume/${resumeId}/cover-letters`)
+    authFetch(`${API_URL}/resume/${resumeId}/cover-letters`)
       .then((r) => r.json())
       .then((data) => setLetters(data.data || []))
       .catch(() => {});
@@ -85,7 +86,7 @@ function CoverLetterSection({ resumeId }: CoverLetterSectionProps) {
     if (!currentLetter) return;
     setSaving(true);
     try {
-      const res = await fetch(`${API_URL}/resume/${resumeId}/cover-letter/${currentLetter.id}`, {
+      const res = await authFetch(`${API_URL}/resume/${resumeId}/cover-letter/${currentLetter.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...currentLetter, content: editContent }),
@@ -103,7 +104,7 @@ function CoverLetterSection({ resumeId }: CoverLetterSectionProps) {
   };
 
   const handleDelete = async (id: string) => {
-    await fetch(`${API_URL}/resume/${resumeId}/cover-letter/${id}`, { method: 'DELETE' });
+    await authFetch(`${API_URL}/resume/${resumeId}/cover-letter/${id}`, { method: 'DELETE' });
     if (currentLetter?.id === id) setCurrentLetter(null);
     refreshLetters();
   };
@@ -127,7 +128,7 @@ function CoverLetterSection({ resumeId }: CoverLetterSectionProps) {
     if (!currentLetter) return;
     setGenerating(true);
     try {
-      const res = await fetch(`${API_URL}/resume/${resumeId}/cover-letter/${currentLetter.id}/regenerate`, { method: 'POST' });
+      const res = await authFetch(`${API_URL}/resume/${resumeId}/cover-letter/${currentLetter.id}/regenerate`, { method: 'POST' });
       const data = await res.json();
       if (data.success) {
         setCurrentLetter(data.data);

@@ -1,6 +1,7 @@
 import type { Resume } from '../types/resume';
 
 import API_URL from '../config';
+import { authFetch } from './authFetch';
 
 export interface ResumeResponse {
   success: boolean;
@@ -8,13 +9,13 @@ export interface ResumeResponse {
 }
 
 export async function fetchResume(id: string): Promise<ResumeResponse> {
-  const res = await fetch(`${API_URL}/resume/${id}`);
+  const res = await authFetch(`${API_URL}/resume/${id}`);
   if (!res.ok) throw new Error('Resume not found');
   return res.json();
 }
 
 export async function saveResume(id: string, resume: Resume): Promise<ResumeResponse> {
-  const res = await fetch(`${API_URL}/resume/${id}`, {
+  const res = await authFetch(`${API_URL}/resume/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(resume),
@@ -29,7 +30,7 @@ export interface PdfGenerateResponse {
 }
 
 export async function generatePdf(id: string): Promise<PdfGenerateResponse> {
-  const res = await fetch(`${API_URL}/resume/${id}/pdf`, { method: 'POST' });
+  const res = await authFetch(`${API_URL}/resume/${id}/pdf`, { method: 'POST' });
   if (!res.ok) throw new Error('Failed to generate PDF');
   return res.json();
 }
@@ -66,7 +67,7 @@ export async function previewSuggestion(
   message: string,
   suggestion?: string,
 ): Promise<SuggestionResponse> {
-  const res = await fetch(`${API_URL}/resume/${id}/preview-suggestion`, {
+  const res = await authFetch(`${API_URL}/resume/${id}/preview-suggestion`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ section, priority: 'medium', message, suggestion }),
@@ -81,7 +82,7 @@ export async function applySuggestion(
   message: string,
   suggestion?: string,
 ): Promise<ApplySuggestionResponse> {
-  const res = await fetch(`${API_URL}/resume/${id}/apply-suggestion`, {
+  const res = await authFetch(`${API_URL}/resume/${id}/apply-suggestion`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ section, priority: 'medium', message, suggestion }),
@@ -91,13 +92,13 @@ export async function applySuggestion(
 }
 
 export async function fetchVersions(id: string): Promise<VersionsResponse> {
-  const res = await fetch(`${API_URL}/resume/${id}/versions`);
+  const res = await authFetch(`${API_URL}/resume/${id}/versions`);
   if (!res.ok) throw new Error('Failed to fetch versions');
   return res.json();
 }
 
 export async function restoreVersion(id: string, versionId: string): Promise<VersionResponse> {
-  const res = await fetch(`${API_URL}/resume/${id}/versions/${versionId}/restore`, { method: 'POST' });
+  const res = await authFetch(`${API_URL}/resume/${id}/versions/${versionId}/restore`, { method: 'POST' });
   if (!res.ok) throw new Error('Restore failed');
   return res.json();
 }
@@ -112,7 +113,7 @@ export interface MatchResponse {
 }
 
 export async function matchResume(id: string, description: string, jobTitle?: string): Promise<MatchResponse> {
-  const res = await fetch(`${API_URL}/job-match`, {
+  const res = await authFetch(`${API_URL}/job-match`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ resume_id: id, job_title: jobTitle || null, description }),

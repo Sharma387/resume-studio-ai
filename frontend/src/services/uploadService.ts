@@ -1,6 +1,7 @@
 import type { Resume } from '../types/resume';
 
 import API_URL from '../config';
+import { authFetch, getToken } from './authFetch';
 
 export interface UploadResult {
   success: boolean;
@@ -63,6 +64,8 @@ export async function uploadResume(
     xhr.addEventListener('abort', () => reject(new Error('Upload cancelled')));
 
     xhr.open('POST', `${API_URL}/upload`);
+    const token = getToken();
+    if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
     xhr.send(form);
   });
 
@@ -76,7 +79,7 @@ export interface ParseResult {
 }
 
 export async function extractResume(filename: string): Promise<ExtractResult> {
-  const res = await fetch(`${API_URL}/extract`, {
+  const res = await authFetch(`${API_URL}/extract`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ filename }),
@@ -89,7 +92,7 @@ export async function extractResume(filename: string): Promise<ExtractResult> {
 }
 
 export async function parseResume(text: string, filename?: string): Promise<ParseResult> {
-  const res = await fetch(`${API_URL}/parse`, {
+  const res = await authFetch(`${API_URL}/parse`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ text, filename }),
