@@ -1,32 +1,48 @@
-# React + TypeScript + Vite
+# Resume Studio AI — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React + TypeScript + Vite + Material UI frontend for the Resume Studio AI platform.
 
-Currently, two official plugins are available:
+## Tech Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **React 19** with TypeScript (strict mode)
+- **Material UI v9** with Emotion styling
+- **Vite 8** for development and build
+- **oxlint** for linting
+- **react-router-dom** for routing
 
-## React Compiler
+## Project Structure
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```
+src/
+├── components/
+│   ├── review/       # Review page section editors (PersonalInfo, Skills, Experience, etc.)
+│   └── ui/           # Reusable UI components (EmptyState, SkeletonLoader, ConfirmDialog, etc.)
+├── pages/
+│   ├── Home.tsx      # Landing page with upload
+│   └── ReviewPage.tsx # Resume review and editing
+├── services/         # API client layer
+├── types/            # TypeScript interfaces matching backend Pydantic models
+├── contexts/         # Theme context (dark/light mode)
+├── App.tsx           # Routing configuration
+└── main.tsx          # Entry point
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+## Scripts
+
+| Command | Description |
+|---|---|
+| `npm run dev` | Start development server on port 5173 |
+| `npm run build` | TypeScript check + production build to `dist/` |
+| `npm run lint` | Run oxlint |
+| `npm run preview` | Preview production build |
+
+## API Configuration
+
+The frontend connects to the backend at `http://localhost:8000/api/v1`. This is configured in the service files under `src/services/`.
+
+## Routing
+
+| Path | Component | Description |
+|---|---|---|
+| `/` | Home | Landing page with upload |
+| `/review?file=` | ReviewPage | Resume review and editing |
