@@ -29,8 +29,10 @@ def _mock_match(resume_id: str, job_title: str | None, resume: Resume) -> MatchR
 
 async def analyze_match(resume_id: str, job_title: str | None, job_description: str, resume: Resume) -> MatchResult:
     if "localhost" not in settings.omniroute_api_url and not settings.omniroute_api_key:
-        logger.info("No OmniRoute endpoint configured; returning mock match")
-        return _mock_match(resume_id, job_title, resume)
+        if settings.allow_mock_ai_data:
+            logger.info("Mock AI data enabled; returning mock match")
+            return _mock_match(resume_id, job_title, resume)
+        raise RuntimeError("AI service is not configured. Set OMNIROUTE_API_URL or ALLOW_MOCK_AI_DATA=true.")
 
     prompt_service = PromptService()
 
@@ -52,5 +54,7 @@ async def analyze_match(resume_id: str, job_title: str | None, job_description: 
     try:
         return await call_with_retry(build, parse, service_name="Matcher")
     except AIServiceUnavailable:
-        logger.warning("OmniRoute matching failed after retries; falling back to mock data")
-        return _mock_match(resume_id, job_title, resume)
+        if settings.allow_mock_ai_data:
+            logger.warning("AI matching failed; returning mock match")
+            return _mock_match(resume_id, job_title, resume)
+        raise RuntimeError("AI service unavailable. Please try again later.")

@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     omniroute_model: str = "kiro/claude-haiku-4.5"
     omniroute_timeout: int = 60
     omniroute_max_retries: int = 1
+    allow_mock_ai_data: bool = False
 
     # ── JWT ─────────────────────────────────────────────────────
     jwt_secret_key: str = ""

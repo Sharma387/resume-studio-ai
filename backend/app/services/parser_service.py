@@ -6,11 +6,14 @@ from app.services.prompt_service import PromptService
 from app.services.ai_core import extract_json, call_with_retry, AIServiceUnavailable
 
 from app.core.logging import get_logger
+from app.core.exceptions import AppError
 logger = get_logger(__name__)
 
 
-class ParseError(Exception):
+class ParseError(AppError):
     """Raised when resume parsing fails irrecoverably."""
+    code = "PARSE_ERROR"
+    status_code = 422
 
 
 
@@ -98,8 +101,11 @@ def _mock_resume() -> Resume:
 
 async def parse_resume(text: str) -> Resume:
     if "localhost" not in settings.omniroute_api_url and not settings.omniroute_api_key:
-        logger.info("No OmniRoute endpoint configured; returning mock resume")
-        return _mock_resume()
+        if settings.allow_mock_ai_data:
+            logger.info("Mock AI data enabled; returning mock resume")
+            return _mock_resume()
+        logger.warning("AI service not configured. Set ALLOW_MOCK_AI_DATA=true for development.")
+        raise ParseError("AI service is not configured. Set OMNIROUTE_API_URL or ALLOW_MOCK_AI_DATA=true.")
 
     prompt_service = PromptService()
     schema = json.dumps(Resume.model_json_schema(), indent=2)
@@ -115,5 +121,7 @@ async def parse_resume(text: str) -> Resume:
     try:
         return await call_with_retry(build, parse, service_name="Parser")
     except AIServiceUnavailable:
-        logger.warning("OmniRoute parsing failed after retries; falling back to mock data")
-        return _mock_resume()
+        if settings.allow_mock_ai_data:
+            logger.warning("AI parsing failed; returning mock resume")
+            return _mock_resume()
+        raise ParseError("AI service unavailable. Please try again later.")

@@ -21,8 +21,12 @@ def _valid_json() -> str:
     return r.model_dump_json()
 
 
+def _enable_mock(monkeypatch):
+    monkeypatch.setattr("app.services.parser_service.settings.allow_mock_ai_data", True)
+
 def _mock_call_with_retry(return_values: list, monkeypatch):
     """Replace call_with_retry with a mock that returns given values."""
+    _enable_mock(monkeypatch)
     idx = 0
 
     async def fake_call_with_retry(build_prompt, parse_response, omniroute=None, service_name="AI"):

@@ -1,7 +1,13 @@
 """Dashboard service — READ-ONLY aggregator. Never stores data."""
 
-from app.services.storage_service import list_applications, list_matches
-from app.services.repositories.domain_repos import ResumeRepository, CoverLetterRepository, InterviewSessionRepository, ResumeSuggestionRepository
+from app.services.repositories.domain_repos import (
+    ResumeRepository,
+    CoverLetterRepository,
+    InterviewSessionRepository,
+    ResumeSuggestionRepository,
+    MatchRepository,
+)
+from app.services.storage_service import list_applications
 
 
 def get_dashboard_summary(user_id: str | None = None) -> dict:
@@ -9,6 +15,7 @@ def get_dashboard_summary(user_id: str | None = None) -> dict:
     cover_repo = CoverLetterRepository()
     interview_repo = InterviewSessionRepository()
     suggestion_repo = ResumeSuggestionRepository()
+    match_repo = MatchRepository()
 
     def _filter(items: list, field: str = "resume_id") -> list:
         if not user_id:
@@ -20,6 +27,7 @@ def get_dashboard_summary(user_id: str | None = None) -> dict:
     all_interviews = interview_repo.list_all()
     all_apps = list_applications()
     all_suggestions = suggestion_repo.list_all()
+    all_matches = match_repo.list_all()
 
     resume_total = len(all_resumes)
     resume_with_summary = sum(1 for r in all_resumes if r.summary)
@@ -35,7 +43,6 @@ def get_dashboard_summary(user_id: str | None = None) -> dict:
         if s == "interviewing":
             interview_apps += 1
 
-    all_matches = list_matches("")
     avg_ats = round(sum(m.overall_score for m in all_matches) / len(all_matches), 1) if all_matches else 0.0
 
     pending_suggestions = sum(1 for s in all_suggestions if s.status == "pending")
