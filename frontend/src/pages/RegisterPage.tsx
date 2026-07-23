@@ -1,29 +1,41 @@
 import { useState } from 'react';
-import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Box, Card, CardContent, Typography, TextField, Button, Alert, CircularProgress } from '@mui/material';
 import { useAuth } from '../contexts/AuthContext';
 
-function LoginPage() {
-  const { login } = useAuth();
+function RegisterPage() {
+  const { register } = useAuth();
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const redirectTo = searchParams.get('redirect') || '/';
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) return;
+
+    if (!fullName || !email || !password || !confirm) {
+      setError('All fields are required');
+      return;
+    }
+    if (password !== confirm) {
+      setError('Passwords do not match');
+      return;
+    }
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters');
+      return;
+    }
+
     setLoading(true);
     setError('');
     try {
-      await login(email, password);
-      navigate(redirectTo);
+      await register(email, password, fullName);
+      navigate('/');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      setError(err instanceof Error ? err.message : 'Registration failed');
     } finally {
       setLoading(false);
     }
@@ -37,27 +49,31 @@ function LoginPage() {
             Resume Studio AI
           </Typography>
           <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3, textAlign: 'center' }}>
-            Sign in to your account
+            Create your account
           </Typography>
 
           {error && <Alert severity="error" sx={{ mb: 2, borderRadius: 2 }}>{error}</Alert>}
 
           <form onSubmit={handleSubmit}>
+            <TextField label="Full Name" value={fullName} onChange={(e) => setFullName(e.target.value)}
+              fullWidth required size="small" sx={{ mb: 2 }} />
             <TextField label="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
               fullWidth required size="small" sx={{ mb: 2 }} />
             <TextField label="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)}
+              fullWidth required size="small" sx={{ mb: 2 }} />
+            <TextField label="Confirm Password" type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)}
               fullWidth required size="small" sx={{ mb: 3 }} />
             <Button type="submit" variant="contained" fullWidth size="large"
-              disabled={loading || !email || !password}
+              disabled={loading || !fullName || !email || !password || !confirm}
               sx={{ textTransform: 'none', borderRadius: 2, py: 1.2 }}>
-              {loading ? <CircularProgress size={20} /> : 'Sign In'}
+              {loading ? <CircularProgress size={20} /> : 'Create Account'}
             </Button>
           </form>
 
           <Typography variant="body2" sx={{ textAlign: 'center', mt: 2.5, color: 'text.secondary' }}>
-            Don't have an account?{' '}
-            <Link to="/register" style={{ color: '#7c4dff', textDecoration: 'none', fontWeight: 600 }}>
-              Create one
+            Already have an account?{' '}
+            <Link to="/login" style={{ color: '#7c4dff', textDecoration: 'none', fontWeight: 600 }}>
+              Sign in
             </Link>
           </Typography>
         </CardContent>
@@ -66,4 +82,4 @@ function LoginPage() {
   );
 }
 
-export default LoginPage;
+export default RegisterPage;
