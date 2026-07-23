@@ -5,8 +5,33 @@ without changing business services.
 """
 
 from abc import ABC, abstractmethod
+from typing import Generic, TypeVar
+
+from pydantic import BaseModel
 
 from app.models.user import User
+
+T = TypeVar("T", bound=BaseModel)
+
+
+class BaseRepository(ABC, Generic[T]):
+    """Generic repository interface for all domain entities."""
+
+    @abstractmethod
+    def save(self, entity_id: str, entity: T) -> None: ...
+
+    @abstractmethod
+    def get(self, entity_id: str) -> T | None: ...
+
+    @abstractmethod
+    def delete(self, entity_id: str) -> bool: ...
+
+    @abstractmethod
+    def list_all(self) -> list[T]: ...
+
+    def list_by_field(self, field: str, value: str) -> list[T]:
+        """Default implementation — override in subclasses for performance."""
+        return [e for e in self.list_all() if getattr(e, field, None) == value]
 
 
 class UserRepository(ABC):
