@@ -93,6 +93,12 @@ function ReviewPage() {
 
   const handleSave = async () => {
     if (!resume || !fileParam) return;
+    console.log('=== SAVE RESUME ===');
+    console.log('Project count:', resume.projects.length);
+    resume.projects.forEach((p, i) => {
+      console.log(`Project[${i}]: name="${p.name}" url="${p.url}" desc="${(p.description || '').slice(0, 40)}" techs=${p.technologies.length}`);
+    });
+    console.log('Full projects JSON:', JSON.stringify(resume.projects, null, 2));
     setSaving(true);
     try {
       const result = await saveResume(fileParam, resume);
