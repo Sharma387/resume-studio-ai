@@ -13,6 +13,10 @@ from app.services.repositories.interfaces import (
     WriterSuggestionRepository,
     InterviewSessionRepository,
     TimelineEventRepository,
+    InterviewQuestionRepository,
+    InterviewAnswerRepository,
+    ReadinessAssessmentRepository,
+    SessionSummaryRepository,
 )
 from app.services.repositories.json.resume_repository import JsonResumeRepository
 from app.services.repositories.json.application_repository import JsonApplicationRepository
@@ -20,7 +24,7 @@ from app.services.repositories.json.cover_letter_repository import JsonCoverLett
 from app.services.repositories.json.match_repository import JsonMatchRepository
 from app.services.repositories.json.version_repository import JsonResumeVersionRepository
 from app.services.repositories.json.suggestion_repository import JsonWriterSuggestionRepository
-from app.services.repositories.json.interview_repository import JsonInterviewSessionRepository
+from app.services.repositories.json.interview_repository import JsonInterviewSessionRepository, JsonInterviewQuestionRepository, JsonInterviewAnswerRepository, JsonReadinessAssessmentRepository, JsonSessionSummaryRepository
 from app.services.repositories.json.timeline_repository import JsonTimelineEventRepository
 
 
@@ -54,3 +58,19 @@ def get_interview_session_repository() -> InterviewSessionRepository:
 
 def get_timeline_event_repository() -> TimelineEventRepository:
     return JsonTimelineEventRepository()
+
+
+def get_interview_question_repository() -> InterviewQuestionRepository:
+    return JsonInterviewQuestionRepository()
+
+
+def get_interview_answer_repository() -> InterviewAnswerRepository:
+    return JsonInterviewAnswerRepository()
+
+
+def get_readiness_assessment_repository() -> ReadinessAssessmentRepository:
+    return JsonReadinessAssessmentRepository()
+
+
+def get_session_summary_repository() -> SessionSummaryRepository:
+    return JsonSessionSummaryRepository()

@@ -12,7 +12,7 @@ from app.models.cover_letter import CoverLetter
 from app.models.match import MatchResult
 from app.models.version import ResumeVersion
 from app.models.writer import ResumeSuggestion
-from app.models.interview import InterviewSession
+from app.models.interview import InterviewSession, InterviewQuestion, InterviewAnswer, ReadinessAssessment, SessionSummary
 from app.models.application import TimelineEvent
 from app.models.user import User
 
@@ -117,3 +117,31 @@ class TimelineEventRepository(ABC):
     def save(self, event: TimelineEvent) -> None: ...
     @abstractmethod
     def list_by_application(self, application_id: str) -> list[TimelineEvent]: ...
+
+
+class InterviewQuestionRepository(ABC):
+    @abstractmethod
+    def save(self, question: InterviewQuestion) -> None: ...
+    @abstractmethod
+    def list_by_session(self, session_id: str) -> list[InterviewQuestion]: ...
+
+
+class InterviewAnswerRepository(ABC):
+    @abstractmethod
+    def save(self, answer: InterviewAnswer) -> None: ...
+    @abstractmethod
+    def get_by_question(self, question_id: str) -> InterviewAnswer | None: ...
+
+
+class ReadinessAssessmentRepository(ABC):
+    @abstractmethod
+    def save(self, assessment: ReadinessAssessment) -> None: ...
+    @abstractmethod
+    def list_by_application(self, application_id: str) -> list[ReadinessAssessment]: ...
+
+
+class SessionSummaryRepository(ABC):
+    @abstractmethod
+    def save(self, summary: SessionSummary) -> None: ...
+    @abstractmethod
+    def get_by_session(self, session_id: str) -> SessionSummary | None: ...

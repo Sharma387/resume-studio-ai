@@ -15,13 +15,16 @@ from app.models.interview import (
     SessionType,
 )
 from app.models.application import TimelineEvent, TimelineEventType
-from app.services import storage_service as _store
 from app.services.repositories.factory import (
     get_resume_repository,
     get_application_repository,
     get_interview_session_repository,
     get_timeline_event_repository,
     get_match_repository,
+    get_interview_question_repository,
+    get_interview_answer_repository,
+    get_readiness_assessment_repository,
+    get_session_summary_repository,
 )
 from app.services.prompt_service import PromptService
 from app.services.ai_core import call_with_retry, extract_json, AIServiceUnavailable
@@ -107,7 +110,7 @@ async def generate_questions(application_id: str, session_id: str, count: int = 
                 session_id=session_id,
                 **{k: v for k, v in item.items() if k in InterviewQuestion.model_fields and k not in ("id", "session_id")},
             )
-            _store.save_interview_question(q)
+            get_interview_question_repository().save(q)
             questions.append(q)
         session = load_interview_session(application_id, session_id)
         if session:
@@ -123,12 +126,12 @@ async def generate_questions(application_id: str, session_id: str, count: int = 
 
 
 def list_questions(session_id: str) -> list[InterviewQuestion]:
-    return _store.list_interview_questions(session_id)
+    return get_interview_question_repository().list_by_session(session_id)
 
 
 async def submit_answer(question_id: str, user_answer: str) -> InterviewAnswer:
     answer = InterviewAnswer(id=uuid.uuid4().hex, question_id=question_id, user_answer=user_answer)
-    _store.save_interview_answer(answer)
+    get_interview_answer_repository().save(answer)
     return answer
 
 
@@ -154,14 +157,14 @@ async def coach_answer(question_id: str, question_text: str, user_answer: str) -
 
     try:
         coached = await call_with_retry(build, parse, service_name="AnswerCoach")
-        _store.save_interview_answer(coached)
+        get_interview_answer_repository().save(coached)
         return coached
     except AIServiceUnavailable as e:
         raise RuntimeError("Answer coaching unavailable") from e
 
 
 def get_answer(question_id: str) -> InterviewAnswer | None:
-    return _store.load_interview_answer(question_id)
+    return get_interview_answer_repository().get_by_question(question_id)
 
 
 async def assess_readiness(application_id: str) -> ReadinessAssessment:
@@ -189,7 +192,7 @@ async def assess_readiness(application_id: str) -> ReadinessAssessment:
             weaknesses=data.get("weaknesses", []),
             recommendations=data.get("recommendations", []),
         )
-        _store.save_readiness_assessment(assessment)
+        get_readiness_assessment_repository().save(assessment)
         return assessment
 
     try:
@@ -199,12 +202,12 @@ async def assess_readiness(application_id: str) -> ReadinessAssessment:
 
 
 def list_readiness(application_id: str) -> list[ReadinessAssessment]:
-    return _store.list_readiness_assessments(application_id)
+    return get_readiness_assessment_repository().list_by_application(application_id)
 
 
 async def generate_summary(session_id: str) -> SessionSummary:
     app_id = session_id.split("-")[0]
-    questions = _store.list_interview_questions(session_id)
+    questions = get_interview_question_repository().list_by_session(session_id)
     qa_pairs = []
     for q in questions:
         answer = _store.load_interview_answer(q.id)
@@ -228,7 +231,7 @@ async def generate_summary(session_id: str) -> SessionSummary:
             areas_to_improve=data.get("areas_to_improve", []),
             recommendations=data.get("recommendations", []),
         )
-        _store.save_session_summary(summary)
+        get_session_summary_repository().save(summary)
         return summary
 
     try:
