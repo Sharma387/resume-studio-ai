@@ -168,7 +168,7 @@ backend/
 │   ├── __init__.py
 │   ├── main.py                    # FastAPI app, middleware, router registration
 │   ├── api/
-│   │   └── v1/                    # 13 route modules (61 endpoints)
+│   │   └── v1/                    # 14 route modules (62 endpoints)
 │   │       ├── auth.py            # Login, register, refresh, logout
 │   │       ├── applications.py    # Application CRUD + timeline
 │   │       ├── cover_letter.py    # Cover letter CRUD + PDF
@@ -307,6 +307,7 @@ frontend/
 | 019 | Engineering Cleanup — structured logging, middleware, Makefile | ✅ Complete |
 | 020 | UX Polish — 6 reusable components, animations, a11y | ✅ Complete |
 | 020A | Release Stabilization — auth enforcement, bug fixes, a11y | ✅ Complete |
+| 020B | Home Navigation & Resume Continuity — Continue Editing, Back to Home, GET /resumes | ✅ Complete |
 
 ---
 
@@ -317,7 +318,9 @@ User visits /
   ├── Not logged in → /login
   │   ├── No account → /register → auto-login → /
   │   └── Login → stores tokens → /
-  └── Logged in → Home page (UploadZone)
+  └── Logged in → Home page
+       │
+       ├── (has existing resume?) → Continue Editing card → /review?file={id}
        │
        ├── Upload PDF → /api/v1/upload → filename
        │   └── Extract → /api/v1/extract → text
@@ -504,7 +507,7 @@ All endpoints under `/api/v1/`. Full documentation at `docs/API.md`.
 | upload | 1 | File upload (PDF/DOCX/TXT) |
 | extract | 1 | Text extraction |
 | parse | 1 | AI resume parsing |
-| resume_crud | 2 | Resume read/update |
+| resume_crud | 3 | Resume list, read, update |
 | pdf | 3 | PDF generate, download, template list |
 | suggestions | 6 | Version CRUD + AI suggestion apply |
 | writer | 6 | AI writing suggestions |
@@ -574,7 +577,7 @@ storage/
 4. **No billing** — Subscription tiers exist in the User model but no payment integration.
 5. **No S3 file storage** — Uploaded files stored on local disk.
 6. **No rate limiting** — API has no per-user rate limits.
-7. **No login continuity** — After login, users always see the upload page regardless of existing data.
+7. **Login continuity is basic** — After login, the home page checks for existing resumes via `GET /resumes` and shows a "Continue Editing" card. Users without resumes see only the upload option.
 8. **passlib + bcrypt warning** — `passlib` emits a deprecation warning with `bcrypt>=5.0`. Authentication works correctly.
 
 ---

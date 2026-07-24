@@ -485,4 +485,32 @@
 - Each state has appropriate UI (progress bar, spinner, success animation)
 - On success, automatically navigates to `/review?file={id}`
 - No manual intervention needed between upload and review
-<br>
+
+---
+
+## Decision 020
+
+**Title:** Existing users see Continue Editing on the home page after login  
+**Date:** RSAI-020B (July 2026)  
+**Status:** Accepted  
+
+**Context:** After login, all users were redirected to the upload page regardless of whether they had existing resumes. Returning users had to re-upload or manually navigate to `/review?file={id}`.
+
+**Decision:** Add a `GET /resumes` endpoint that returns the current user's resumes. On the home page, check for existing resumes and show a "Continue Editing" card when one exists.
+
+**Alternatives Considered:**
+- **Dashboard with resume list:** Over-engineered for a simple continuation action. RSAI-021 (dashboard) was rolled back.
+- **Automatic redirect to review:** If a user has only one resume, redirect immediately. Didn't account for users who want to upload a new resume instead.
+- **Continue Editing card alongside upload:** Users can choose either action without being forced into a workflow.
+
+**Reasoning:** The upload page is the primary action for new users. Returning users need a clear path back to their work without re-uploading. The Continue Editing card provides this without obstructing the upload flow. Both actions are visible and equally accessible.
+
+**Consequences:**
+- `GET /resumes` endpoint lists user's resumes (filtered by `user_id`, limited to 10)
+- Home page fetches resumes on mount when authenticated
+- Existing users see a "Continue Editing" card below the upload zone
+- New users see only the upload zone (no card)
+- Review page has a `← Back` button to return to Home
+- Resume `id` is inferred from the filename (not a model field) and injected at the API layer
+
+**Future Considerations:** If users accumulate multiple resumes, a "My Resumes" view may become necessary. For now, the first resume is used.
