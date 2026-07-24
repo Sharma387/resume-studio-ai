@@ -41,6 +41,7 @@ class Certification(BaseModel):
 
 
 class Resume(BaseModel):
+    user_id: str
     full_name: str = Field(..., min_length=1)
     email: EmailStr
     phone: str | None = None

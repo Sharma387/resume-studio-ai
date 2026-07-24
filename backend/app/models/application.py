@@ -52,6 +52,7 @@ class TimelineEvent(BaseModel):
 
 
 class Application(BaseModel):
+    user_id: str
     id: str = Field(..., min_length=1)
     company: str = Field(..., min_length=1)
     role_title: str = Field(..., min_length=1)

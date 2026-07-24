@@ -20,6 +20,7 @@ class CoverLetterRequest(BaseModel):
 
 
 class CoverLetter(BaseModel):
+    user_id: str
     id: str = Field(..., min_length=1)
     resume_id: str = Field(..., min_length=1)
     application_id: str | None = Field(None, description="Future: links to a JobApplication")

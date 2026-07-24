@@ -8,14 +8,14 @@ router = APIRouter()
 
 
 @router.get("/resume/{resume_id}")
-async def get_resume(resume_id: str, _ = Depends(require_user)):
-    resume = load_resume(resume_id)
+async def get_resume(resume_id: str, current_user = Depends(require_user)):
+    resume = load_resume(resume_id, getattr(current_user, "id", None))
     if resume is None:
         raise HTTPException(status_code=404, detail="Resume not found")
     return {"success": True, "data": resume}
 
 
 @router.put("/resume/{resume_id}")
-async def update_resume(resume_id: str, resume: Resume, _ = Depends(require_user)):
+async def update_resume(resume_id: str, resume: Resume, current_user = Depends(require_user)):
     save_resume(resume_id, resume)
     return {"success": True, "data": resume}

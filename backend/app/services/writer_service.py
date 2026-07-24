@@ -29,7 +29,7 @@ QUICK_ACTIONS = {
 }
 
 
-async def suggest(resume_id: str, request: WriterRequest) -> list[ResumeSuggestion]:
+async def suggest(resume_id: str, request: WriterRequest, user_id: str) -> list[ResumeSuggestion]:
     resume = load_resume(resume_id)
     if resume is None:
         raise FileNotFoundError(f"Resume '{resume_id}' not found")
@@ -66,12 +66,12 @@ async def suggest(resume_id: str, request: WriterRequest) -> list[ResumeSuggesti
         raise RuntimeError("AI writer service unavailable after retries") from e
 
 
-async def accept_suggestion(resume_id: str, suggestion_id: str) -> Resume:
+async def accept_suggestion(resume_id: str, suggestion_id: str, user_id: str) -> Resume:
     resume = load_resume(resume_id)
     if resume is None:
         raise FileNotFoundError(f"Resume '{resume_id}' not found")
 
-    suggestion = load_writer_suggestion(resume_id, suggestion_id)
+    suggestion = load_writer_suggestion(resume_id, suggestion_id, user_id)
     if suggestion is None:
         raise FileNotFoundError(f"Suggestion '{suggestion_id}' not found")
 
@@ -101,14 +101,14 @@ async def accept_suggestion(resume_id: str, suggestion_id: str) -> Resume:
     return resume
 
 
-async def reject_suggestion(resume_id: str, suggestion_id: str) -> None:
-    result = update_writer_suggestion(resume_id, suggestion_id, status="rejected")
+async def reject_suggestion(resume_id: str, suggestion_id: str, user_id: str) -> None:
+    result = update_writer_suggestion(resume_id, suggestion_id, user_id=user_id, status="rejected")
     if result is None:
         raise FileNotFoundError(f"Suggestion '{suggestion_id}' not found")
 
 
 async def regenerate_suggestion(resume_id: str, suggestion_id: str) -> ResumeSuggestion:
-    suggestion = load_writer_suggestion(resume_id, suggestion_id)
+    suggestion = load_writer_suggestion(resume_id, suggestion_id, user_id)
     if suggestion is None:
         raise FileNotFoundError(f"Suggestion '{suggestion_id}' not found")
 
@@ -116,5 +116,5 @@ async def regenerate_suggestion(resume_id: str, suggestion_id: str) -> ResumeSug
         prompt=f"Improve the {suggestion.section} section, specifically: {suggestion.reason}",
         focus_section=suggestion.section,
     )
-    results = await suggest(resume_id, request)
+    results = await suggest(resume_id, request, user_id)
     return results[0] if results else suggestion

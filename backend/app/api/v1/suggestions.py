@@ -13,7 +13,7 @@ router = APIRouter()
 
 
 @router.post("/resume/{resume_id}/preview-suggestion")
-async def preview_suggestion(resume_id: str, recommendation: Recommendation, _ = Depends(require_user)):
+async def preview_suggestion(resume_id: str, recommendation: Recommendation, current_user = Depends(require_user)):
     resume = load_resume(resume_id)
     if resume is None:
         raise HTTPException(status_code=404, detail="Resume not found")
@@ -22,7 +22,7 @@ async def preview_suggestion(resume_id: str, recommendation: Recommendation, _ =
 
 
 @router.post("/resume/{resume_id}/apply-suggestion")
-async def apply_suggestion_endpoint(resume_id: str, recommendation: Recommendation, _ = Depends(require_user)):
+async def apply_suggestion_endpoint(resume_id: str, recommendation: Recommendation, current_user = Depends(require_user)):
     resume = load_resume(resume_id)
     if resume is None:
         raise HTTPException(status_code=404, detail="Resume not found")
@@ -32,6 +32,7 @@ async def apply_suggestion_endpoint(resume_id: str, recommendation: Recommendati
 
     version = ResumeVersion(
         id=uuid.uuid4().hex,
+        user_id=current_user.id,
         resume_id=resume_id,
         label=f"Applied: {recommendation.section} - {recommendation.message[:60]}",
         resume=modified,
@@ -42,23 +43,23 @@ async def apply_suggestion_endpoint(resume_id: str, recommendation: Recommendati
 
 
 @router.post("/resume/{resume_id}/versions")
-async def create_version(resume_id: str, label: str | None = None, _ = Depends(require_user)):
+async def create_version(resume_id: str, label: str | None = None, current_user = Depends(require_user)):
     resume = load_resume(resume_id)
     if resume is None:
         raise HTTPException(status_code=404, detail="Resume not found")
-    version = ResumeVersion(id=uuid.uuid4().hex, resume_id=resume_id, label=label, resume=resume)
+    version = ResumeVersion(id=uuid.uuid4().hex, user_id=current_user.id, resume_id=resume_id, label=label, resume=resume)
     save_version(version)
     return {"success": True, "data": version}
 
 
 @router.get("/resume/{resume_id}/versions")
-async def get_versions(resume_id: str, _ = Depends(require_user)):
+async def get_versions(resume_id: str, current_user = Depends(require_user)):
     versions = list_versions(resume_id)
     return {"success": True, "data": versions}
 
 
 @router.get("/resume/{resume_id}/versions/{version_id}")
-async def get_version(resume_id: str, version_id: str, _ = Depends(require_user)):
+async def get_version(resume_id: str, version_id: str, current_user = Depends(require_user)):
     version = load_version(resume_id, version_id)
     if version is None:
         raise HTTPException(status_code=404, detail="Version not found")
@@ -66,7 +67,7 @@ async def get_version(resume_id: str, version_id: str, _ = Depends(require_user)
 
 
 @router.post("/resume/{resume_id}/versions/{version_id}/restore")
-async def restore_version(resume_id: str, version_id: str, _ = Depends(require_user)):
+async def restore_version(resume_id: str, version_id: str, current_user = Depends(require_user)):
     version = load_version(resume_id, version_id)
     if version is None:
         raise HTTPException(status_code=404, detail="Version not found")

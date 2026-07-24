@@ -6,6 +6,7 @@ from app.models.resume import Resume
 
 
 class ResumeVersion(BaseModel):
+    user_id: str
     id: str = Field(..., min_length=1)
     resume_id: str = Field(..., min_length=1)
     label: str | None = None

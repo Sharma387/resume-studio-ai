@@ -49,23 +49,23 @@ def _add_timeline(app_id: str, etype: TimelineEventType, title: str, desc: str =
     save_timeline_event(event)
 
 
-def create_session(application_id: str, title: str, session_type: SessionType = SessionType.MOCK) -> InterviewSession:
-    session = InterviewSession(id=uuid.uuid4().hex, application_id=application_id, title=title, session_type=session_type)
+def create_session(application_id: str, title: str, user_id: str, session_type: SessionType = SessionType.MOCK) -> InterviewSession:
+    session = InterviewSession(id=uuid.uuid4().hex, user_id=user_id, application_id=application_id, title=title, session_type=session_type)
     save_interview_session(session)
     _add_timeline(application_id, TimelineEventType.CREATED, f"Interview session created", title)
     return session
 
 
-def get_session(application_id: str, session_id: str) -> InterviewSession | None:
-    return load_interview_session(application_id, session_id)
+def get_session(application_id: str, session_id: str, user_id: str | None = None) -> InterviewSession | None:
+    return load_interview_session(application_id, session_id, user_id)
 
 
-def list_sessions(application_id: str) -> list[InterviewSession]:
-    return list_interview_sessions(application_id)
+def list_sessions(application_id: str, user_id: str | None = None) -> list[InterviewSession]:
+    return list_interview_sessions(application_id, user_id)
 
 
-def update_session(application_id: str, session_id: str, **kwargs) -> InterviewSession | None:
-    session = load_interview_session(application_id, session_id)
+def update_session(application_id: str, session_id: str, user_id: str | None = None, **kwargs) -> InterviewSession | None:
+    session = load_interview_session(application_id, session_id, user_id)
     if session is None:
         return None
     for key, value in kwargs.items():
@@ -76,7 +76,7 @@ def update_session(application_id: str, session_id: str, **kwargs) -> InterviewS
     return session
 
 
-def delete_session(application_id: str, session_id: str) -> bool:
+def delete_session(application_id: str, session_id: str, user_id: str | None = None) -> bool:
     return delete_interview_session(application_id, session_id)
 
 

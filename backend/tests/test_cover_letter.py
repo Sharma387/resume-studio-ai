@@ -17,7 +17,7 @@ def client():
 @pytest.fixture
 def resume_id():
     rid = "cl-test-resume"
-    save_resume(rid, Resume(full_name="Jane Author", email="jane@example.com"))
+    save_resume(rid, Resume(user_id="test", full_name="Jane Author", email="jane@example.com"))
     return rid
 
 
@@ -35,30 +35,30 @@ class TestCoverLetterModel:
             CoverLetterRequest(job_description="A valid job description here for testing.", tone="invalid")
 
     def test_cover_letter_defaults(self):
-        c = CoverLetter(id="cl1", resume_id="r1", content="Hello")
+        c = CoverLetter(user_id="test", id="cl1", resume_id="r1", content="Hello")
         assert c.tone == CoverLetterTone.PROFESSIONAL
         assert c.application_id is None
 
     def test_cover_letter_with_application_id(self):
-        c = CoverLetter(id="cl2", resume_id="r1", content="Hello", application_id="app-123")
+        c = CoverLetter(user_id="test", id="cl2", resume_id="r1", content="Hello", application_id="app-123")
         assert c.application_id == "app-123"
 
 
 class TestCoverLetterStorage:
     def test_save_and_load(self, resume_id):
-        c = CoverLetter(id="cls1", resume_id=resume_id, content="Dear Hiring Manager...")
+        c = CoverLetter(user_id="test", id="cls1", resume_id=resume_id, content="Dear Hiring Manager...")
         save_cover_letter(c)
         loaded = load_cover_letter(resume_id, "cls1")
         assert loaded is not None
         assert "Dear Hiring Manager" in loaded.content
 
     def test_list(self, resume_id):
-        save_cover_letter(CoverLetter(id="cll1", resume_id=resume_id, content="A"))
+        save_cover_letter(CoverLetter(user_id="test", id="cll1", resume_id=resume_id, content="A"))
         letters = list_cover_letters(resume_id)
         assert len(letters) >= 1
 
     def test_delete(self, resume_id):
-        save_cover_letter(CoverLetter(id="cld1", resume_id=resume_id, content="B"))
+        save_cover_letter(CoverLetter(user_id="test", id="cld1", resume_id=resume_id, content="B"))
         from app.services.storage_service import delete_cover_letter
         assert delete_cover_letter(resume_id, "cld1") is True
         assert delete_cover_letter(resume_id, "nonexistent") is False
@@ -73,7 +73,7 @@ async def test_endpoint_generate_resume_not_found(client):
 
 @pytest.mark.asyncio
 async def test_endpoint_list(client, resume_id):
-    save_cover_letter(CoverLetter(id="clapi1", resume_id=resume_id, content="Test"))
+    save_cover_letter(CoverLetter(user_id="test", id="clapi1", resume_id=resume_id, content="Test"))
     async with client as ac:
         resp = await ac.get(f"/api/v1/resume/{resume_id}/cover-letters")
     assert resp.status_code == 200
@@ -90,7 +90,7 @@ async def test_endpoint_get_not_found(client):
 
 @pytest.mark.asyncio
 async def test_endpoint_get_success(client, resume_id):
-    save_cover_letter(CoverLetter(id="clget1", resume_id=resume_id, content="Get me"))
+    save_cover_letter(CoverLetter(user_id="test", id="clget1", resume_id=resume_id, content="Get me"))
     async with client as ac:
         resp = await ac.get(f"/api/v1/resume/{resume_id}/cover-letter/clget1")
     assert resp.status_code == 200
@@ -99,11 +99,11 @@ async def test_endpoint_get_success(client, resume_id):
 
 @pytest.mark.asyncio
 async def test_endpoint_update(client, resume_id):
-    save_cover_letter(CoverLetter(id="clupd1", resume_id=resume_id, content="Old"))
+    save_cover_letter(CoverLetter(user_id="test", id="clupd1", resume_id=resume_id, content="Old"))
     async with client as ac:
         resp = await ac.put(
             f"/api/v1/resume/{resume_id}/cover-letter/clupd1",
-            json={"id": "clupd1", "resume_id": resume_id, "content": "New content here for testing."},
+            json={"id": "clupd1", "user_id": "test", "resume_id": resume_id, "content": "New content here for testing."},
         )
     assert resp.status_code == 200
     assert resp.json()["data"]["content"] == "New content here for testing."
@@ -111,7 +111,7 @@ async def test_endpoint_update(client, resume_id):
 
 @pytest.mark.asyncio
 async def test_endpoint_delete(client, resume_id):
-    save_cover_letter(CoverLetter(id="cldel1", resume_id=resume_id, content="Delete me"))
+    save_cover_letter(CoverLetter(user_id="test", id="cldel1", resume_id=resume_id, content="Delete me"))
     async with client as ac:
         resp = await ac.delete(f"/api/v1/resume/{resume_id}/cover-letter/cldel1")
     assert resp.status_code == 200
@@ -129,7 +129,7 @@ async def test_endpoint_pdf_success_get_method(client, resume_id):
     """PDF export must respond to GET (frontend uses <a href download>)."""
     from app.models.cover_letter import CoverLetter
     from app.services.storage_service import save_cover_letter
-    letter = CoverLetter(id="pdf-get-test", resume_id=resume_id, content="Dear Hiring Manager, I am excited to apply...\n\nSincerely, Test")
+    letter = CoverLetter(user_id="test", id="pdf-get-test", resume_id=resume_id, content="Dear Hiring Manager, I am excited to apply...\n\nSincerely, Test")
     save_cover_letter(letter)
 
     async with client as ac:
@@ -157,8 +157,8 @@ def test_cover_letter_pdf_signature_not_alone():
         body += f"P{i+1}. " + "Lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. " * 8 + "\n\n"
     body += "Sincerely"
 
-    resume = Resume(full_name="Test User", email="test@example.com")
-    letter = CoverLetter(id="layout-regression", resume_id="test", content=body)
+    resume = Resume(user_id="test", full_name="Test User", email="test@example.com")
+    letter = CoverLetter(user_id="test", id="layout-regression", resume_id="test", content=body)
     path = generate_cover_letter_pdf("test", "layout-regression", letter, resume)
 
     import fitz

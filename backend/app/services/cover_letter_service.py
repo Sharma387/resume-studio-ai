@@ -23,7 +23,7 @@ def _hash_jd(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
 
 
-async def generate(resume_id: str, request: CoverLetterRequest) -> CoverLetter:
+async def generate(resume_id: str, request: CoverLetterRequest, user_id: str) -> CoverLetter:
     resume = load_resume(resume_id)
     if resume is None:
         raise FileNotFoundError(f"Resume '{resume_id}' not found")
@@ -52,6 +52,7 @@ async def generate(resume_id: str, request: CoverLetterRequest) -> CoverLetter:
             hiring_manager=request.hiring_manager,
             role_title=request.role_title,
             tone=request.tone,
+            user_id=user_id,
             content=data.get("content", ""),
             subject=data.get("subject"),
             ai_model=None,

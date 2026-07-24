@@ -11,9 +11,9 @@ router = APIRouter()
 
 
 @router.post("/resume/{resume_id}/cover-letter")
-async def create_cover_letter(resume_id: str, request: CoverLetterRequest, _ = Depends(require_user)):
+async def create_cover_letter(resume_id: str, request: CoverLetterRequest, current_user = Depends(require_user)):
     try:
-        letter = await generate(resume_id, request)
+        letter = await generate(resume_id, request, current_user.id)
         return {"success": True, "data": letter}
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail="Resume not found")
@@ -22,21 +22,21 @@ async def create_cover_letter(resume_id: str, request: CoverLetterRequest, _ = D
 
 
 @router.get("/resume/{resume_id}/cover-letters")
-async def list_letters(resume_id: str, _ = Depends(require_user)):
-    letters = list_cover_letters(resume_id)
+async def list_letters(resume_id: str, current_user = Depends(require_user)):
+    letters = list_cover_letters(resume_id, current_user.id)
     return {"success": True, "data": [l.model_dump() for l in letters]}
 
 
 @router.get("/resume/{resume_id}/cover-letter/{letter_id}")
-async def get_letter(resume_id: str, letter_id: str, _ = Depends(require_user)):
-    letter = load_cover_letter(resume_id, letter_id)
+async def get_letter(resume_id: str, letter_id: str, current_user = Depends(require_user)):
+    letter = load_cover_letter(resume_id, letter_id, current_user.id)
     if letter is None:
         raise HTTPException(status_code=404, detail="Cover letter not found")
     return {"success": True, "data": letter}
 
 
 @router.put("/resume/{resume_id}/cover-letter/{letter_id}")
-async def update_letter(resume_id: str, letter_id: str, body: CoverLetter, _ = Depends(require_user)):
+async def update_letter(resume_id: str, letter_id: str, body: CoverLetter, current_user = Depends(require_user)):
     try:
         letter = await update(resume_id, letter_id, body.content, body.subject)
         return {"success": True, "data": letter}
@@ -45,15 +45,15 @@ async def update_letter(resume_id: str, letter_id: str, body: CoverLetter, _ = D
 
 
 @router.delete("/resume/{resume_id}/cover-letter/{letter_id}")
-async def delete_letter(resume_id: str, letter_id: str, _ = Depends(require_user)):
-    if not delete_cover_letter(resume_id, letter_id):
+async def delete_letter(resume_id: str, letter_id: str, current_user = Depends(require_user)):
+    if not delete_cover_letter(resume_id, letter_id, current_user.id):
         raise HTTPException(status_code=404, detail="Cover letter not found")
     return {"success": True}
 
 
 @router.get("/resume/{resume_id}/cover-letter/{letter_id}/pdf")
-async def export_letter_pdf(resume_id: str, letter_id: str, _ = Depends(require_user)):
-    letter = load_cover_letter(resume_id, letter_id)
+async def export_letter_pdf(resume_id: str, letter_id: str, current_user = Depends(require_user)):
+    letter = load_cover_letter(resume_id, letter_id, current_user.id)
     if letter is None:
         raise HTTPException(status_code=404, detail="Cover letter not found")
     resume = load_resume(resume_id)
@@ -71,7 +71,7 @@ async def export_letter_pdf(resume_id: str, letter_id: str, _ = Depends(require_
 
 
 @router.post("/resume/{resume_id}/cover-letter/{letter_id}/regenerate")
-async def regenerate_letter(resume_id: str, letter_id: str, _ = Depends(require_user)):
+async def regenerate_letter(resume_id: str, letter_id: str, current_user = Depends(require_user)):
     try:
         letter = await regenerate(resume_id, letter_id)
         return {"success": True, "data": letter}

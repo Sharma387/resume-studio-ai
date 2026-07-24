@@ -89,7 +89,7 @@ class TestJobDescription:
 
 class TestMatchResult:
     def test_valid(self):
-        m = MatchResult(
+        m = MatchResult(user_id="test", 
             id="match1",
             resume_id="resume1",
             overall_score=85.0,
@@ -99,18 +99,18 @@ class TestMatchResult:
 
     def test_score_below_zero(self):
         with pytest.raises(ValidationError):
-            MatchResult(id="m1", resume_id="r1", overall_score=-5.0)
+            MatchResult(user_id="test", id="m1", resume_id="r1", overall_score=-5.0)
 
     def test_score_above_hundred(self):
         with pytest.raises(ValidationError):
-            MatchResult(id="m1", resume_id="r1", overall_score=150.0)
+            MatchResult(user_id="test", id="m1", resume_id="r1", overall_score=150.0)
 
     def test_score_boundary(self):
-        m = MatchResult(id="m1", resume_id="r1", overall_score=100.0)
+        m = MatchResult(user_id="test", id="m1", resume_id="r1", overall_score=100.0)
         assert m.overall_score == 100.0
 
     def test_with_nested_models(self):
-        m = MatchResult(
+        m = MatchResult(user_id="test", 
             id="m1",
             resume_id="r1",
             overall_score=72.0,

@@ -22,6 +22,7 @@ class Recommendation(BaseModel):
 
 
 class MatchResult(BaseModel):
+    user_id: str
     id: str = Field(..., min_length=1, description="Unique match ID")
     resume_id: str = Field(..., min_length=1)
     job_title: str | None = None

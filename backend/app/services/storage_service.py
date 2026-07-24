@@ -41,12 +41,15 @@ def save_resume(resume_id: str, resume: Resume) -> None:
     path.write_text(resume.model_dump_json(indent=2), encoding="utf-8")
 
 
-def load_resume(resume_id: str) -> Resume | None:
+def load_resume(resume_id: str, user_id: str | None = None) -> Resume | None:
     path = RESUMES_DIR / f"{resume_id}.json"
     if not path.exists():
         return None
     data = json.loads(path.read_text(encoding="utf-8"))
-    return Resume(**data)
+    resume = Resume(**data)
+    if user_id and resume.user_id != user_id:
+        return None
+    return resume
 
 # ── Match result storage (new) ──────────────────────────────────
 
@@ -56,15 +59,18 @@ def save_match(match: MatchResult) -> None:
     path.write_text(match.model_dump_json(indent=2), encoding="utf-8")
 
 
-def load_match(match_id: str) -> MatchResult | None:
+def load_match(match_id: str, user_id: str | None = None) -> MatchResult | None:
     path = MATCHES_DIR / f"{match_id}.json"
     if not path.exists():
         return None
     data = json.loads(path.read_text(encoding="utf-8"))
-    return MatchResult(**data)
+    match = MatchResult(**data)
+    if user_id and match.user_id != user_id:
+        return None
+    return match
 
 
-def list_matches(resume_id: str) -> list[MatchResult]:
+def list_matches(resume_id: str, user_id: str | None = None) -> list[MatchResult]:
     if not MATCHES_DIR.exists():
         return []
     results = []
@@ -72,7 +78,10 @@ def list_matches(resume_id: str) -> list[MatchResult]:
         if f.suffix == ".json":
             data = json.loads(f.read_text(encoding="utf-8"))
             if data.get("resume_id") == resume_id:
-                results.append(MatchResult(**data))
+                match = MatchResult(**data)
+                if user_id and match.user_id != user_id:
+                    continue
+                results.append(match)
     return sorted(results, key=lambda m: m.created_at or "", reverse=True)
 
 
@@ -86,15 +95,18 @@ def save_version(version: ResumeVersion) -> None:
     path.write_text(version.model_dump_json(indent=2), encoding="utf-8")
 
 
-def load_version(resume_id: str, version_id: str) -> ResumeVersion | None:
+def load_version(resume_id: str, version_id: str, user_id: str | None = None) -> ResumeVersion | None:
     path = VERSIONS_DIR / resume_id / f"{version_id}.json"
     if not path.exists():
         return None
     data = json.loads(path.read_text(encoding="utf-8"))
-    return ResumeVersion(**data)
+    version = ResumeVersion(**data)
+    if user_id and version.user_id != user_id:
+        return None
+    return version
 
 
-def list_versions(resume_id: str) -> list[ResumeVersion]:
+def list_versions(resume_id: str, user_id: str | None = None) -> list[ResumeVersion]:
     dir_path = VERSIONS_DIR / resume_id
     if not dir_path.exists():
         return []
@@ -102,7 +114,10 @@ def list_versions(resume_id: str) -> list[ResumeVersion]:
     for f in sorted(dir_path.iterdir(), reverse=True):
         if f.suffix == ".json":
             data = json.loads(f.read_text(encoding="utf-8"))
-            results.append(ResumeVersion(**data))
+            version = ResumeVersion(**data)
+            if user_id and version.user_id != user_id:
+                continue
+            results.append(version)
     return sorted(results, key=lambda v: v.created_at or "", reverse=True)
 
 
@@ -116,15 +131,18 @@ def save_writer_suggestion(suggestion: ResumeSuggestion) -> None:
     path.write_text(suggestion.model_dump_json(indent=2), encoding="utf-8")
 
 
-def load_writer_suggestion(resume_id: str, suggestion_id: str) -> ResumeSuggestion | None:
+def load_writer_suggestion(resume_id: str, suggestion_id: str, user_id: str | None = None) -> ResumeSuggestion | None:
     path = WRITER_DIR / resume_id / f"{suggestion_id}.json"
     if not path.exists():
         return None
     data = json.loads(path.read_text(encoding="utf-8"))
-    return ResumeSuggestion(**data)
+    sug = ResumeSuggestion(**data)
+    if user_id and sug.user_id != user_id:
+        return None
+    return sug
 
 
-def list_writer_suggestions(resume_id: str, status: str | None = None) -> list[ResumeSuggestion]:
+def list_writer_suggestions(resume_id: str, status: str | None = None, user_id: str | None = None) -> list[ResumeSuggestion]:
     dir_path = WRITER_DIR / resume_id
     if not dir_path.exists():
         return []
@@ -133,13 +151,15 @@ def list_writer_suggestions(resume_id: str, status: str | None = None) -> list[R
         if f.suffix == ".json":
             data = json.loads(f.read_text(encoding="utf-8"))
             s = ResumeSuggestion(**data)
+            if user_id and s.user_id != user_id:
+                continue
             if status is None or s.status == status:
                 results.append(s)
     return results
 
 
-def update_writer_suggestion(resume_id: str, suggestion_id: str, **updates) -> ResumeSuggestion | None:
-    suggestion = load_writer_suggestion(resume_id, suggestion_id)
+def update_writer_suggestion(resume_id: str, suggestion_id: str, user_id: str | None = None, **updates) -> ResumeSuggestion | None:
+    suggestion = load_writer_suggestion(resume_id, suggestion_id, user_id)
     if suggestion is None:
         return None
     for key, value in updates.items():
@@ -159,15 +179,18 @@ def save_cover_letter(letter: CoverLetter) -> None:
     path.write_text(letter.model_dump_json(indent=2), encoding="utf-8")
 
 
-def load_cover_letter(resume_id: str, letter_id: str) -> CoverLetter | None:
+def load_cover_letter(resume_id: str, letter_id: str, user_id: str | None = None) -> CoverLetter | None:
     path = COVER_LETTERS_DIR / resume_id / f"{letter_id}.json"
     if not path.exists():
         return None
     data = json.loads(path.read_text(encoding="utf-8"))
-    return CoverLetter(**data)
+    letter = CoverLetter(**data)
+    if user_id and letter.user_id != user_id:
+        return None
+    return letter
 
 
-def list_cover_letters(resume_id: str) -> list[CoverLetter]:
+def list_cover_letters(resume_id: str, user_id: str | None = None) -> list[CoverLetter]:
     dir_path = COVER_LETTERS_DIR / resume_id
     if not dir_path.exists():
         return []
@@ -175,14 +198,18 @@ def list_cover_letters(resume_id: str) -> list[CoverLetter]:
     for f in sorted(dir_path.iterdir(), reverse=True):
         if f.suffix == ".json":
             data = json.loads(f.read_text(encoding="utf-8"))
-            results.append(CoverLetter(**data))
+            letter = CoverLetter(**data)
+            if user_id and letter.user_id != user_id:
+                continue
+            results.append(letter)
     return sorted(results, key=lambda c: c.created_at or "", reverse=True)
 
 
-def delete_cover_letter(resume_id: str, letter_id: str) -> bool:
-    path = COVER_LETTERS_DIR / resume_id / f"{letter_id}.json"
-    if not path.exists():
+def delete_cover_letter(resume_id: str, letter_id: str, user_id: str | None = None) -> bool:
+    letter = load_cover_letter(resume_id, letter_id, user_id)
+    if letter is None:
         return False
+    path = COVER_LETTERS_DIR / resume_id / f"{letter_id}.json"
     path.unlink()
     return True
 
@@ -195,15 +222,18 @@ def save_application(app: Application) -> None:
     path.write_text(app.model_dump_json(indent=2), encoding="utf-8")
 
 
-def load_application(app_id: str) -> Application | None:
+def load_application(app_id: str, user_id: str | None = None) -> Application | None:
     path = APPLICATIONS_DIR / f"{app_id}.json"
     if not path.exists():
         return None
     data = json.loads(path.read_text(encoding="utf-8"))
-    return Application(**data)
+    app = Application(**data)
+    if user_id and app.user_id != user_id:
+        return None
+    return app
 
 
-def list_applications(status: str | None = None) -> list[Application]:
+def list_applications(status: str | None = None, user_id: str | None = None) -> list[Application]:
     if not APPLICATIONS_DIR.exists():
         return []
     results = []
@@ -211,15 +241,18 @@ def list_applications(status: str | None = None) -> list[Application]:
         if f.suffix == ".json":
             data = json.loads(f.read_text(encoding="utf-8"))
             app = Application(**data)
+            if user_id and app.user_id != user_id:
+                continue
             if status is None or app.status.value == status:
                 results.append(app)
     return sorted(results, key=lambda a: a.created_at or "", reverse=True)
 
 
-def delete_application(app_id: str) -> bool:
-    path = APPLICATIONS_DIR / f"{app_id}.json"
-    if not path.exists():
+def delete_application(app_id: str, user_id: str | None = None) -> bool:
+    app = load_application(app_id, user_id)
+    if app is None:
         return False
+    path = APPLICATIONS_DIR / f"{app_id}.json"
     path.unlink()
     return True
 
@@ -260,15 +293,18 @@ def save_interview_session(session: InterviewSession) -> None:
     path.write_text(session.model_dump_json(indent=2), encoding="utf-8")
 
 
-def load_interview_session(application_id: str, session_id: str) -> InterviewSession | None:
+def load_interview_session(application_id: str, session_id: str, user_id: str | None = None) -> InterviewSession | None:
     path = INTERVIEWS_DIR / application_id / "sessions" / f"{session_id}.json"
     if not path.exists():
         return None
     data = json.loads(path.read_text(encoding="utf-8"))
-    return InterviewSession(**data)
+    session = InterviewSession(**data)
+    if user_id and session.user_id != user_id:
+        return None
+    return session
 
 
-def list_interview_sessions(application_id: str) -> list[InterviewSession]:
+def list_interview_sessions(application_id: str, user_id: str | None = None) -> list[InterviewSession]:
     dir_path = INTERVIEWS_DIR / application_id / "sessions"
     if not dir_path.exists():
         return []
@@ -276,7 +312,10 @@ def list_interview_sessions(application_id: str) -> list[InterviewSession]:
     for f in sorted(dir_path.iterdir(), reverse=True):
         if f.suffix == ".json":
             data = json.loads(f.read_text(encoding="utf-8"))
-            results.append(InterviewSession(**data))
+            session = InterviewSession(**data)
+            if user_id and session.user_id != user_id:
+                continue
+            results.append(session)
     return sorted(results, key=lambda s: s.created_at or "", reverse=True)
 
 

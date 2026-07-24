@@ -26,13 +26,19 @@ async def require_user(current_user: User | None = Depends(get_current_user)) ->
     """Require a valid authenticated user. In debug mode, returns a mock user."""
     if current_user is None:
         if settings.debug:
-            mock = _auth_service.user_service.get_by_email("dev@resume-studio.ai")
+            import uuid
+            from app.models.user import User as MockUser
+            from app.services.repositories.json_user_repo import JsonUserRepository
+            repo = JsonUserRepository()
+            mock = repo.get_by_email("dev@resume-studio.ai")
             if not mock:
-                mock = _auth_service.user_service.create_user(
+                mock = MockUser(
+                    id="test",
                     email="dev@resume-studio.ai",
-                    password="dev-password",
+                    password_hash=_auth_service.user_service.hash_password("dev-password"),
                     full_name="Dev User",
                 )
+                repo.save(mock)
             return mock
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

@@ -17,7 +17,7 @@ def client():
 @pytest.fixture
 def resume_id():
     rid = "test-suggestion-resume"
-    resume = Resume(full_name="Test User", email="test@example.com", summary="Original summary.")
+    resume = Resume(user_id="test", full_name="Test User", email="test@example.com", summary="Original summary.")
     save_resume(rid, resume)
     return rid
 
@@ -66,7 +66,7 @@ async def test_apply_suggestion_creates_version(client, resume_id):
 
 @pytest.mark.asyncio
 async def test_create_and_list_versions(client, resume_id):
-    v = ResumeVersion(id="v1", resume_id=resume_id, label="Snapshot", resume=Resume(full_name="Test", email="t@t.com"))
+    v = ResumeVersion(id="v1", resume_id=resume_id, user_id="test", label="Snapshot", resume=Resume(user_id="test", full_name="Test", email="t@t.com"))
     save_version(v)
 
     async with client as ac:
@@ -78,11 +78,11 @@ async def test_create_and_list_versions(client, resume_id):
 
 @pytest.mark.asyncio
 async def test_restore_version(client, resume_id):
-    v = ResumeVersion(
+    v = ResumeVersion(user_id="test", 
         id="restore-v1",
         resume_id=resume_id,
         label="Restored version",
-        resume=Resume(full_name="Restored Name", email="restored@example.com", summary="Restored summary."),
+        resume=Resume(user_id="test", full_name="Restored Name", email="restored@example.com", summary="Restored summary."),
     )
     save_version(v)
 

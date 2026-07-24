@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 from app.services.parser_service import parse_resume
 from app.services.storage_service import save_resume
+from app.models.user import User
 from app.models.resume import Resume
 from app.services.auth_deps import require_user
 
@@ -23,10 +24,11 @@ class ParseResponse(BaseModel):
 
 
 @router.post("/parse", response_model=ParseResponse)
-async def parse(req: ParseRequest, _ = Depends(require_user)):
+async def parse(req: ParseRequest, current_user: User = Depends(require_user)):
     resume = await parse_resume(req.text)
     resume_id = None
     if req.filename:
         resume_id = Path(req.filename).stem
-        save_resume(resume_id, resume)
+        resume.user_id = current_user.id
+    save_resume(resume_id, resume)
     return ParseResponse(success=True, id=resume_id, data=resume)

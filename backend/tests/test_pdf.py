@@ -25,7 +25,7 @@ async def test_generate_pdf_not_found(client):
 @pytest.mark.asyncio
 async def test_generate_and_download_pdf(client):
     resume_id = uuid.uuid4().hex
-    resume = Resume(full_name="Test User", email="test@example.com")
+    resume = Resume(user_id="test", full_name="Test User", email="test@example.com")
     save_resume(resume_id, resume)
 
     async with client as ac:

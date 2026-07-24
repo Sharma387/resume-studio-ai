@@ -95,28 +95,29 @@ class TestCertification:
 
 class TestResume:
     def test_valid_minimal(self):
-        r = Resume(full_name="John Doe", email="john@example.com")
+        r = Resume(user_id="test", full_name="John Doe", email="john@example.com")
         assert r.full_name == "John Doe"
         assert r.email == "john@example.com"
 
     def test_missing_full_name(self):
         with pytest.raises(ValidationError):
-            Resume(email="john@example.com")
+            Resume(user_id="test", email="john@example.com")
 
     def test_empty_full_name(self):
         with pytest.raises(ValidationError):
-            Resume(full_name="", email="john@example.com")
+            Resume(user_id="test", full_name="", email="john@example.com")
 
     def test_invalid_email(self):
         with pytest.raises(ValidationError):
-            Resume(full_name="John Doe", email="not-an-email")
+            Resume(user_id="test", full_name="John Doe", email="not-an-email")
 
     def test_invalid_url(self):
         with pytest.raises(ValidationError):
-            Resume(full_name="John Doe", email="john@example.com", website="not-a-url")
+            Resume(user_id="test", full_name="John Doe", email="john@example.com", website="not-a-url")
 
     def test_valid_full(self):
         r = Resume(
+            user_id="test",
             full_name="Jane Smith",
             email="jane@example.com",
             phone="+1 555-0000",

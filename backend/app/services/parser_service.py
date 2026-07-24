@@ -20,6 +20,7 @@ class ParseError(AppError):
 
 def _mock_resume() -> Resume:
     return Resume(
+        user_id="mock",
         full_name="Alexandra Chen",
         email="alexandra.chen@example.com",
         phone="+1 (555) 123-4567",

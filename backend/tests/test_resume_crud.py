@@ -24,7 +24,7 @@ async def test_get_resume_not_found(client):
 @pytest.mark.asyncio
 async def test_get_resume_success(client):
     resume_id = uuid.uuid4().hex
-    resume = Resume(full_name="Test User", email="test@example.com")
+    resume = Resume(user_id="test", full_name="Test User", email="test@example.com")
     save_resume(resume_id, resume)
 
     async with client as ac:
@@ -38,10 +38,10 @@ async def test_get_resume_success(client):
 @pytest.mark.asyncio
 async def test_update_resume(client):
     resume_id = uuid.uuid4().hex
-    resume = Resume(full_name="Original", email="orig@example.com")
+    resume = Resume(user_id="test", full_name="Original", email="orig@example.com")
     save_resume(resume_id, resume)
 
-    updated = Resume(full_name="Updated", email="updated@example.com")
+    updated = Resume(user_id="test", full_name="Updated", email="updated@example.com")
 
     async with client as ac:
         response = await ac.put(

@@ -40,9 +40,10 @@ def _add_timeline(app_id: str, event_type: TimelineEventType, title: str, descri
     return event
 
 
-def create(company: str, role_title: str, **kwargs) -> Application:
+def create(company: str, role_title: str, user_id: str, **kwargs) -> Application:
     app = Application(
         id=uuid.uuid4().hex,
+        user_id=user_id,
         company=company,
         role_title=role_title,
         **{k: v for k, v in kwargs.items() if k in Application.model_fields and k not in ("id", "created_at", "updated_at")},
@@ -52,12 +53,12 @@ def create(company: str, role_title: str, **kwargs) -> Application:
     return app
 
 
-def get(app_id: str) -> Application | None:
-    return load_application(app_id)
+def get(app_id: str, user_id: str | None = None) -> Application | None:
+    return load_application(app_id, user_id)
 
 
-def update(app_id: str, **kwargs) -> Application | None:
-    app = load_application(app_id)
+def update(app_id: str, user_id: str | None = None, **kwargs) -> Application | None:
+    app = load_application(app_id, user_id)
     if app is None:
         return None
     for key, value in kwargs.items():
@@ -69,12 +70,12 @@ def update(app_id: str, **kwargs) -> Application | None:
     return app
 
 
-def delete(app_id: str) -> bool:
-    return delete_application(app_id)
+def delete(app_id: str, user_id: str | None = None) -> bool:
+    return delete_application(app_id, user_id)
 
 
-def change_status(app_id: str, new_status: ApplicationStatus) -> Application | None:
-    app = load_application(app_id)
+def change_status(app_id: str, new_status: ApplicationStatus, user_id: str | None = None) -> Application | None:
+    app = load_application(app_id, user_id)
     if app is None:
         return None
     old = app.status.value
@@ -91,8 +92,8 @@ def change_status(app_id: str, new_status: ApplicationStatus) -> Application | N
     return app
 
 
-def add_note(app_id: str, content: str) -> Application | None:
-    app = load_application(app_id)
+def add_note(app_id: str, content: str, user_id: str | None = None) -> Application | None:
+    app = load_application(app_id, user_id)
     if app is None:
         return None
     note = ApplicationNote(id=uuid.uuid4().hex, content=content)
@@ -104,8 +105,8 @@ def add_note(app_id: str, content: str) -> Application | None:
     return app
 
 
-def get_view(app_id: str) -> ApplicationView | None:
-    app = load_application(app_id)
+def get_view(app_id: str, user_id: str | None = None) -> ApplicationView | None:
+    app = load_application(app_id, user_id)
     if app is None:
         return None
 
@@ -118,7 +119,7 @@ def get_view(app_id: str) -> ApplicationView | None:
     timeline = list_timeline_events(app_id)[:10]
 
     from app.services.storage_service import list_interview_sessions, list_readiness_assessments
-    sessions = list_interview_sessions(app_id)
+    sessions = list_interview_sessions(app_id, user_id)
     assessments = list_readiness_assessments(app_id)
 
     latest_session = sessions[0].model_dump() if sessions else None

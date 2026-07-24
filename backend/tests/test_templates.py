@@ -66,6 +66,7 @@ class TestEachTemplateRenders:
     @pytest.mark.parametrize("name", ["executive", "ats", "technical", "modern", "minimal"])
     def test_renders_without_error(self, name):
         resume = Resume(
+            user_id="test",
             full_name="Test User",
             email="test@example.com",
             summary="A summary.",
@@ -83,7 +84,7 @@ class TestEachTemplateRenders:
 @pytest.mark.asyncio
 async def test_endpoint_with_template(client):
     resume_id = "pdf-template-test"
-    save_resume(resume_id, Resume(full_name="Jane", email="j@e.com"))
+    save_resume(resume_id, Resume(user_id="test", full_name="Jane", email="j@e.com"))
 
     async with client as ac:
         resp = await ac.post(f"/api/v1/resume/{resume_id}/pdf", params={"template": "modern"})
@@ -95,7 +96,7 @@ async def test_endpoint_with_template(client):
 @pytest.mark.asyncio
 async def test_endpoint_default_template(client):
     resume_id = "pdf-default-test"
-    save_resume(resume_id, Resume(full_name="Jane", email="j@e.com"))
+    save_resume(resume_id, Resume(user_id="test", full_name="Jane", email="j@e.com"))
 
     async with client as ac:
         resp = await ac.post(f"/api/v1/resume/{resume_id}/pdf")
@@ -105,7 +106,7 @@ async def test_endpoint_default_template(client):
 @pytest.mark.asyncio
 async def test_endpoint_invalid_template(client):
     resume_id = "pdf-bad-test"
-    save_resume(resume_id, Resume(full_name="Jane", email="j@e.com"))
+    save_resume(resume_id, Resume(user_id="test", full_name="Jane", email="j@e.com"))
 
     async with client as ac:
         resp = await ac.post(f"/api/v1/resume/{resume_id}/pdf", params={"template": "bogus"})

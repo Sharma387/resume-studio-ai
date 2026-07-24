@@ -22,18 +22,18 @@ def client():
 @pytest.fixture
 def app_id():
     aid = "int-app-1"
-    save_application(Application(id=aid, company="Acme", role_title="Engineer"))
+    save_application(Application(user_id="test", id=aid, company="Acme", role_title="Engineer"))
     return aid
 
 
 class TestInterviewModels:
     def test_session_defaults(self):
-        s = InterviewSession(id="s1", application_id="a1")
+        s = InterviewSession(user_id="test", id="s1", application_id="a1")
         assert s.session_type == SessionType.MOCK
         assert s.completed is False
 
     def test_session_with_plan_id(self):
-        s = InterviewSession(id="s2", application_id="a1", plan_id="plan-1")
+        s = InterviewSession(user_id="test", id="s2", application_id="a1", plan_id="plan-1")
         assert s.plan_id == "plan-1"
 
     def test_question_defaults(self):
@@ -76,12 +76,12 @@ class TestInterviewModels:
 
 class TestInterviewService:
     def test_create_session(self, app_id):
-        s = svc.create_session(app_id, "Google Phone Screen")
+        s = svc.create_session(app_id, "Google Phone Screen", "test")
         assert s.application_id == app_id
         assert s.title == "Google Phone Screen"
 
     def test_list_sessions(self, app_id):
-        svc.create_session(app_id, "S1")
+        svc.create_session(app_id, "S1", "test")
         sessions = svc.list_sessions(app_id)
         assert len(sessions) >= 1
 
@@ -89,17 +89,17 @@ class TestInterviewService:
         assert svc.get_session(app_id, "nonexistent") is None
 
     def test_update_session(self, app_id):
-        s = svc.create_session(app_id, "Original")
+        s = svc.create_session(app_id, "Original", "test")
         updated = svc.update_session(app_id, s.id, title="Updated")
         assert updated.title == "Updated"
 
     def test_complete_session(self, app_id):
-        s = svc.create_session(app_id, "Test")
+        s = svc.create_session(app_id, "Test", "test")
         completed = svc.complete_session(app_id, s.id)
         assert completed.completed is True
 
     def test_delete_session(self, app_id):
-        s = svc.create_session(app_id, "Delete me")
+        s = svc.create_session(app_id, "Delete me", "test")
         assert svc.delete_session(app_id, s.id) is True
         assert svc.get_session(app_id, s.id) is None
 
@@ -114,7 +114,7 @@ class TestEndpoints:
     @pytest.mark.asyncio
     async def test_create_session(self, client, app_id):
         async with client as ac:
-            resp = await ac.post(f"/api/v1/applications/{app_id}/interview/sessions", json={"id": "es1", "application_id": app_id, "title": "Prep"})
+            resp = await ac.post(f"/api/v1/applications/{app_id}/interview/sessions", json={"id": "es1", "user_id": "test", "application_id": app_id, "title": "Prep"})
         assert resp.status_code == 200
         assert resp.json()["data"]["title"] == "Prep"
 
@@ -132,14 +132,14 @@ class TestEndpoints:
 
     @pytest.mark.asyncio
     async def test_delete_session(self, client, app_id):
-        s = svc.create_session(app_id, "Del")
+        s = svc.create_session(app_id, "Del", "test")
         async with client as ac:
             resp = await ac.delete(f"/api/v1/applications/{app_id}/interview/sessions/{s.id}")
         assert resp.status_code == 200
 
     @pytest.mark.asyncio
     async def test_complete_session(self, client, app_id):
-        s = svc.create_session(app_id, "Complete")
+        s = svc.create_session(app_id, "Complete", "test")
         async with client as ac:
             resp = await ac.post(f"/api/v1/applications/{app_id}/interview/sessions/{s.id}/complete")
         assert resp.status_code == 200

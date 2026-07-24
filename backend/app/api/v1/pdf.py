@@ -10,8 +10,8 @@ router = APIRouter()
 
 
 @router.post("/resume/{resume_id}/pdf")
-async def create_pdf(resume_id: str, template: str = Query(default="executive", description="PDF template name")):
-    resume = load_resume(resume_id)
+async def create_pdf(resume_id: str, template: str = Query(default="executive"), current_user = Depends(require_user)):
+    resume = load_resume(resume_id, getattr(current_user, "id", None))
     if resume is None:
         raise HTTPException(status_code=404, detail="Resume not found")
 
@@ -28,7 +28,7 @@ async def create_pdf(resume_id: str, template: str = Query(default="executive", 
 
 
 @router.get("/resume/{resume_id}/pdf/download")
-async def download_pdf(resume_id: str, _ = Depends(require_user)):
+async def download_pdf(resume_id: str, current_user = Depends(require_user)):
     path = PDF_DIR / f"{resume_id}.pdf"
     if not path.exists():
         raise HTTPException(status_code=404, detail="PDF not found. Generate it first.")

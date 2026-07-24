@@ -31,6 +31,7 @@ class SessionType(str, Enum):
 
 
 class InterviewSession(BaseModel):
+    user_id: str
     id: str = Field(..., min_length=1)
     application_id: str = Field(..., min_length=1)
     plan_id: str | None = Field(None, description="Future: multi-round interview plan")

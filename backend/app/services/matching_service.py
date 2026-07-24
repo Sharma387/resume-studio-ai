@@ -27,7 +27,7 @@ def _mock_match(resume_id: str, job_title: str | None, resume: Resume) -> MatchR
     )
 
 
-async def analyze_match(resume_id: str, job_title: str | None, job_description: str, resume: Resume) -> MatchResult:
+async def analyze_match(resume_id: str, job_title: str | None, job_description: str, resume: Resume, user_id: str) -> MatchResult:
     if "localhost" not in settings.omniroute_api_url and not settings.omniroute_api_key:
         if settings.allow_mock_ai_data:
             logger.info("Mock AI data enabled; returning mock match")

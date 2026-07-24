@@ -9,6 +9,7 @@ from app.services.ai_core.exceptions import AIServiceUnavailable
 
 def _valid_json() -> str:
     r = Resume(
+        user_id="test",
         full_name="John Doe",
         email="john@example.com",
         summary="Engineer",

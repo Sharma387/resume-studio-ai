@@ -15,7 +15,7 @@ def client():
 @pytest.fixture
 def saved_resume_id():
     resume_id = "test-resume-for-match"
-    resume = Resume(full_name="Jane Smith", email="jane@example.com")
+    resume = Resume(user_id="test", full_name="Jane Smith", email="jane@example.com")
     save_resume(resume_id, resume)
     return resume_id
 

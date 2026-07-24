@@ -15,6 +15,7 @@ class SuggestionType(str):
 
 
 class ResumeSuggestion(BaseModel):
+    user_id: str
     id: str = Field(..., min_length=1)
     resume_id: str = Field(..., min_length=1)
     suggestion_type: str = Field(default=SuggestionType.PHRASING)
