@@ -139,6 +139,8 @@ class BaseTemplate(ABC):
         if proj.technologies:
             line += f"  —  {', '.join(proj.technologies)}"
         content.append(Paragraph(line, styles["ItemTitle"]))
+        if proj.url:
+            content.append(Paragraph(str(proj.url), styles["ItemSubtitle"]))
         if proj.description:
             content.append(Paragraph(proj.description, styles["BulletItem"]))
 

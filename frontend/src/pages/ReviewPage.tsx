@@ -5,6 +5,7 @@ import {
   Typography,
   Button,
   CircularProgress,
+  Snackbar,
   Alert,
   IconButton,
   Drawer,
@@ -102,6 +103,7 @@ function ReviewPage() {
     setSaving(true);
     try {
       const result = await saveResume(fileParam, resume);
+      setResume(result.data);
       setOriginal(JSON.parse(JSON.stringify(result.data)) as Resume);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save resume');
@@ -203,6 +205,13 @@ function ReviewPage() {
         slotProps={{ paper: { sx: { width: 340, p: 2 } } }}>
         <VersionHistory resumeId={fileParam || ''} onRestored={handleResumeUpdated} />
       </Drawer>
+
+      <Snackbar open={!!error} autoHideDuration={8000} onClose={() => setError('')}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
+        <Alert onClose={() => setError('')} severity="error" variant="filled" sx={{ borderRadius: 2 }}>
+          {error}
+        </Alert>
+      </Snackbar>
 
       <Box sx={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         <SectionNav items={sections} active={activeSection} onChange={setActiveSection} />
