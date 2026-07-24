@@ -103,8 +103,8 @@ function ReviewPage() {
     try {
       const result = await saveResume(fileParam, resume);
       setOriginal(JSON.parse(JSON.stringify(result.data)) as Resume);
-    } catch {
-      setError('Failed to save resume');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save resume');
     } finally {
       setSaving(false);
     }

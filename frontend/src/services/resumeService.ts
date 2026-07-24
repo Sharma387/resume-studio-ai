@@ -31,7 +31,25 @@ export async function saveResume(id: string, resume: Resume): Promise<ResumeResp
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(resume),
   });
-  if (!res.ok) throw new Error('Failed to save resume');
+  if (!res.ok) {
+    let msg = 'Failed to save resume';
+    try {
+      const body = await res.json();
+      if (body.detail) {
+        if (Array.isArray(body.detail)) {
+          msg = body.detail.map((e: { loc?: string[]; msg?: string }) => {
+            const field = e.loc ? e.loc.slice(1).join('.') : '';
+            return field ? `${field}: ${e.msg}` : e.msg;
+          }).join('; ');
+        } else if (typeof body.detail === 'string') {
+          msg = body.detail;
+        } else if (body.error?.message) {
+          msg = body.error.message;
+        }
+      }
+    } catch { /* ignore parse errors */ }
+    throw new Error(msg);
+  }
   return res.json();
 }
 
