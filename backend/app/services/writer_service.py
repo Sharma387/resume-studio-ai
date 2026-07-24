@@ -7,13 +7,7 @@ from app.models.resume import Resume
 from app.models.writer import ResumeSuggestion, WriterRequest
 from app.services.prompt_service import PromptService
 from app.services.ai_core import extract_json_array, call_with_retry, AIServiceUnavailable
-from app.services.storage_service import (
-    load_resume,
-    save_resume,
-    save_writer_suggestion,
-    load_writer_suggestion,
-    update_writer_suggestion,
-)
+from app.services.repositories.factory import get_resume_repository, get_suggestion_repository
 
 from app.core.logging import get_logger
 logger = get_logger(__name__)
@@ -30,7 +24,7 @@ QUICK_ACTIONS = {
 
 
 async def suggest(resume_id: str, request: WriterRequest, user_id: str) -> list[ResumeSuggestion]:
-    resume = load_resume(resume_id)
+    resume = get_resume_repository().get_by_id(resume_id)
     if resume is None:
         raise FileNotFoundError(f"Resume '{resume_id}' not found")
 
@@ -54,7 +48,7 @@ async def suggest(resume_id: str, request: WriterRequest, user_id: str) -> list[
                     resume_id=resume_id,
                     **{k: v for k, v in item.items() if k in ResumeSuggestion.model_fields and k not in ("id", "resume_id", "created_at")},
                 )
-                save_writer_suggestion(sug)
+                get_suggestion_repository().save(sug)
                 suggestions.append(sug)
             except ValidationError as e:
                 logger.warning("Skipping invalid suggestion: %s", e)
@@ -67,11 +61,11 @@ async def suggest(resume_id: str, request: WriterRequest, user_id: str) -> list[
 
 
 async def accept_suggestion(resume_id: str, suggestion_id: str, user_id: str) -> Resume:
-    resume = load_resume(resume_id)
+    resume = get_resume_repository().get_by_id(resume_id)
     if resume is None:
         raise FileNotFoundError(f"Resume '{resume_id}' not found")
 
-    suggestion = load_writer_suggestion(resume_id, suggestion_id, user_id)
+    suggestion = get_suggestion_repository().get_by_id(resume_id, suggestion_id, user_id)
     if suggestion is None:
         raise FileNotFoundError(f"Suggestion '{suggestion_id}' not found")
 
@@ -96,19 +90,19 @@ async def accept_suggestion(resume_id: str, suggestion_id: str, user_id: str) ->
         if suggestion.section == "summary":
             resume.summary = suggestion.suggested_text
 
-    save_resume(resume_id, resume)
-    update_writer_suggestion(resume_id, suggestion_id, status="accepted")
+    get_resume_repository().save(resume_id, resume)
+    get_suggestion_repository().update(resume_id, suggestion_id, user_id=user_id, status="accepted")
     return resume
 
 
 async def reject_suggestion(resume_id: str, suggestion_id: str, user_id: str) -> None:
-    result = update_writer_suggestion(resume_id, suggestion_id, user_id=user_id, status="rejected")
+    result = get_suggestion_repository().update(resume_id, suggestion_id, user_id=user_id, status="rejected")
     if result is None:
         raise FileNotFoundError(f"Suggestion '{suggestion_id}' not found")
 
 
 async def regenerate_suggestion(resume_id: str, suggestion_id: str) -> ResumeSuggestion:
-    suggestion = load_writer_suggestion(resume_id, suggestion_id, user_id)
+    suggestion = get_suggestion_repository().get_by_id(resume_id, suggestion_id, user_id)
     if suggestion is None:
         raise FileNotFoundError(f"Suggestion '{suggestion_id}' not found")
 

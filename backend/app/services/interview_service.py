@@ -15,23 +15,13 @@ from app.models.interview import (
     SessionType,
 )
 from app.models.application import TimelineEvent, TimelineEventType
-from app.services.storage_service import (
-    load_resume,
-    load_application,
-    save_interview_session,
-    load_interview_session,
-    list_interview_sessions,
-    delete_interview_session,
-    save_interview_question,
-    list_interview_questions,
-    save_interview_answer,
-    load_interview_answer,
-    save_readiness_assessment,
-    list_readiness_assessments,
-    save_session_summary,
-    load_session_summary,
-    save_timeline_event,
-    list_matches,
+from app.services import storage_service as _store
+from app.services.repositories.factory import (
+    get_resume_repository,
+    get_application_repository,
+    get_interview_session_repository,
+    get_timeline_event_repository,
+    get_match_repository,
 )
 from app.services.prompt_service import PromptService
 from app.services.ai_core import call_with_retry, extract_json, AIServiceUnavailable
@@ -46,38 +36,38 @@ def _now() -> str:
 
 def _add_timeline(app_id: str, etype: TimelineEventType, title: str, desc: str = ""):
     event = TimelineEvent(id=uuid.uuid4().hex, application_id=app_id, event_type=etype, title=title, description=desc)
-    save_timeline_event(event)
+    get_timeline_event_repository().save(event)
 
 
 def create_session(application_id: str, title: str, user_id: str, session_type: SessionType = SessionType.MOCK) -> InterviewSession:
     session = InterviewSession(id=uuid.uuid4().hex, user_id=user_id, application_id=application_id, title=title, session_type=session_type)
-    save_interview_session(session)
+    get_interview_session_repository().save(session)
     _add_timeline(application_id, TimelineEventType.CREATED, f"Interview session created", title)
     return session
 
 
 def get_session(application_id: str, session_id: str, user_id: str | None = None) -> InterviewSession | None:
-    return load_interview_session(application_id, session_id, user_id)
+    return get_interview_session_repository().get_by_id(application_id, session_id, user_id)
 
 
 def list_sessions(application_id: str, user_id: str | None = None) -> list[InterviewSession]:
-    return list_interview_sessions(application_id, user_id)
+    return get_interview_session_repository().list_by_application(application_id, user_id)
 
 
 def update_session(application_id: str, session_id: str, user_id: str | None = None, **kwargs) -> InterviewSession | None:
-    session = load_interview_session(application_id, session_id, user_id)
+    session = get_interview_session_repository().get_by_id(application_id, session_id, user_id)
     if session is None:
         return None
     for key, value in kwargs.items():
         if key in InterviewSession.model_fields and key not in ("id", "application_id", "created_at"):
             setattr(session, key, value)
     session.updated_at = _now()
-    save_interview_session(session)
+    get_interview_session_repository().save(session)
     return session
 
 
 def delete_session(application_id: str, session_id: str, user_id: str | None = None) -> bool:
-    return delete_interview_session(application_id, session_id)
+    return get_interview_session_repository().delete(application_id, session_id)
 
 
 def complete_session(application_id: str, session_id: str) -> InterviewSession | None:
@@ -88,12 +78,12 @@ def complete_session(application_id: str, session_id: str) -> InterviewSession |
 
 
 async def generate_questions(application_id: str, session_id: str, count: int = 5) -> list[InterviewQuestion]:
-    app = load_application(application_id)
+    app = get_application_repository().get_by_id(application_id)
     if app is None:
         raise FileNotFoundError("Application not found")
-    resume = load_resume(app.resume_id) if app.resume_id else None
+    resume = get_resume_repository().get_by_id(app.resume_id) if app.resume_id else None
     resume_json = json.dumps(resume.model_dump(), indent=2, default=str) if resume else "{}"
-    matches = list_matches(app.resume_id) if app.resume_id else []
+    matches = get_match_repository().list_by_resume(app.resume_id) if app.resume_id else []
     ats_gaps = ", ".join(matches[0].missing_skills) if matches else ""
 
     job_context = f"{app.role_title} at {app.company}" if app.company else "N/A"
@@ -117,13 +107,13 @@ async def generate_questions(application_id: str, session_id: str, count: int = 
                 session_id=session_id,
                 **{k: v for k, v in item.items() if k in InterviewQuestion.model_fields and k not in ("id", "session_id")},
             )
-            save_interview_question(q)
+            _store.save_interview_question(q)
             questions.append(q)
         session = load_interview_session(application_id, session_id)
         if session:
             session.question_count = len(questions)
             session.updated_at = _now()
-            save_interview_session(session)
+            get_interview_session_repository().save(session)
         return questions
 
     try:
@@ -133,12 +123,12 @@ async def generate_questions(application_id: str, session_id: str, count: int = 
 
 
 def list_questions(session_id: str) -> list[InterviewQuestion]:
-    return list_interview_questions(session_id)
+    return _store.list_interview_questions(session_id)
 
 
 async def submit_answer(question_id: str, user_answer: str) -> InterviewAnswer:
     answer = InterviewAnswer(id=uuid.uuid4().hex, question_id=question_id, user_answer=user_answer)
-    save_interview_answer(answer)
+    _store.save_interview_answer(answer)
     return answer
 
 
@@ -164,21 +154,21 @@ async def coach_answer(question_id: str, question_text: str, user_answer: str) -
 
     try:
         coached = await call_with_retry(build, parse, service_name="AnswerCoach")
-        save_interview_answer(coached)
+        _store.save_interview_answer(coached)
         return coached
     except AIServiceUnavailable as e:
         raise RuntimeError("Answer coaching unavailable") from e
 
 
 def get_answer(question_id: str) -> InterviewAnswer | None:
-    return load_interview_answer(question_id)
+    return _store.load_interview_answer(question_id)
 
 
 async def assess_readiness(application_id: str) -> ReadinessAssessment:
-    app = load_application(application_id)
+    app = get_application_repository().get_by_id(application_id)
     if app is None:
         raise FileNotFoundError("Application not found")
-    resume = load_resume(app.resume_id) if app.resume_id else None
+    resume = get_resume_repository().get_by_id(app.resume_id) if app.resume_id else None
     resume_json = json.dumps(resume.model_dump(), indent=2, default=str) if resume else "{}"
     job_context = f"{app.role_title} at {app.company}" if app.company else "N/A"
 
@@ -199,7 +189,7 @@ async def assess_readiness(application_id: str) -> ReadinessAssessment:
             weaknesses=data.get("weaknesses", []),
             recommendations=data.get("recommendations", []),
         )
-        save_readiness_assessment(assessment)
+        _store.save_readiness_assessment(assessment)
         return assessment
 
     try:
@@ -209,15 +199,15 @@ async def assess_readiness(application_id: str) -> ReadinessAssessment:
 
 
 def list_readiness(application_id: str) -> list[ReadinessAssessment]:
-    return list_readiness_assessments(application_id)
+    return _store.list_readiness_assessments(application_id)
 
 
 async def generate_summary(session_id: str) -> SessionSummary:
     app_id = session_id.split("-")[0]
-    questions = list_interview_questions(session_id)
+    questions = _store.list_interview_questions(session_id)
     qa_pairs = []
     for q in questions:
-        answer = load_interview_answer(q.id)
+        answer = _store.load_interview_answer(q.id)
         qa_pairs.append(f"Q: {q.question_text}\nA: {answer.user_answer if answer else '(unanswered)'}")
 
     prompt_service = PromptService()
@@ -233,12 +223,12 @@ async def generate_summary(session_id: str) -> SessionSummary:
             session_id=session_id,
             application_id=app_id,
             total_questions=len(questions),
-            answered_questions=sum(1 for _ in questions if load_interview_answer(_.id)),
+            answered_questions=sum(1 for _ in questions if _store.load_interview_answer(_.id)),
             strengths=data.get("strengths", []),
             areas_to_improve=data.get("areas_to_improve", []),
             recommendations=data.get("recommendations", []),
         )
-        save_session_summary(summary)
+        _store.save_session_summary(summary)
         return summary
 
     try:

@@ -6,22 +6,26 @@ without changing business services.
 
 from abc import ABC, abstractmethod
 
+from app.models.resume import Resume
+from app.models.application import Application
+from app.models.cover_letter import CoverLetter
+from app.models.match import MatchResult
+from app.models.version import ResumeVersion
+from app.models.writer import ResumeSuggestion
+from app.models.interview import InterviewSession
+from app.models.application import TimelineEvent
 from app.models.user import User
 
 
 class UserRepository(ABC):
     @abstractmethod
     def save(self, user: User) -> None: ...
-
     @abstractmethod
     def get_by_id(self, user_id: str) -> User | None: ...
-
     @abstractmethod
     def get_by_email(self, email: str) -> User | None: ...
-
     @abstractmethod
     def list_all(self) -> list[User]: ...
-
     @abstractmethod
     def delete(self, user_id: str) -> bool: ...
 
@@ -29,12 +33,87 @@ class UserRepository(ABC):
 class RefreshTokenRepository(ABC):
     @abstractmethod
     def save(self, token_hash: str, user_id: str, expires_at: str) -> None: ...
-
     @abstractmethod
     def get_user_id(self, token_hash: str) -> str | None: ...
-
     @abstractmethod
     def delete(self, token_hash: str) -> bool: ...
-
     @abstractmethod
     def delete_all_for_user(self, user_id: str) -> None: ...
+
+
+class ResumeRepository(ABC):
+    @abstractmethod
+    def save(self, resume_id: str, resume: Resume) -> None: ...
+    @abstractmethod
+    def get_by_id(self, resume_id: str, user_id: str | None = None) -> Resume | None: ...
+    @abstractmethod
+    def list_by_user(self, user_id: str, limit: int = 10) -> list[tuple[str, Resume]]: ...
+
+
+class ApplicationRepository(ABC):
+    @abstractmethod
+    def save(self, app: Application) -> None: ...
+    @abstractmethod
+    def get_by_id(self, app_id: str, user_id: str | None = None) -> Application | None: ...
+    @abstractmethod
+    def list_by_user(self, user_id: str | None = None, status: str | None = None) -> list[Application]: ...
+    @abstractmethod
+    def delete(self, app_id: str, user_id: str | None = None) -> bool: ...
+
+
+class CoverLetterRepository(ABC):
+    @abstractmethod
+    def save(self, letter: CoverLetter) -> None: ...
+    @abstractmethod
+    def get_by_id(self, resume_id: str, letter_id: str, user_id: str | None = None) -> CoverLetter | None: ...
+    @abstractmethod
+    def list_by_resume(self, resume_id: str, user_id: str | None = None) -> list[CoverLetter]: ...
+    @abstractmethod
+    def delete(self, resume_id: str, letter_id: str, user_id: str | None = None) -> bool: ...
+
+
+class MatchRepository(ABC):
+    @abstractmethod
+    def save(self, match_id: str, match: MatchResult) -> None: ...
+    @abstractmethod
+    def get_by_id(self, match_id: str, user_id: str | None = None) -> MatchResult | None: ...
+    @abstractmethod
+    def list_by_resume(self, resume_id: str, user_id: str | None = None) -> list[MatchResult]: ...
+
+
+class ResumeVersionRepository(ABC):
+    @abstractmethod
+    def save(self, version: ResumeVersion) -> None: ...
+    @abstractmethod
+    def get_by_id(self, resume_id: str, version_id: str, user_id: str | None = None) -> ResumeVersion | None: ...
+    @abstractmethod
+    def list_by_resume(self, resume_id: str, user_id: str | None = None) -> list[ResumeVersion]: ...
+
+
+class WriterSuggestionRepository(ABC):
+    @abstractmethod
+    def save(self, suggestion: ResumeSuggestion) -> None: ...
+    @abstractmethod
+    def get_by_id(self, resume_id: str, suggestion_id: str, user_id: str | None = None) -> ResumeSuggestion | None: ...
+    @abstractmethod
+    def list_by_resume(self, resume_id: str, status: str | None = None, user_id: str | None = None) -> list[ResumeSuggestion]: ...
+    @abstractmethod
+    def update(self, resume_id: str, suggestion_id: str, user_id: str | None = None, **updates) -> ResumeSuggestion | None: ...
+
+
+class InterviewSessionRepository(ABC):
+    @abstractmethod
+    def save(self, session: InterviewSession) -> None: ...
+    @abstractmethod
+    def get_by_id(self, application_id: str, session_id: str, user_id: str | None = None) -> InterviewSession | None: ...
+    @abstractmethod
+    def list_by_application(self, application_id: str, user_id: str | None = None) -> list[InterviewSession]: ...
+    @abstractmethod
+    def delete(self, application_id: str, session_id: str) -> bool: ...
+
+
+class TimelineEventRepository(ABC):
+    @abstractmethod
+    def save(self, event: TimelineEvent) -> None: ...
+    @abstractmethod
+    def list_by_application(self, application_id: str) -> list[TimelineEvent]: ...

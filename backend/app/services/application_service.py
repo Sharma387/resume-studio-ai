@@ -10,16 +10,13 @@ from app.models.application import (
     TimelineEventType,
     ApplicationNote,
 )
-from app.services.storage_service import (
-    save_application,
-    load_application,
-    list_applications,
-    delete_application,
-    save_timeline_event,
-    list_timeline_events,
-    load_resume,
-    load_cover_letter,
-    load_match,
+from app.services.repositories.factory import (
+    get_application_repository,
+    get_timeline_event_repository,
+    get_resume_repository,
+    get_cover_letter_repository,
+    get_match_repository,
+    get_interview_session_repository,
 )
 
 
@@ -36,7 +33,7 @@ def _add_timeline(app_id: str, event_type: TimelineEventType, title: str, descri
         description=description,
         metadata=metadata or {},
     )
-    save_timeline_event(event)
+    get_timeline_event_repository().save(event)
     return event
 
 
@@ -48,17 +45,17 @@ def create(company: str, role_title: str, user_id: str, **kwargs) -> Application
         role_title=role_title,
         **{k: v for k, v in kwargs.items() if k in Application.model_fields and k not in ("id", "created_at", "updated_at")},
     )
-    save_application(app)
+    get_application_repository().save(app)
     _add_timeline(app.id, TimelineEventType.CREATED, f"Application created", f"Added {role_title} at {company}")
     return app
 
 
 def get(app_id: str, user_id: str | None = None) -> Application | None:
-    return load_application(app_id, user_id)
+    return get_application_repository().get_by_id(app_id, user_id)
 
 
 def update(app_id: str, user_id: str | None = None, **kwargs) -> Application | None:
-    app = load_application(app_id, user_id)
+    app = get_application_repository().get_by_id(app_id, user_id)
     if app is None:
         return None
     for key, value in kwargs.items():
@@ -66,23 +63,23 @@ def update(app_id: str, user_id: str | None = None, **kwargs) -> Application | N
             setattr(app, key, value)
     app.updated_at = _now()
     app.last_activity = _now()
-    save_application(app)
+    get_application_repository().save(app)
     return app
 
 
 def delete(app_id: str, user_id: str | None = None) -> bool:
-    return delete_application(app_id, user_id)
+    return get_application_repository().delete(app_id, user_id)
 
 
 def change_status(app_id: str, new_status: ApplicationStatus, user_id: str | None = None) -> Application | None:
-    app = load_application(app_id, user_id)
+    app = get_application_repository().get_by_id(app_id, user_id)
     if app is None:
         return None
     old = app.status.value
     app.status = new_status
     app.updated_at = _now()
     app.last_activity = _now()
-    save_application(app)
+    get_application_repository().save(app)
     _add_timeline(
         app_id, TimelineEventType.STATUS_CHANGED,
         f"Status changed to {new_status.value}",
@@ -93,20 +90,20 @@ def change_status(app_id: str, new_status: ApplicationStatus, user_id: str | Non
 
 
 def add_note(app_id: str, content: str, user_id: str | None = None) -> Application | None:
-    app = load_application(app_id, user_id)
+    app = get_application_repository().get_by_id(app_id, user_id)
     if app is None:
         return None
     note = ApplicationNote(id=uuid.uuid4().hex, content=content)
     app.notes.append(note)
     app.updated_at = _now()
     app.last_activity = _now()
-    save_application(app)
+    get_application_repository().save(app)
     _add_timeline(app_id, TimelineEventType.NOTE_ADDED, "Note added", content[:100])
     return app
 
 
 def get_view(app_id: str, user_id: str | None = None) -> ApplicationView | None:
-    app = load_application(app_id, user_id)
+    app = get_application_repository().get_by_id(app_id, user_id)
     if app is None:
         return None
 
@@ -116,11 +113,11 @@ def get_view(app_id: str, user_id: str | None = None) -> ApplicationView | None:
         if resume:
             resume_name = resume.full_name
 
-    timeline = list_timeline_events(app_id)[:10]
+    timeline = get_timeline_event_repository().list_by_application(app_id)[:10]
 
-    from app.services.storage_service import list_interview_sessions, list_readiness_assessments
-    sessions = list_interview_sessions(app_id, user_id)
-    assessments = list_readiness_assessments(app_id)
+    
+    sessions = get_interview_session_repository().list_by_application(app_id, user_id)
+    assessments = []  # TODO: implement readiness assessment storage
 
     latest_session = sessions[0].model_dump() if sessions else None
     latest_readiness = assessments[0].model_dump() if assessments else None
@@ -139,7 +136,7 @@ def get_view(app_id: str, user_id: str | None = None) -> ApplicationView | None:
 
 
 def get_dashboard() -> DashboardSummary:
-    apps = list_applications()
+    apps = get_application_repository().list_by_user()
     by_status: dict[str, int] = {}
     by_priority: dict[str, int] = {}
     active = 0

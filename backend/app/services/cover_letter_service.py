@@ -7,13 +7,7 @@ from app.models.resume import Resume
 from app.models.cover_letter import CoverLetter, CoverLetterRequest, CoverLetterTone
 from app.services.prompt_service import PromptService
 from app.services.ai_core import extract_json, call_with_retry, AIServiceUnavailable
-from app.services.storage_service import (
-    load_resume,
-    save_cover_letter,
-    load_cover_letter,
-    list_cover_letters,
-    delete_cover_letter,
-)
+from app.services.repositories.factory import get_resume_repository, get_cover_letter_repository
 
 from app.core.logging import get_logger
 logger = get_logger(__name__)
@@ -24,7 +18,7 @@ def _hash_jd(text: str) -> str:
 
 
 async def generate(resume_id: str, request: CoverLetterRequest, user_id: str) -> CoverLetter:
-    resume = load_resume(resume_id)
+    resume = get_resume_repository().get_by_id(resume_id)
     if resume is None:
         raise FileNotFoundError(f"Resume '{resume_id}' not found")
 
@@ -61,26 +55,26 @@ async def generate(resume_id: str, request: CoverLetterRequest, user_id: str) ->
 
     try:
         letter = await call_with_retry(build, parse, service_name="CoverLetter")
-        save_cover_letter(letter)
+        get_cover_letter_repository().save(letter)
         return letter
     except AIServiceUnavailable as e:
         raise RuntimeError("Cover letter service unavailable after retries") from e
 
 
 async def update(resume_id: str, letter_id: str, content: str, subject: str | None = None) -> CoverLetter:
-    letter = load_cover_letter(resume_id, letter_id)
+    letter = get_cover_letter_repository().get_by_id(resume_id, letter_id)
     if letter is None:
         raise FileNotFoundError(f"Cover letter '{letter_id}' not found")
     letter.content = content
     if subject is not None:
         letter.subject = subject
     letter.updated_at = datetime.now(timezone.utc).isoformat()
-    save_cover_letter(letter)
+    get_cover_letter_repository().save(letter)
     return letter
 
 
 async def regenerate(resume_id: str, letter_id: str) -> CoverLetter:
-    letter = load_cover_letter(resume_id, letter_id)
+    letter = get_cover_letter_repository().get_by_id(resume_id, letter_id)
     if letter is None:
         raise FileNotFoundError(f"Cover letter '{letter_id}' not found")
     request = CoverLetterRequest(
