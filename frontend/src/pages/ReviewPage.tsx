@@ -156,6 +156,9 @@ function ReviewPage() {
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       {/* Action bar — inline header, not an AppBar */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 0.5, pb: 2, flexWrap: 'wrap', borderBottom: '1px solid', borderColor: 'divider', mb: 2 }}>
+        <Button size="small" onClick={() => navigate('/')} sx={{ textTransform: 'none', borderRadius: 2, minWidth: 0, color: 'text.secondary' }}>
+          ← Back
+        </Button>
         <Typography variant="h1" sx={{ fontWeight: 700, mr: 'auto', fontSize: '1.5rem' }}>
           Review Resume
         </Typography>

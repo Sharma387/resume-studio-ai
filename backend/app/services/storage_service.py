@@ -41,6 +41,22 @@ def save_resume(resume_id: str, resume: Resume) -> None:
     path.write_text(resume.model_dump_json(indent=2), encoding="utf-8")
 
 
+def list_resumes(user_id: str | None = None, limit: int = 10) -> list[tuple[str, Resume]]:
+    if not RESUMES_DIR.exists():
+        return []
+    results: list[tuple[str, Resume]] = []
+    for f in sorted(RESUMES_DIR.iterdir(), reverse=True):
+        if f.suffix == ".json":
+            data = json.loads(f.read_text(encoding="utf-8"))
+            resume = Resume(**data)
+            if user_id and resume.user_id != user_id:
+                continue
+            results.append((f.stem, resume))
+            if len(results) >= limit:
+                break
+    return results
+
+
 def load_resume(resume_id: str, user_id: str | None = None) -> Resume | None:
     path = RESUMES_DIR / f"{resume_id}.json"
     if not path.exists():

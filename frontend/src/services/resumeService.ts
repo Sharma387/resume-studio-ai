@@ -8,9 +8,20 @@ export interface ResumeResponse {
   data: Resume;
 }
 
+export interface ResumesResponse {
+  success: boolean;
+  data: Resume[];
+}
+
 export async function fetchResume(id: string): Promise<ResumeResponse> {
   const res = await authFetch(`${API_URL}/resume/${id}`);
   if (!res.ok) throw new Error('Resume not found');
+  return res.json();
+}
+
+export async function fetchResumes(): Promise<ResumesResponse> {
+  const res = await authFetch(`${API_URL}/resumes`);
+  if (!res.ok) throw new Error('Failed to fetch resumes');
   return res.json();
 }
 
