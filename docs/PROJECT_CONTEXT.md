@@ -308,6 +308,7 @@ frontend/
 | 020 | UX Polish — 6 reusable components, animations, a11y | ✅ Complete |
 | 020A | Release Stabilization — auth enforcement, bug fixes, a11y | ✅ Complete |
 | 020B | Home Navigation & Resume Continuity — Continue Editing, Back to Home, GET /resumes | ✅ Complete |
+| BUG-001 | Fix empty URL string validation in Resume Projects/Certifications — model_validator normalizes "" → None | ✅ Complete |
 
 ---
 
