@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, HttpUrl, Field
+from pydantic import BaseModel, EmailStr, HttpUrl, Field, model_validator
 
 
 class Education(BaseModel):
@@ -55,3 +55,21 @@ class Resume(BaseModel):
     projects: list[Project] = []
     skills: list[Skill] = []
     certifications: list[Certification] = []
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_empty_urls(cls, data: dict) -> dict:
+        """Convert empty strings to None for HttpUrl | None fields before validation."""
+        # Top-level URL fields
+        for field in ("linkedin", "github", "website"):
+            if field in data and data[field] == "":
+                data[field] = None
+        # Project.url
+        for item in data.get("projects", []):
+            if isinstance(item, dict) and "url" in item and item["url"] == "":
+                item["url"] = None
+        # Certification.url
+        for item in data.get("certifications", []):
+            if isinstance(item, dict) and "url" in item and item["url"] == "":
+                item["url"] = None
+        return data
