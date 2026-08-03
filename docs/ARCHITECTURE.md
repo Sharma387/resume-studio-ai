@@ -51,3 +51,20 @@ frontend/
 │   └── contexts/        # React contexts (auth, theme)
 docs/                    # Project documentation
 ```
+
+## Render Tree (Layout Engine, Phase 0)
+
+The Render Tree is the intermediate, format-agnostic rendering document
+(ADR-3.0-01). It decouples resume *structure* from any concrete output format
+(HTML, PDF, DOCX, PPTX, PNG, JSON) so preview, export, and future renderers all
+consume the same artifact.
+
+- `backend/app/rendering/tree/models.py` — `NodeKind`, `RenderNode`, leaf unit
+  payloads (`TextData`, `LinkData`, `TimeData`, …), `PageSize`/`PageMargins`.
+- Structural hierarchy: `document → page → region → section → block` (block may
+  be a container: `grid`/`row`/`list`/`timeline`).
+- Structural invariants (child-kind rules, leaf data requirements, page
+  geometry) are validated eagerly by Pydantic; cross-node invariants (unique
+  ids, region integrity, ATS text order) belong to the TreeValidator (next).
+- Purely additive: the existing `TemplateRegistry`/`HTMLRenderer`/
+  `PreviewService` contracts are untouched.
