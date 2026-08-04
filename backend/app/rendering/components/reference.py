@@ -7,6 +7,7 @@ ships with the TreeBuilder and Content View Model units.
 
 from __future__ import annotations
 
+from app.rendering.common.section_types import SectionType
 from app.rendering.components.base import (
     ComponentMetadata,
     ComponentValidationResult,
@@ -94,7 +95,7 @@ class _PlaceholderComponent(SectionComponent):
 
 
 class SummaryComponent(_PlaceholderComponent):
-    _section_type = "summary"
+    _section_type = SectionType.SUMMARY.value
     _name = "Summary"
     _description = "Professional summary section."
     _text_keys = ("text", "summary")
@@ -102,7 +103,7 @@ class SummaryComponent(_PlaceholderComponent):
 
 
 class ExperienceComponent(_PlaceholderComponent):
-    _section_type = "experience"
+    _section_type = SectionType.EXPERIENCE.value
     _name = "Experience"
     _description = "Work experience section."
     _text_keys = ("text", "title", "company")
@@ -110,7 +111,7 @@ class ExperienceComponent(_PlaceholderComponent):
 
 
 class EducationComponent(_PlaceholderComponent):
-    _section_type = "education"
+    _section_type = SectionType.EDUCATION.value
     _name = "Education"
     _description = "Education section."
     _text_keys = ("text", "degree", "institution")
@@ -118,7 +119,7 @@ class EducationComponent(_PlaceholderComponent):
 
 
 class SkillsComponent(_PlaceholderComponent):
-    _section_type = "skills"
+    _section_type = SectionType.SKILLS.value
     _name = "Skills"
     _description = "Skills section."
     _text_keys = ("text", "skills", "category")

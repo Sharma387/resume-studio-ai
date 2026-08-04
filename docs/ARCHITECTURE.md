@@ -103,3 +103,25 @@ The full layer hierarchy, responsibilities, downward-only import policy, and
 forbidden dependencies for the orchestration layer (LayoutRegistry,
 ThemeRegistry, RenderContext, ContentViewModel, TreeBuilder, renderers) live in
 [`docs/LayoutEngineDependencies.md`](LayoutEngineDependencies.md).
+
+## Shared Section Vocabulary (Layout Engine, Phase 0)
+
+`backend/app/rendering/common/section_types.py` — the single canonical source
+of truth for every resume section identifier across the rendering architecture
+(Content View Model, `LayoutConfig` placement, `ComponentRegistry`, themes,
+plugins).
+
+- `SectionType` — stable canonical section types (`summary`, `experience`,
+  …). Never change.
+- `SectionDefinition` — immutable (frozen) metadata: `section_type`,
+  `stable_id` (permanent, e.g. `section.summary.v1`), `display_name` (mutable),
+  `category`, `default_order`, `ats_priority`, `visible_by_default`,
+  `supports_*` flags, `plugin_origin` (`"core"` for built-ins), `version`.
+- `SectionRegistry` — thread-safe core registry: `lookup` (by section type),
+  `lookup_by_id` (by stable id), `contains`, `list`, `ordered`, `validate`.
+  Core definitions are immutable and cannot be replaced.
+- **Plugin readiness** — marketplace plugins register dotted
+  (`vendor.section`) extension definitions without modifying core; registration
+  rejects duplicate stable ids, duplicate section types, empty identifiers,
+  and invalid metadata. Purely additive leaf module with zero rendering
+  dependencies.
