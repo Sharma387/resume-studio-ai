@@ -72,3 +72,27 @@ consume the same artifact.
   `TreeValidator` (`assert_valid`, `is_valid`, `validate`).
 - Purely additive: the existing `TemplateRegistry`/`HTMLRenderer`/
   `PreviewService` contracts are untouched.
+
+## Component Registry (Layout Engine, Phase 0)
+
+`backend/app/rendering/components/` — the TreeBuilder's extension point for
+resume sections. The TreeBuilder never contains section-specific logic; it
+resolves a `SectionComponent` by section type and delegates.
+
+- `base.py` — `SectionComponent` contract (`section_type`, `metadata`,
+  `validate_input`, `build_render_nodes`), immutable `ComponentMetadata`, and
+  `ComponentValidationResult`. Renderer-independent: components emit Render
+  Tree nodes only (no HTML/CSS/Jinja/PDF).
+- `registry.py` — thread-safe `ComponentRegistry`: `register`/`unregister`,
+  `resolve`/`get`/`has`, `list`/`components`/`metadata_map`, duplicate
+  detection, configurable replacement policy, deterministic registration order,
+  and immutable returned collections.
+- `reference.py` — lightweight placeholder components (`Summary`,
+  `Experience`, `Education`, `Skills`) proving the contract end-to-end.
+
+**Extension model** — a new resume section is a `SectionComponent` subclass
+registered by section type. **Registration lifecycle** — components are
+registered once at startup (duplicates rejected by default; replacement
+opt-in). **Plugin readiness** — the public registry interface is the plugin
+seam; future marketplace packages register components through it. Purely
+additive; nothing existing is touched.
