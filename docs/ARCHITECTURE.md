@@ -96,3 +96,10 @@ registered once at startup (duplicates rejected by default; replacement
 opt-in). **Plugin readiness** — the public registry interface is the plugin
 seam; future marketplace packages register components through it. Purely
 additive; nothing existing is touched.
+
+### Dependency map
+
+The full layer hierarchy, responsibilities, downward-only import policy, and
+forbidden dependencies for the orchestration layer (LayoutRegistry,
+ThemeRegistry, RenderContext, ContentViewModel, TreeBuilder, renderers) live in
+[`docs/LayoutEngineDependencies.md`](LayoutEngineDependencies.md).
