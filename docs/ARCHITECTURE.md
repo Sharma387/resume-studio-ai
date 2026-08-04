@@ -61,10 +61,14 @@ consume the same artifact.
 
 - `backend/app/rendering/tree/models.py` — `NodeKind`, `RenderNode`, leaf unit
   payloads (`TextData`, `LinkData`, `TimeData`, …), `PageSize`/`PageMargins`.
+- `backend/app/rendering/tree/validator.py` — `TreeValidator` (cross-node
+  invariants: unique ids, region integrity, section/text provenance, span
+  budget, root type) plus deterministic `extract_text()` in render order, the
+  canonical ATS-order artifact.
 - Structural hierarchy: `document → page → region → section → block` (block may
   be a container: `grid`/`row`/`list`/`timeline`).
 - Structural invariants (child-kind rules, leaf data requirements, page
-  geometry) are validated eagerly by Pydantic; cross-node invariants (unique
-  ids, region integrity, ATS text order) belong to the TreeValidator (next).
+  geometry) are validated eagerly by Pydantic; global invariants are enforced by
+  `TreeValidator` (`assert_valid`, `is_valid`, `validate`).
 - Purely additive: the existing `TemplateRegistry`/`HTMLRenderer`/
   `PreviewService` contracts are untouched.

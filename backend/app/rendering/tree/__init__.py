@@ -22,6 +22,12 @@ from app.rendering.tree.models import (
     TextData,
     TimeData,
 )
+from app.rendering.tree.validator import (
+    TextSpan,
+    TreeValidationError,
+    TreeValidationResult,
+    TreeValidator,
+)
 
 __all__ = [
     "A4",
@@ -43,5 +49,9 @@ __all__ = [
     "RenderUnitData",
     "SpacerData",
     "TextData",
+    "TextSpan",
     "TimeData",
+    "TreeValidationError",
+    "TreeValidationResult",
+    "TreeValidator",
 ]
