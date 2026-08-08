@@ -186,3 +186,37 @@ spacing, shape, and effects — never layout structure.
 Stable ids are permanent (`theme.blue.v1`); display names may change. Future
 marketplace themes register through the registry without modifying core code.
 Purely additive.
+
+## RenderContext (Layout Engine, Phase 0)
+
+`backend/app/rendering/context/` — the immutable execution context passed into
+component/layout construction. It is a **data bag** of already-resolved inputs;
+it performs no lookups and holds no registries.
+
+- `context_state.py` — strongly typed `RenderState` (`OutputFormat` enum:
+  html/pdf/docx/pptx/png/json; `RenderMode` preview/production; page
+  number/count; locale/timezone; accessibility/ATS/deterministic modes) — no
+  renderer-specific implementation details.
+- `context_validation.py` — deterministic `validate_resolved_context` (context
+  compatibility only: engine-version combination, content reference).
+- `render_context.py` — frozen `RenderContext` (content ref, resolved
+  `LayoutDefinition`, resolved `ThemePalette`, `RenderState`) and the
+  serialization-safe `ContentReference` (stable id + content hash).
+
+**Design rules**
+- **Immutable data bag** — genuinely frozen, nested models frozen; safe
+  `model_copy` replace semantics.
+- **Resolved dependency model** — Layout/Theme Registries resolve, then the
+  resolved objects are passed in; RenderContext never calls a registry.
+- **Registry independence preserved** — verified by import-graph tests
+  (ThemeRegistry ⊥ LayoutRegistry ⊥ ComponentRegistry).
+- **Content boundary** — the Content View Model does not exist yet; `content_ref`
+  is the narrowest serialization-safe reference. Resume business data never
+  lives in the context.
+- **Not a service locator** — no service/container dicts, no `get_*`/`resolve`
+  helpers, no generic `Any` containers.
+- **Validation boundary** — declarative models validate themselves;
+  RenderContext validates only the supplied *combination* (engine compatibility).
+- **Relation to TreeBuilder** — TreeBuilder receives this resolved context and
+  delegates section building to the ComponentRegistry; no business logic lives
+  in the context.

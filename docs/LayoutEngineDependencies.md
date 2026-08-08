@@ -90,3 +90,13 @@ L3 (config) and imports only the L2 section vocabulary.
 `ThemeRegistry` with a semantic-version engine gate and lightweight reference
 themes (Blue, Slate, Forest, Gold, Minimal). Fully independent of the Layout
 Registry (L3 config leaf). Themes never influence layout structure.
+
+## RenderContext (implemented)
+
+`backend/app/rendering/context/` — the immutable **data bag** of resolved inputs
+passed into component/layout construction. Holds a `ContentReference`, the
+resolved `LayoutDefinition`, the resolved `ThemePalette`, and a typed
+`RenderState` (output format, mode, page, locale, ATS/a11y/deterministic flags).
+Performs no lookups and imports no registries — it is the composition point
+(L5) above the L3/L4 registries. Verified by import-graph tests to preserve
+registry independence. Not a service locator; no business logic.
