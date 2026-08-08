@@ -81,3 +81,12 @@ plus a thread-safe `LayoutRegistry` with a semantic-version engine gate and
 lightweight reference layouts (Executive, Modern, Sidebar, Timeline, Classic,
 Minimal). Pure metadata/configuration — no rendering, no TreeBuilder. Lives in
 L3 (config) and imports only the L2 section vocabulary.
+
+## Theme Registry (implemented)
+
+`backend/app/rendering/theme/` — declarative, immutable visual design tokens:
+`ThemeTokens` (colors/typography/spacing/shape/effects), `ThemeMetadata`
+(permanent `stable_id` `theme.<name>.v1`), `ThemePalette`, and a thread-safe
+`ThemeRegistry` with a semantic-version engine gate and lightweight reference
+themes (Blue, Slate, Forest, Gold, Minimal). Fully independent of the Layout
+Registry (L3 config leaf). Themes never influence layout structure.

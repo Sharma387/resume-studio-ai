@@ -161,3 +161,28 @@ consume later.
 Stable ids are permanent (`layout.executive.v1`); display names may change.
 Future marketplace layouts register through the registry without modifying core
 code (extension points only — no plugin loading yet). Purely additive.
+
+## Theme Registry (Layout Engine, Phase 0)
+
+`backend/app/rendering/theme/` — the declarative, immutable source of truth for
+visual design tokens. It sits alongside the Layout Registry and is fully
+independent of it (per the dependency map). Themes control colors, typography,
+spacing, shape, and effects — never layout structure.
+
+- `theme_tokens.py` — frozen design tokens: `ColorTokens` (validated hex),
+  `TypographyTokens`, `SpacingTokens` (with density), `ShapeTokens`,
+  `EffectTokens`, composed into `ThemeTokens`.
+- `theme_metadata.py` — immutable `ThemeMetadata` (permanent `stable_id`
+  `theme.blue.v1`, semantic `ThemeVersion`, `plugin_origin`, tags, style,
+  dark mode, deprecated/experimental) and versioned `ThemeVersion`.
+- `theme_palette.py` — `ThemePalette` = metadata + tokens (frozen).
+- `theme_registry.py` — thread-safe `ThemeRegistry`
+  (`register`/`unregister`/`resolve`/`lookup`/`contains`/`ordered`/`metadata`/
+  `palettes`/`validate`/`list`): duplicate theme-id and stable-id detection,
+  replacement policy, semantic-version engine gate, immutable collections.
+- `reference_themes.py` — five lightweight data-only themes (Blue, Slate,
+  Forest, Gold, Minimal) validating the registry.
+
+Stable ids are permanent (`theme.blue.v1`); display names may change. Future
+marketplace themes register through the registry without modifying core code.
+Purely additive.
