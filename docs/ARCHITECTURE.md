@@ -220,3 +220,28 @@ it performs no lookups and holds no registries.
 - **Relation to TreeBuilder** — TreeBuilder receives this resolved context and
   delegates section building to the ComponentRegistry; no business logic lives
   in the context.
+
+## Content View Model (Layout Engine, Phase 0)
+
+`backend/app/rendering/content/` — the **layout-independent, renderer-independent
+representation of resume content**. The same CVM instance can be rendered through
+materially different layouts without any content change.
+
+- `models.py` — frozen content models: `Profile`, `ExperienceEntry`,
+  `EducationEntry`, `SkillGroup`, `CertificationEntry`, `ProjectEntry`,
+  `AwardEntry`, `LanguageEntry`, and `ContentView` (stable id, content sections,
+  `section_order` = content ordering, deterministic `content_hash`).
+- `builders.py` — `cvm_from_resume(resume)` — the "Resume/Candidate Data → CVM"
+  adapter; `models.py` itself stays pure (no source-schema coupling).
+
+**Boundary**
+- CVM contains candidate identity/contact, title, summary, experience, education,
+  skills, certifications, projects, awards, languages, and content ordering.
+- CVM contains **no** layout/theme/renderer concepts: no columns, sidebars,
+  coordinates, typography, colors, spacing, margins, or format details — those
+  belong to LayoutDefinition / ThemePalette / RenderContext / TreeBuilder.
+- `section_order` is *content* order; layouts reorder via their own placement
+  rules.
+- Flows: `Resume → CVM → RenderContext(content_ref + LayoutDefinition + Theme)
+  → TreeBuilder → RenderTree`. Layout/Theme/Component registries remain
+  independent; verified by import-graph tests.

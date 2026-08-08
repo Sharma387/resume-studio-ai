@@ -100,3 +100,14 @@ resolved `LayoutDefinition`, the resolved `ThemePalette`, and a typed
 Performs no lookups and imports no registries — it is the composition point
 (L5) above the L3/L4 registries. Verified by import-graph tests to preserve
 registry independence. Not a service locator; no business logic.
+
+## Content View Model (implemented)
+
+`backend/app/rendering/content/` — the layout-independent, renderer-independent
+resume content (L2 content leaf): frozen `ContentView` with typed sections
+(profile, summary, experience, education, skills, certifications, projects,
+awards, languages), content `section_order`, and a deterministic `content_hash`,
+plus a `cvm_from_resume` adapter. The same CVM flows into any `LayoutDefinition`
+(Executive, Sidebar, Modern, …) unchanged — structure is the layout's concern.
+CVM depends only on the shared section vocabulary; import-graph tests verify no
+coupling to layout/theme/context/components/tree/service layers.
