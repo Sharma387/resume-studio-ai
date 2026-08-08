@@ -71,3 +71,13 @@ its own layer and every layer below it, never upward.
 - Plugins register sections/layouts/themes through the registry interfaces (L4) only — never by editing core modules.
 - A plugin layout is a declarative `LayoutConfig`; a plugin section is a `SectionComponent` plus a section-vocabulary entry. Both are data + registrations, with no code reach into the builder or renderers.
 - The directory lives in L3+) so a plugin can never introduce a cycle with L1/L2 foundation.
+
+## Layout Registry (implemented)
+
+`backend/app/rendering/layout/` — declarative, immutable layout definitions:
+`LayoutMetadata` (permanent `stable_id` `layout.<name>.v1`), `LayoutCapabilities`,
+`RegionDefinition`, `PlacementRule`, `ValidationRules`, and `LayoutDefinition`,
+plus a thread-safe `LayoutRegistry` with a semantic-version engine gate and
+lightweight reference layouts (Executive, Modern, Sidebar, Timeline, Classic,
+Minimal). Pure metadata/configuration — no rendering, no TreeBuilder. Lives in
+L3 (config) and imports only the L2 section vocabulary.

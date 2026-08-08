@@ -125,3 +125,39 @@ plugins).
   rejects duplicate stable ids, duplicate section types, empty identifiers,
   and invalid metadata. Purely additive leaf module with zero rendering
   dependencies.
+
+## Layout Registry (Layout Engine, Phase 0)
+
+`backend/app/rendering/layout/` — the declarative, immutable source of truth
+describing every resume layout. Contains no rendering logic, no HTML/CSS, and
+no TreeBuilder behaviour — pure metadata and configuration the TreeBuilder will
+consume later.
+
+- `layout_metadata.py` — immutable `LayoutMetadata` (`layout_id` registry key,
+  permanent `stable_id` like `layout.executive.v1`, `version`/`api_version`/
+  `engine_version`, `ats_score`/`ats_safe`, `supports_*` flags,
+  `recommended_sections`, `deprecated`/`experimental`, `plugin_origin`) and
+  semantic `LayoutVersion`.
+- `layout_capabilities.py` — strongly typed `LayoutCapabilities`
+  (`sidebar`, `timeline`, `photo`, `badges`, `metrics`, `tables`,
+  `multi_column`, `multi_page`, `qr_code`, `portfolio`, `icons`).
+- `layout_regions.py` — immutable `RegionDefinition` (`header`/`main`/
+  `sidebar`/`footer`/`full_width`/`custom`) with `column_span`, ordering,
+  `allowed_sections`, `required`, `repeatable`.
+- `placement_rules.py` — declarative per-section `PlacementRule`
+  (allowed/preferred/fallback regions, required, min/max occurrences,
+  ordering, variant).
+- `layout_validation.py` / `layout_definition.py` — `ValidationRules` and the
+  `LayoutDefinition` composition (metadata + capabilities + regions +
+  placement + grid + page + theme compatibility), validating region/placement/
+  capability/grid/page consistency.
+- `layout_registry.py` — thread-safe `LayoutRegistry` (`register`/`unregister`/
+  `resolve`/`lookup`/`contains`/`ordered`/`metadata`/`definitions`/`validate`/
+  `list`): deterministic ordering, duplicate layout-id and stable-id detection,
+  replacement policy, semantic-version engine gate, immutable collections.
+- `reference_layouts.py` — lightweight data-only reference layouts (Executive,
+  Modern, Sidebar, Timeline, Classic, Minimal) validating the registry.
+
+Stable ids are permanent (`layout.executive.v1`); display names may change.
+Future marketplace layouts register through the registry without modifying core
+code (extension points only — no plugin loading yet). Purely additive.
