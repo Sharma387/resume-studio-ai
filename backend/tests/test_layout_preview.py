@@ -226,3 +226,19 @@ class TestCSPIframe:
         assert "frame-ancestors" in csp
         assert "http://127.0.0.1:5173" in csp
         assert file_response.headers.get("x-frame-options") != "DENY"
+
+
+# ── Preview file security (path containment) ──────────────────────────────────
+
+
+class TestPreviewFileSecurity:
+    async def test_preview_file_rejects_directory_and_traversal_names(self, client):
+        # A directory-resolving name and traversal attempts must not be served.
+        for bad in ("..", "%2e%2e", "..%2F..%2F..%2Fetc%2Fpasswd", "%2e%2e%2f%2e%2e"):
+            response = await client.get(f"/api/v1/resume/preview/file/{bad}")
+            assert response.status_code == 404, f"{bad} -> {response.status_code}"
+
+    async def test_valid_preview_file_still_served(self, client):
+        resume_id = _save_resume()
+        body, html = await _preview(client, resume_id, layout_id="executive", theme="blue")
+        assert 'data-region="main"' in html

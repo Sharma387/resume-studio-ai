@@ -90,9 +90,14 @@ async def generate_resume_preview(
 
 @router.get("/resume/preview/file/{filename}")
 async def serve_preview(filename: str):
-    """Serve a generated preview HTML file."""
+    """Serve a generated preview HTML file.
+
+    Only regular files inside the preview directory are served; path
+    traversal or directory names resolve to a 404.
+    """
     from app.rendering.preview.service import PREVIEW_DIR
-    path = PREVIEW_DIR / filename
-    if not path.exists():
+    base = PREVIEW_DIR.resolve()
+    path = (PREVIEW_DIR / filename).resolve()
+    if not path.is_relative_to(base) or not path.is_file():
         raise HTTPException(status_code=404, detail="Preview not found")
     return HTMLResponse(content=path.read_text(encoding="utf-8"))
