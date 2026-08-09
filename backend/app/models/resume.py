@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, HttpUrl, Field, model_validator
+from pydantic import BaseModel, EmailStr, Field, HttpUrl, model_validator
 
 
 class Education(BaseModel):
@@ -40,6 +40,18 @@ class Certification(BaseModel):
     url: HttpUrl | None = None
 
 
+class Award(BaseModel):
+    name: str = Field(..., min_length=1)
+    issuer: str | None = None
+    date: str | None = None
+    description: str | None = None
+
+
+class Language(BaseModel):
+    name: str = Field(..., min_length=1)
+    proficiency: str | None = None
+
+
 class Resume(BaseModel):
     user_id: str
     full_name: str = Field(..., min_length=1)
@@ -49,12 +61,15 @@ class Resume(BaseModel):
     linkedin: HttpUrl | None = None
     github: HttpUrl | None = None
     website: HttpUrl | None = None
+    professional_title: str | None = None
     summary: str | None = None
     education: list[Education] = []
     experience: list[Experience] = []
     projects: list[Project] = []
     skills: list[Skill] = []
     certifications: list[Certification] = []
+    awards: list[Award] = []
+    languages: list[Language] = []
 
     @model_validator(mode="before")
     @classmethod

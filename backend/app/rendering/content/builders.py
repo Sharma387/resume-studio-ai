@@ -9,10 +9,12 @@ from __future__ import annotations
 
 from app.models.resume import Resume
 from app.rendering.content.models import (
+    AwardEntry,
     CertificationEntry,
     ContentView,
     EducationEntry,
     ExperienceEntry,
+    LanguageEntry,
     Profile,
     ProjectEntry,
     SkillGroup,
@@ -33,6 +35,7 @@ def cvm_from_resume(resume: Resume, *, stable_id: str | None = None) -> ContentV
 
     profile = Profile(
         full_name=resume.full_name,
+        professional_title=resume.professional_title,
         email=resume.email,
         phone=resume.phone,
         location=resume.location,
@@ -87,6 +90,20 @@ def cvm_from_resume(resume: Resume, *, stable_id: str | None = None) -> ContentV
         for project in resume.projects
     )
 
+    awards = tuple(
+        AwardEntry(
+            title=award.name,
+            issuer=award.issuer,
+            date=award.date,
+        )
+        for award in resume.awards
+    )
+
+    languages = tuple(
+        LanguageEntry(name=language.name, proficiency=language.proficiency)
+        for language in resume.languages
+    )
+
     return ContentView(
         stable_id=f"resume.{sid}",
         profile=profile,
@@ -96,4 +113,6 @@ def cvm_from_resume(resume: Resume, *, stable_id: str | None = None) -> ContentV
         skills=skills,
         certifications=certifications,
         projects=projects,
+        awards=awards,
+        languages=languages,
     )

@@ -9,3 +9,10 @@ Rules:
 - For skills, categorize them logically (Languages, Frontend, Backend, DevOps, etc.).
 - Extract achievements/description points as separate list items.
 - Do not fabricate information. Only extract what is present in the text.
+
+Fields to extract explicitly:
+- professional_title: the candidate's stated job/professional title (e.g. "Senior Project Manager", "Infrastructure Specialist"). Use null if no confident title is present in the text. Never derive it from the person's name.
+- Profile/contact: full_name, email, phone, location, linkedin, github, website when present.
+- projects: name, description, url, technologies when present.
+- awards: name, issuer, date, description when present; an empty list if there are no awards.
+- languages: name, and proficiency only when the resume states a proficiency (e.g. "Native", "Professional", "Basic"); an empty list if there are no languages. Do not infer proficiency levels that are not stated.
