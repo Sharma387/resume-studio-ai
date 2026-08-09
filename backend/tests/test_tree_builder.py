@@ -13,12 +13,15 @@ from collections import Counter
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
 
 from app.rendering.builder import TreeBuilder, TreeBuilderError
 from app.rendering.components import (
+    CertificationsComponent,
     ComponentRegistry,
     EducationComponent,
     ExperienceComponent,
+    ProfileComponent,
     SkillsComponent,
     SummaryComponent,
 )
@@ -31,6 +34,7 @@ from app.rendering.content.models import (
     SkillGroup,
 )
 from app.rendering.context import ContentReference, RenderContext
+from app.rendering.layout.layout_metadata import LayoutVersion
 from app.rendering.layout.reference_layouts import (
     classic_layout,
     executive_layout,
@@ -45,10 +49,12 @@ from app.rendering.tree.validator import TreeValidator
 def _registry() -> ComponentRegistry:
     registry = ComponentRegistry()
     for component in (
+        ProfileComponent(),
         SummaryComponent(),
         ExperienceComponent(),
         EducationComponent(),
         SkillsComponent(),
+        CertificationsComponent(),
     ):
         registry.register(component)
     return registry
@@ -121,18 +127,19 @@ class TestStructuralLayoutAcceptance:
         assert set(classic_map) == {"main"}
 
         # Same CVM, materially different section→region placement.
-        assert exec_map["main"] == ["summary", "experience", "education", "skills"]
-        assert side_map["main"] == ["summary", "experience", "education"]
-        assert side_map["sidebar"] == ["skills"]
-        assert modern_map["main"] == ["summary", "experience", "education"]
-        assert modern_map["secondary"] == ["skills"]
+        assert exec_map["main"] == ["profile", "summary", "experience", "education", "certifications", "skills"]
+        assert side_map["main"] == ["profile", "summary", "experience", "education"]
+        assert side_map["sidebar"] == ["skills", "certifications"]
+        assert modern_map["main"] == ["profile", "summary", "experience", "education"]
+        assert modern_map["secondary"] == ["skills", "certifications"]
 
-        # Skills relocates (structure), summary stays in main (content constant).
+        # Skills relocates (structure), profile/summary stay in main (content constant).
         assert "skills" in exec_map["main"]
         assert "skills" not in side_map["main"] and "skills" in side_map["sidebar"]
         assert "skills" not in modern_map["main"] and "skills" in modern_map["secondary"]
         for mapping in (exec_map, side_map, modern_map, classic_map):
             assert "summary" in mapping["main"]
+            assert "profile" in mapping["main"]
 
     def test_content_identical_across_layouts(self):
         builder = TreeBuilder(_registry())
@@ -146,7 +153,11 @@ class TestStructuralLayoutAcceptance:
         assert all(counter[summary] == 1 for counter in counters)
         # All three jobs are carried in the CVM and preserved.
         assert len(cvm.experience) == 3
-        assert counters[0][("experience", "Senior Engineer")] == 1
+        assert counters[0][("experience", "Senior Engineer — Acme (2016 – Present)")] == 1
+        assert counters[0][("experience", "Engineer — Beta Inc (2014 – 2016)")] == 1
+        assert counters[0][("experience", "Junior Engineer — Gamma (2012 – 2014)")] == 1
+        assert counters[0][("profile", "Jane Doe — Principal Engineer")] == 1
+        assert counters[0][("certifications", "AWS Certified — Amazon")] == 1
 
     def test_cvm_unchanged_across_layouts(self):
         builder = TreeBuilder(_registry())
@@ -199,6 +210,31 @@ class TestBuild:
         with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
             results = list(pool.map(build, range(16)))
         assert len(set(results)) == 1
+
+    def test_context_not_mutated_by_build(self):
+        cvm = _cvm()
+        context = _context(cvm, sidebar_layout())
+        before = context.model_dump_json()
+        TreeBuilder(_registry()).build(cvm, context)
+        assert context.model_dump_json() == before
+
+
+# ── Invalid / incompatible layout ─────────────────────────────────────────────
+
+
+class TestInvalidLayout:
+    def test_incompatible_layout_rejected_cleanly(self):
+        # A layout requiring a newer engine than the context target is rejected
+        # at RenderContext construction, so the builder never sees it.
+        layout = executive_layout().model_copy(
+            update={
+                "metadata": executive_layout().metadata.model_copy(
+                    update={"engine_version": LayoutVersion(major=2, minor=0, patch=0)}
+                )
+            }
+        )
+        with pytest.raises(ValidationError):
+            RenderContext(layout=layout, theme=blue_theme(), engine_version=(1, 0, 0))
 
 
 # ── Content reference consistency ─────────────────────────────────────────────

@@ -7,8 +7,10 @@ from app.rendering.components.base import (
     SectionContent,
 )
 from app.rendering.components.reference import (
+    CertificationsComponent,
     EducationComponent,
     ExperienceComponent,
+    ProfileComponent,
     SkillsComponent,
     SummaryComponent,
 )
@@ -26,8 +28,10 @@ __all__ = [
     "ComponentRegistry",
     "ComponentRegistryError",
     "ComponentValidationResult",
+    "CertificationsComponent",
     "EducationComponent",
     "ExperienceComponent",
+    "ProfileComponent",
     "SectionComponent",
     "SectionContent",
     "SkillsComponent",

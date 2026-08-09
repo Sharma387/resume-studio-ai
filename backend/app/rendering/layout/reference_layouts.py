@@ -25,6 +25,10 @@ def _main(span: int = 12, *, allowed: tuple[str, ...] = ()) -> RegionDefinition:
     )
 
 
+#: Candidate identity/header section — placed first in the main region.
+_PROFILE_RULE = PlacementRule(section="profile", preferred_region="main", ordering=-10, required=True)
+
+
 def _build(
     name: str,
     *,
@@ -74,6 +78,7 @@ def executive_layout() -> LayoutDefinition:
         regions=(_main(),),
         capabilities=LayoutCapabilities(),
         placement=(
+            _PROFILE_RULE,
             PlacementRule(section="summary", preferred_region="main", required=True, ordering=0),
             PlacementRule(section="experience", preferred_region="main", ordering=10),
             PlacementRule(section="education", preferred_region="main", ordering=20),
@@ -91,7 +96,7 @@ def modern_layout() -> LayoutDefinition:
         display_name="Modern",
         description="Balanced two-column layout with a secondary column.",
         regions=(
-            _main(span=6, allowed=("summary", "experience", "education")),
+            _main(span=6, allowed=("profile", "summary", "experience", "education")),
             RegionDefinition(
                 identifier="secondary",
                 display_name="Secondary",
@@ -103,6 +108,7 @@ def modern_layout() -> LayoutDefinition:
         ),
         capabilities=LayoutCapabilities(multi_column=True),
         placement=(
+            _PROFILE_RULE,
             PlacementRule(section="summary", preferred_region="main", required=True),
             PlacementRule(section="experience", preferred_region="main"),
             PlacementRule(section="skills", preferred_region="secondary"),
@@ -119,7 +125,7 @@ def sidebar_layout() -> LayoutDefinition:
         display_name="Sidebar",
         description="Main column with a narrow sidebar for skills and contact.",
         regions=(
-            _main(span=7, allowed=("summary", "experience", "education", "projects")),
+            _main(span=7, allowed=("profile", "summary", "experience", "education", "projects")),
             RegionDefinition(
                 identifier="sidebar",
                 display_name="Sidebar",
@@ -131,6 +137,7 @@ def sidebar_layout() -> LayoutDefinition:
         ),
         capabilities=LayoutCapabilities(sidebar=True, multi_column=True),
         placement=(
+            _PROFILE_RULE,
             PlacementRule(section="summary", preferred_region="main", required=True),
             PlacementRule(section="experience", preferred_region="main"),
             PlacementRule(section="skills", preferred_region="sidebar", fallback_region="main"),
@@ -149,6 +156,7 @@ def timeline_layout() -> LayoutDefinition:
         regions=(_main(),),
         capabilities=LayoutCapabilities(timeline=True, metrics=True),
         placement=(
+            _PROFILE_RULE,
             PlacementRule(section="summary", preferred_region="main", required=True),
             PlacementRule(section="experience", preferred_region="main", default_variant="timeline"),
         ),
@@ -166,6 +174,7 @@ def classic_layout() -> LayoutDefinition:
         regions=(_main(),),
         capabilities=LayoutCapabilities(),
         placement=(
+            _PROFILE_RULE,
             PlacementRule(section="summary", preferred_region="main", required=True),
             PlacementRule(section="experience", preferred_region="main"),
             PlacementRule(section="education", preferred_region="main"),
@@ -186,6 +195,7 @@ def minimal_layout() -> LayoutDefinition:
         regions=(_main(),),
         capabilities=LayoutCapabilities(),
         placement=(
+            _PROFILE_RULE,
             PlacementRule(section="summary", preferred_region="main", required=True),
             PlacementRule(section="experience", preferred_region="main"),
         ),

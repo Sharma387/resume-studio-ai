@@ -1,0 +1,327 @@
+"""Tests for the RenderTree → HTML renderer (Layout Engine, Phase 0).
+
+Mandatory acceptance: the SAME CVM rendered through materially different
+LayoutDefinitions must produce structurally different HTML while preserving
+identical content.
+"""
+
+import ast
+import importlib
+import inspect
+import re
+from collections import Counter
+from html.parser import HTMLParser
+from pathlib import Path
+
+import pytest
+
+from app.models.resume import Resume
+from app.rendering.content import ContentView, Profile
+from app.rendering.content.models import (
+    CertificationEntry,
+    EducationEntry,
+    ExperienceEntry,
+    SkillGroup,
+)
+from app.rendering.layout.reference_layouts import (
+    classic_layout,
+    executive_layout,
+    modern_layout,
+    sidebar_layout,
+)
+from app.rendering.layout_html import render_layout_html, render_resume_layout_html
+from app.rendering.renderers.tree_html_renderer import RenderTreeHTMLRenderer
+from app.rendering.theme.reference_themes import blue_theme, gold_theme
+from app.rendering.tree import A4, NodeKind, PageMargins, RenderNode, TextData
+from app.rendering.tree.validator import TreeValidationError
+
+
+def _cvm() -> ContentView:
+    return ContentView(
+        stable_id="resume.html",
+        profile=Profile(full_name="Jane Doe", professional_title="Principal Engineer"),
+        summary="Full-stack engineer with 8 years building platforms.",
+        experience=(
+            ExperienceEntry(company="Acme", title="Senior Engineer", start_date="2016", current=True),
+            ExperienceEntry(company="Beta Inc", title="Engineer", start_date="2014", end_date="2016"),
+            ExperienceEntry(company="Gamma", title="Junior Engineer", start_date="2012", end_date="2014"),
+        ),
+        education=(EducationEntry(institution="MIT", degree="B.Sc.", field="Computer Science"),),
+        skills=(SkillGroup(category="Languages", skills=("Python", "Go")),),
+        certifications=(CertificationEntry(name="AWS Certified", issuer="Amazon"),),
+    )
+
+
+# ── HTML structure introspection ──────────────────────────────────────────────
+
+
+class _StructureParser(HTMLParser):
+    _VOID = {"hr", "img", "br", "meta", "link", "input"}
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._stack: list[tuple[str, str | None]] = []
+        self.section_regions: dict[str, str | None] = {}
+
+    def handle_starttag(self, tag: str, attrs) -> None:
+        if tag in self._VOID:
+            return
+        attrs = dict(attrs)
+        region = attrs.get("data-region") if tag == "div" else None
+        self._stack.append((tag, region))
+        if tag == "section":
+            enclosing: str | None = None
+            for _, region_id in reversed(self._stack[:-1]):
+                if region_id:
+                    enclosing = region_id
+                    break
+            self.section_regions[attrs.get("data-section")] = enclosing
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag in self._VOID:
+            return
+        for index in range(len(self._stack) - 1, -1, -1):
+            if self._stack[index][0] == tag:
+                del self._stack[index:]
+                return
+
+
+def _section_regions(html: str) -> dict[str, str | None]:
+    parser = _StructureParser()
+    parser.feed(html)
+    parser.close()
+    return parser.section_regions
+
+
+def _body_text(html: str) -> str:
+    without_style = re.sub(r"<style.*?</style>", "", html, flags=re.S)
+    stripped = re.sub(r"<[^>]+>", " ", without_style)
+    return " ".join(stripped.split())
+
+
+def _tokens(html: str) -> Counter:
+    return Counter(_body_text(html).split())
+
+
+# ── A/B: valid & deterministic ────────────────────────────────────────────────
+
+
+class TestValidAndDeterministic:
+    def test_valid_html_document(self):
+        html = render_layout_html(_cvm(), executive_layout(), blue_theme())
+        assert html.startswith("<!DOCTYPE html>")
+        assert "<html" in html and "</html>" in html
+        assert 'class="resume"' in html
+        assert 'data-region="main"' in html
+
+    def test_deterministic(self):
+        cvm = _cvm()
+        a = render_layout_html(cvm, sidebar_layout(), blue_theme())
+        b = render_layout_html(cvm, sidebar_layout(), blue_theme())
+        assert a == b
+
+
+# ── C/E/F: same CVM, different layouts → different HTML structure ─────────────
+
+
+class TestSameCVMDifferentLayouts:
+    def test_region_containers_differ(self):
+        cvm = _cvm()
+        exec_html = render_layout_html(cvm, executive_layout(), blue_theme())
+        side_html = render_layout_html(cvm, sidebar_layout(), blue_theme())
+        modern_html = render_layout_html(cvm, modern_layout(), blue_theme())
+
+        assert 'data-region="main"' in exec_html and 'data-region="sidebar"' not in exec_html
+        assert 'data-region="main"' in side_html and 'data-region="sidebar"' in side_html
+        assert 'data-region="secondary"' in modern_html
+
+    def test_section_placement_differs_by_layout(self):
+        cvm = _cvm()
+        exec_map = _section_regions(render_layout_html(cvm, executive_layout(), blue_theme()))
+        side_map = _section_regions(render_layout_html(cvm, sidebar_layout(), blue_theme()))
+        modern_map = _section_regions(render_layout_html(cvm, modern_layout(), blue_theme()))
+        classic_map = _section_regions(render_layout_html(cvm, classic_layout(), blue_theme()))
+
+        # Skills relocates: main (executive) → sidebar (sidebar) → secondary (modern).
+        assert exec_map["skills"] == "main"
+        assert side_map["skills"] == "sidebar"
+        assert modern_map["skills"] == "secondary"
+        assert classic_map["skills"] == "main"
+        # Profile and summary stay in main everywhere (content constant).
+        for mapping in (exec_map, side_map, modern_map, classic_map):
+            assert mapping["summary"] == "main"
+            assert mapping["profile"] == "main"
+        # Experience follows the layout placement.
+        assert exec_map["experience"] == "main"
+        assert side_map["experience"] == "main"
+        assert modern_map["experience"] == "main"
+        # Certifications follows the layout placement (sidebar/secondary vs main).
+        assert exec_map["certifications"] == "main"
+        assert side_map["certifications"] == "sidebar"
+        assert modern_map["certifications"] == "secondary"
+
+
+# ── D: content preservation ───────────────────────────────────────────────────
+
+
+class TestContentPreservation:
+    def test_content_identical_across_layouts(self):
+        cvm = _cvm()
+        layouts = (executive_layout(), sidebar_layout(), modern_layout(), classic_layout())
+        counters = [_tokens(render_layout_html(cvm, layout, blue_theme())) for layout in layouts]
+        assert counters[0] == counters[1] == counters[2] == counters[3]
+
+    def test_substantive_content_present(self):
+        html = render_layout_html(_cvm(), sidebar_layout(), blue_theme())
+        body = _body_text(html)
+        for expected in (
+            "Jane Doe",
+            "Principal Engineer",
+            "Full-stack engineer with 8 years building platforms.",
+            "Senior Engineer — Acme (2016 – Present)",
+            "Engineer — Beta Inc (2014 – 2016)",
+            "Junior Engineer — Gamma (2012 – 2014)",
+            "B.Sc. in Computer Science — MIT",
+            "Languages: Python, Go",
+            "AWS Certified — Amazon",
+            "Experience",
+            "Skills",
+        ):
+            assert expected in body
+
+    def test_no_content_duplicated_by_region_flattening(self):
+        cvm = _cvm()
+        exec_html = render_layout_html(cvm, executive_layout(), blue_theme())
+        side_html = render_layout_html(cvm, sidebar_layout(), blue_theme())
+        # Each rendered text token appears exactly as often in both layouts.
+        assert _tokens(exec_html)["Senior"] == _tokens(side_html)["Senior"] == 1
+
+
+# ── G: theme separation ───────────────────────────────────────────────────────
+
+
+class TestThemeSeparation:
+    def test_theme_changes_tokens_not_structure(self):
+        cvm = _cvm()
+        blue = render_layout_html(cvm, sidebar_layout(), blue_theme())
+        gold = render_layout_html(cvm, sidebar_layout(), gold_theme())
+
+        assert _section_regions(blue) == _section_regions(gold)
+        assert "--primary: #2563eb" in blue
+        assert "--primary: #b98a2f" in gold
+
+    def test_layout_change_changes_structure_not_content(self):
+        cvm = _cvm()
+        # Sidebar + Theme B vs Executive + Theme B: same theme, different layout.
+        sidebar_gold = render_layout_html(cvm, sidebar_layout(), gold_theme())
+        exec_gold = render_layout_html(cvm, executive_layout(), gold_theme())
+
+        assert _section_regions(sidebar_gold)["skills"] == "sidebar"
+        assert _section_regions(exec_gold)["skills"] == "main"
+        assert 'data-region="sidebar"' in sidebar_gold
+        assert 'data-region="sidebar"' not in exec_gold
+        # Same visual tokens, identical content, different structure.
+        assert "--primary: #b98a2f" in sidebar_gold and "--primary: #b98a2f" in exec_gold
+        assert _tokens(sidebar_gold) == _tokens(exec_gold)
+
+
+# ── H: invalid tree ───────────────────────────────────────────────────────────
+
+
+class TestInvalidTree:
+    def test_invalid_tree_rejected(self):
+        # Model-valid but TreeValidator-invalid: a text node without content_ref.
+        text = RenderNode(id="t1", kind=NodeKind.TEXT, data=TextData(type="text", text="x"))
+        block = RenderNode(id="b1", kind=NodeKind.BLOCK, region="main", children=(text,))
+        section = RenderNode(id="s1", kind=NodeKind.SECTION, content_ref="summary", region="main", children=(block,))
+        region = RenderNode(id="r1", kind=NodeKind.REGION, region="main", children=(section,))
+        page = RenderNode(id="p1", kind=NodeKind.PAGE, page_size=A4, margins=PageMargins(), children=(region,))
+        invalid = RenderNode(id="doc", kind=NodeKind.DOCUMENT, children=(page,))
+        with pytest.raises(TreeValidationError):
+            RenderTreeHTMLRenderer().render(invalid)
+
+
+# ── I: empty sections ─────────────────────────────────────────────────────────
+
+
+class TestEmptySections:
+    def test_empty_sections_not_rendered(self):
+        cvm = ContentView(
+            stable_id="resume.e",
+            profile=Profile(full_name="Empty"),
+            summary="Only a summary.",
+        )
+        html = render_layout_html(cvm, executive_layout(), blue_theme())
+        assert 'data-section="summary"' in html
+        assert 'data-section="skills"' not in html
+        assert 'data-section="experience"' not in html
+
+
+# ── Orchestration: Resume → CVM → … → HTML ───────────────────────────────────
+
+
+class TestOrchestration:
+    def test_render_resume_layout_html(self):
+        resume = Resume(
+            user_id="u1",
+            full_name="Jane Doe",
+            email="jane@test.com",
+            summary="Full-stack engineer.",
+            experience=[{"company": "Acme", "title": "Engineer"}],
+        )
+        html = render_resume_layout_html(resume, sidebar_layout(), blue_theme(), stable_id="r1")
+        assert 'data-region="sidebar"' in html
+        assert "Full-stack engineer." in _body_text(html)
+        assert "Engineer" in _body_text(html)
+
+
+# ── J + architecture: renderer independence ───────────────────────────────────
+
+
+def _module_imports(dotted: str) -> set[str]:
+    module = importlib.import_module(dotted)
+    path = Path(inspect.getsourcefile(module))
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    imports: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom) and node.module:
+            imports.add(node.module)
+        elif isinstance(node, ast.Import):
+            for alias in node.names:
+                imports.add(alias.name.split(".")[0])
+    return imports
+
+
+def _imports_package(imports: set[str], package: str) -> bool:
+    prefix = package + "."
+    return any(item == package or item.startswith(prefix) for item in imports)
+
+
+class TestRendererIndependence:
+    def test_renderer_consumes_tree_and_theme_only(self):
+        imports = _module_imports("app.rendering.renderers.tree_html_renderer")
+        assert _imports_package(imports, "app.rendering.tree")
+        assert _imports_package(imports, "app.rendering.theme")
+        assert _imports_package(imports, "app.rendering.common")
+        for forbidden in (
+            "app.rendering.content",
+            "app.rendering.components",
+            "app.rendering.layout",
+            "app.rendering.preview",
+            "app.rendering.registry",
+            "app.rendering.builder",
+            "app.models",
+            "app.services",
+        ):
+            assert not _imports_package(imports, forbidden), forbidden
+
+    def test_orchestration_avoids_legacy_and_preview(self):
+        imports = _module_imports("app.rendering.layout_html")
+        assert not _imports_package(imports, "app.rendering.preview")
+        assert not _imports_package(imports, "app.rendering.registry")
+        assert not _imports_package(imports, "app.rendering.renderers.html_renderer")
+        assert not _imports_package(imports, "app.services")
+
+    def test_legacy_renderer_untouched(self):
+        imports = _module_imports("app.rendering.renderers.tree_html_renderer")
+        assert not _imports_package(imports, "app.rendering.registry")

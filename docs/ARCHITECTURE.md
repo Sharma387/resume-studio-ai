@@ -267,3 +267,29 @@ validated RenderTree from the CVM and a resolved `RenderContext`.
   Sidebar, Modern, and Classic layouts produces materially different
   `region → section` compositions (e.g. `skills` moves main → sidebar →
   secondary) while the extracted content text is byte-identical.
+
+## RenderTree → HTML Renderer (Layout Engine, Phase 0)
+
+`backend/app/rendering/renderers/tree_html_renderer.py` — the new
+RenderTree-to-HTML renderer. It consumes an already-built, validated
+`RenderNode` (RenderTree) and an optional `ThemePalette`, and decides **how it
+looks** — never *what goes where* (that was decided by the TreeBuilder from the
+LayoutDefinition).
+
+- Contract: `RenderTreeHTMLRenderer.render(tree, *, theme=None) -> str`.
+- Emits semantic HTML with explicit structural regions: `resume-page` →
+  `resume-region` (driven by region span) → `resume-section` (with vocabulary
+  title headings) → `resume-block` → text units. Regions are never flattened.
+- Theme tokens become `:root` CSS variables (colors/type/spacing/shape);
+  changing the theme changes tokens, not DOM structure.
+- `backend/app/rendering/layout_html.py` — the orchestration seam
+  `Resume → CVM → RenderContext → TreeBuilder → RenderTree → HTML`, exposed as
+  `render_layout_html(cvm, layout, theme)` and
+  `render_resume_layout_html(resume, layout, theme)`.
+- Placeholder reference components now carry substantive per-entry content
+  (name, companies, roles, dates, skills, certifications) into the tree; the
+  renderer preserves it exactly.
+- **Legacy boundary (untouched)**: the production preview still runs
+  `Resume → TemplateRegistry → Jinja HTMLRenderer → PreviewService`. The new
+  renderer is independently executable via the orchestration seam; wiring the
+  existing preview API to it awaits the `template_id → layout` migration.

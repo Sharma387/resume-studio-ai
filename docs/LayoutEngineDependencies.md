@@ -123,3 +123,15 @@ Acceptance-tested: the same CVM produces materially different render structures
 across Executive / Sidebar / Modern / Classic layouts with identical content.
 Imports only downward (components, content, context, layout, tree) — no
 renderers or preview.
+
+## RenderTree → HTML Renderer (implemented)
+
+`backend/app/rendering/renderers/tree_html_renderer.py` — L7 renderer consuming
+the RenderTree (+ optional `ThemePalette`); emits semantic HTML with explicit
+`resume-region` containers driven by region spans (never flattened, never
+template-id hardcoded). `backend/app/rendering/layout_html.py` is the
+orchestration seam `Resume → CVM → RenderContext → TreeBuilder → RenderTree →
+HTML` (`render_layout_html` / `render_resume_layout_html`). The renderer
+imports only tree/theme/common — no CVM, layouts, registries, preview, or
+legacy template system. The legacy `TemplateRegistry` preview path remains
+untouched; preview-API migration awaits the `template_id → layout` boundary.
