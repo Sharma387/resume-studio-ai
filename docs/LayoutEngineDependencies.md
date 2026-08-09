@@ -111,3 +111,15 @@ plus a `cvm_from_resume` adapter. The same CVM flows into any `LayoutDefinition`
 (Executive, Sidebar, Modern, …) unchanged — structure is the layout's concern.
 CVM depends only on the shared section vocabulary; import-graph tests verify no
 coupling to layout/theme/context/components/tree/service layers.
+
+## TreeBuilder (implemented)
+
+`backend/app/rendering/builder/` — the L6 orchestrator: `build(cvm, context)`
+assembles a validated RenderTree from the CVM and `RenderContext.layout`,
+resolving sections through the `ComponentRegistry` and validating with the
+`TreeValidator`. Placement/composition are driven entirely by the declarative
+`LayoutDefinition` (regions + placement rules) — no hardcoded layout knowledge.
+Acceptance-tested: the same CVM produces materially different render structures
+across Executive / Sidebar / Modern / Classic layouts with identical content.
+Imports only downward (components, content, context, layout, tree) — no
+renderers or preview.

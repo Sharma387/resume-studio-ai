@@ -7,6 +7,11 @@ ships with the TreeBuilder and Content View Model units.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
+from typing import Any
+
+from pydantic import BaseModel
+
 from app.rendering.common.section_types import SectionType
 from app.rendering.components.base import (
     ComponentMetadata,
@@ -16,12 +21,44 @@ from app.rendering.components.base import (
 )
 from app.rendering.tree import NodeKind, RenderNode, TextData
 
+_TEXT_FIELDS = (
+    "title", "company", "name", "category", "institution", "degree",
+    "full_name", "summary", "text",
+)
+
+
+def _coerce_text(value: Any) -> str | None:
+    """Coerce a CVM section value into a short display string (placeholder)."""
+    if isinstance(value, str):
+        return value.strip() or None
+    if isinstance(value, (tuple, list)):
+        for item in value:
+            text = _coerce_text(item)
+            if text:
+                return text
+        return None
+    if isinstance(value, Mapping):
+        for key in _TEXT_FIELDS:
+            if key in value:
+                text = _coerce_text(value[key])
+                if text:
+                    return text
+        return None
+    if isinstance(value, BaseModel):
+        for field in _TEXT_FIELDS:
+            if hasattr(value, field):
+                text = _coerce_text(getattr(value, field))
+                if text:
+                    return text
+        return None
+    return None
+
 
 def _extract_text(content: SectionContent, keys: tuple[str, ...]) -> str:
     for key in keys:
-        value = content.get(key)
-        if isinstance(value, str) and value.strip():
-            return value.strip()
+        text = _coerce_text(content.get(key))
+        if text:
+            return text
     return ""
 
 
@@ -98,7 +135,7 @@ class SummaryComponent(_PlaceholderComponent):
     _section_type = SectionType.SUMMARY.value
     _name = "Summary"
     _description = "Professional summary section."
-    _text_keys = ("text", "summary")
+    _text_keys = ("summary", "text")
     _regions = ("main",)
 
 
@@ -106,7 +143,7 @@ class ExperienceComponent(_PlaceholderComponent):
     _section_type = SectionType.EXPERIENCE.value
     _name = "Experience"
     _description = "Work experience section."
-    _text_keys = ("text", "title", "company")
+    _text_keys = ("experience", "title", "company", "text")
     _regions = ("main", "sidebar")
 
 
@@ -114,7 +151,7 @@ class EducationComponent(_PlaceholderComponent):
     _section_type = SectionType.EDUCATION.value
     _name = "Education"
     _description = "Education section."
-    _text_keys = ("text", "degree", "institution")
+    _text_keys = ("education", "degree", "institution", "text")
     _regions = ("main", "sidebar")
 
 
@@ -122,5 +159,5 @@ class SkillsComponent(_PlaceholderComponent):
     _section_type = SectionType.SKILLS.value
     _name = "Skills"
     _description = "Skills section."
-    _text_keys = ("text", "skills", "category")
+    _text_keys = ("skills", "category", "skills", "text")
     _regions = ("main", "sidebar")

@@ -245,3 +245,25 @@ materially different layouts without any content change.
 - Flows: `Resume → CVM → RenderContext(content_ref + LayoutDefinition + Theme)
   → TreeBuilder → RenderTree`. Layout/Theme/Component registries remain
   independent; verified by import-graph tests.
+
+## TreeBuilder (Layout Engine, Phase 0)
+
+`backend/app/rendering/builder/` — the L6 orchestrator that assembles a
+validated RenderTree from the CVM and a resolved `RenderContext`.
+
+- `build(cvm, context)` — reads `context.layout` for structure (regions +
+  placement rules), resolves each present section through the
+  `ComponentRegistry`, calls `component.build_render_nodes(content, region,
+  order)`, and assembles `document → page → regions → sections`, validated by
+  the `TreeValidator`.
+- **No hardcoded layout knowledge, no section-specific logic** — placement and
+  composition come entirely from the declarative `LayoutDefinition`; section
+  construction is delegated to components.
+- **Placement** — a section goes to its placement rule's preferred/fallback
+  region, else the first region whose `allowed_sections` accepts it; sections
+  without a registered component are omitted; content-reference/hash
+  consistency with the CVM is enforced.
+- **Acceptance invariant (tested)**: the *same CVM* rendered through Executive,
+  Sidebar, Modern, and Classic layouts produces materially different
+  `region → section` compositions (e.g. `skills` moves main → sidebar →
+  secondary) while the extracted content text is byte-identical.
