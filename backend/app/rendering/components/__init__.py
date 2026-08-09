@@ -7,10 +7,13 @@ from app.rendering.components.base import (
     SectionContent,
 )
 from app.rendering.components.reference import (
+    AwardsComponent,
     CertificationsComponent,
     EducationComponent,
     ExperienceComponent,
+    LanguagesComponent,
     ProfileComponent,
+    ProjectsComponent,
     SkillsComponent,
     SummaryComponent,
 )
@@ -28,10 +31,13 @@ __all__ = [
     "ComponentRegistry",
     "ComponentRegistryError",
     "ComponentValidationResult",
+    "AwardsComponent",
     "CertificationsComponent",
     "EducationComponent",
     "ExperienceComponent",
+    "LanguagesComponent",
     "ProfileComponent",
+    "ProjectsComponent",
     "SectionComponent",
     "SectionContent",
     "SkillsComponent",

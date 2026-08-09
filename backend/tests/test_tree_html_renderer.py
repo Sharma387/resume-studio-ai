@@ -18,9 +18,12 @@ import pytest
 from app.models.resume import Resume
 from app.rendering.content import ContentView, Profile
 from app.rendering.content.models import (
+    AwardEntry,
     CertificationEntry,
     EducationEntry,
     ExperienceEntry,
+    LanguageEntry,
+    ProjectEntry,
     SkillGroup,
 )
 from app.rendering.layout.reference_layouts import (
@@ -385,6 +388,24 @@ def _long_cvm() -> ContentView:
             CertificationEntry(name=f"Certification {i}", issuer="Major Vendor", date="2022")
             for i in range(4)
         ),
+        projects=tuple(
+            ProjectEntry(
+                name=f"Large Scale Distributed Project {i}",
+                description="A very long project description spanning multiple lines of substantive engineering detail",
+                url="https://github.com/example/long-project",
+                technologies=("Go", "Rust", "Kafka", "PostgreSQL"),
+            )
+            for i in range(3)
+        ),
+        awards=(
+            AwardEntry(title="Distinguished Engineering Award", issuer="Major Organization", date="2023"),
+            AwardEntry(title="Best Platform Initiative", issuer="Industry Forum", date="2022"),
+        ),
+        languages=(
+            LanguageEntry(name="English", proficiency="Native"),
+            LanguageEntry(name="German", proficiency="Professional"),
+            LanguageEntry(name="Spanish", proficiency="Conversational"),
+        ),
     )
 
 
@@ -399,6 +420,9 @@ class TestLongContent:
         assert "Distinguished Platform Engineer" in body
         assert "Python" in body and "gRPC" in body
         assert "Certification 3" in body
+        assert "Large Scale Distributed Project 2" in body
+        assert "Distinguished Engineering Award" in body
+        assert "German — Professional" in body
         # No fixed-height clipping: the renderer never emits inline or px heights.
         assert 'style="height:' not in html
         assert re.search(r"height:\s*\d+px", html) is None
@@ -408,6 +432,104 @@ class TestLongContent:
         layouts = (executive_layout(), sidebar_layout(), modern_layout(), classic_layout())
         counters = [_tokens(render_layout_html(cvm, layout, blue_theme())) for layout in layouts]
         assert counters[0] == counters[1] == counters[2] == counters[3]
+
+    def test_comprehensive_sections_survive_all_layouts(self):
+        cvm = _long_cvm()
+        layouts = (executive_layout(), sidebar_layout(), modern_layout(), classic_layout())
+        for layout in layouts:
+            body = _body_text(render_layout_html(cvm, layout, blue_theme()))
+            assert "Alexandra Rivera" in body
+            assert "Company 5 International Solutions Group" in body  # 6th job
+            assert "Large Scale Distributed Project 2" in body      # 3rd project
+            assert "Best Platform Initiative" in body                # 2nd award
+            assert "Spanish — Conversational" in body               # 3rd language
+
+
+# ── Projects / Awards / Languages coverage ────────────────────────────────────
+
+
+def _comprehensive_cvm() -> ContentView:
+    return ContentView(
+        stable_id="resume.comprehensive",
+        profile=Profile(full_name="Jane Doe", professional_title="Senior Project Manager"),
+        summary="Backend platform engineer focused on distributed systems.",
+        experience=(
+            ExperienceEntry(company="Acme Corp", title="Senior Engineer", location="Boston, MA",
+                            start_date="2021", end_date="2024", description=("Led the platform team", "Cut latency")),
+            ExperienceEntry(company="Beta Inc", title="Engineer", start_date="2018", end_date="2021"),
+        ),
+        education=(EducationEntry(institution="MIT", degree="M.S.", field="Computer Science", gpa=3.9),),
+        skills=(SkillGroup(category="Languages", skills=("Python", "Go")),),
+        certifications=(CertificationEntry(name="AWS Certified", issuer="Amazon", date="2022"),),
+        projects=(
+            ProjectEntry(
+                name="Orbit Scheduler",
+                description="Distributed task scheduler\nMulti-tenant workload isolation\nSub-second scheduling",
+                url="https://github.com/example/orbit",
+                technologies=("Go", "PostgreSQL"),
+            ),
+        ),
+        awards=(AwardEntry(title="Employee of the Year", issuer="Acme", date="2023"),),
+        languages=(LanguageEntry(name="English", proficiency="Native"), LanguageEntry(name="German", proficiency="Professional")),
+    )
+
+
+class TestProjectsAwardsLanguages:
+    def test_projects_structured(self):
+        html = render_layout_html(_comprehensive_cvm(), executive_layout(), blue_theme())
+        body = _body_text(html)
+        assert "Orbit Scheduler" in body
+        assert "Distributed task scheduler" in body
+        assert "Multi-tenant workload isolation" in body
+        assert "Sub-second scheduling" in body
+        assert "Go" in body and "PostgreSQL" in body
+        assert "https://github.com/example/orbit" in body
+        assert html.count("<li>") >= 3  # description lines + technologies
+
+    def test_awards_structured(self):
+        html = render_layout_html(_comprehensive_cvm(), sidebar_layout(), blue_theme())
+        body = _body_text(html)
+        assert "Employee of the Year" in body
+        assert "Acme" in body
+        assert "2023" in body
+
+    def test_languages_structured(self):
+        html = render_layout_html(_comprehensive_cvm(), sidebar_layout(), blue_theme())
+        body = _body_text(html)
+        assert "English — Native" in body
+        assert "German — Professional" in body
+        assert '<ul class="resume-list">' in html
+
+    def test_all_three_survive_every_layout(self):
+        cvm = _comprehensive_cvm()
+        layouts = (executive_layout(), sidebar_layout(), modern_layout(), classic_layout())
+        for layout in layouts:
+            body = _body_text(render_layout_html(cvm, layout, blue_theme()))
+            assert "Orbit Scheduler" in body
+            assert "Employee of the Year" in body
+            assert "English — Native" in body
+
+    def test_comprehensive_content_identical_across_layouts(self):
+        cvm = _comprehensive_cvm()
+        layouts = (executive_layout(), sidebar_layout(), modern_layout(), classic_layout())
+        counters = [_tokens(render_layout_html(cvm, layout, blue_theme())) for layout in layouts]
+        assert counters[0] == counters[1] == counters[2] == counters[3]
+
+    def test_new_components_resolve_through_registry(self):
+        from app.rendering.components import (
+            AwardsComponent,
+            ComponentRegistry,
+            LanguagesComponent,
+            ProjectsComponent,
+        )
+
+        registry = ComponentRegistry()
+        registry.register(ProjectsComponent())
+        registry.register(AwardsComponent())
+        registry.register(LanguagesComponent())
+        assert isinstance(registry.resolve("projects"), ProjectsComponent)
+        assert isinstance(registry.resolve("awards"), AwardsComponent)
+        assert isinstance(registry.resolve("languages"), LanguagesComponent)
 
 
 # ── J + architecture: renderer independence ───────────────────────────────────

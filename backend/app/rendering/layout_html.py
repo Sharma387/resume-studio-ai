@@ -12,11 +12,14 @@ from __future__ import annotations
 from app.models.resume import Resume
 from app.rendering.builder import TreeBuilder
 from app.rendering.components import (
+    AwardsComponent,
     CertificationsComponent,
     ComponentRegistry,
     EducationComponent,
     ExperienceComponent,
+    LanguagesComponent,
     ProfileComponent,
+    ProjectsComponent,
     SkillsComponent,
     SummaryComponent,
 )
@@ -33,6 +36,9 @@ _REFERENCE_COMPONENTS: tuple = (
     EducationComponent(),
     SkillsComponent(),
     CertificationsComponent(),
+    ProjectsComponent(),
+    AwardsComponent(),
+    LanguagesComponent(),
 )
 
 

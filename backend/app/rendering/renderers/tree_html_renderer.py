@@ -178,23 +178,32 @@ class RenderTreeHTMLRenderer:
 * {{ margin: 0; padding: 0; box-sizing: border-box; }}
 body {{ font-family: var(--font-family, 'Inter', sans-serif); font-size: var(--font-size-base, 10pt);
        line-height: var(--line-height, 1.5); color: var(--text, #1e293b); background: var(--background, #ffffff); }}
-.resume {{ max-width: 820px; margin: 0 auto; padding: 20px; }}
-.resume-page {{ display: grid; grid-template-columns: repeat(12, 1fr); gap: var(--inline-spacing, 10px); }}
+.resume {{ max-width: 820px; margin: 0 auto; padding: 24px 20px; }}
+.resume-page {{ display: grid; grid-template-columns: repeat(12, 1fr); gap: var(--inline-spacing, 12px); }}
 .resume-region {{ min-width: 0; }}
+.resume-region-header {{ padding-bottom: 12px; margin-bottom: var(--section-spacing, 14px);
+       border-bottom: 2px solid var(--primary, #2563eb); }}
 .resume-section {{ margin-bottom: var(--section-spacing, 14px); break-inside: avoid; }}
 .resume-section-title {{ font-family: var(--heading-font-family, inherit); color: var(--primary, #2563eb);
-       text-transform: uppercase; letter-spacing: 1px; font-size: 0.8em;
-       border-bottom: 1px solid var(--border, #e2e8f0); padding-bottom: 3px; margin-bottom: 6px; }}
+       text-transform: uppercase; letter-spacing: 1px; font-size: 0.78em; font-weight: 700;
+       border-bottom: 1px solid var(--border, #e2e8f0); padding-bottom: 3px; margin-bottom: 8px; }}
 .resume-block {{ margin-bottom: var(--block-spacing, 6px); }}
-.resume-text {{ margin-bottom: 2px; }}
-.resume-name {{ font-size: 1.6em; font-weight: 700; color: var(--primary, #2563eb); }}
+.resume-block:last-child {{ margin-bottom: 0; }}
+.resume-text {{ margin-bottom: 2px; line-height: var(--line-height, 1.5); }}
+.resume-name {{ font-size: 1.7em; font-weight: 700; color: var(--primary, #2563eb); letter-spacing: 0.5px; }}
 .resume-strong {{ font-weight: 700; }}
 .resume-muted {{ color: var(--muted, #64748b); }}
-.resume-time {{ color: var(--muted, #64748b); font-size: 0.9em; display: block; }}
+.resume-time {{ color: var(--muted, #64748b); font-size: 0.88em; display: block; margin-bottom: 2px; }}
 .resume-list {{ margin: 2px 0 0 18px; padding: 0; }}
+.resume-list li {{ margin-bottom: 1px; }}
 .resume-badge {{ display: inline-block; border: var(--border-width, 0.5px) solid var(--border, #e2e8f0);
        border-radius: var(--radius, 0); padding: 1px 6px; margin-right: 4px; }}
-a {{ color: var(--accent, #1e40af); }}
+a {{ color: var(--accent, #1e40af); word-break: break-all; }}
+@media (max-width: 640px) {{
+  .resume-page {{ grid-template-columns: 1fr; }}
+  .resume-region {{ grid-column: auto !important; }}
+}}
+@media print {{ body {{ background: #fff; padding: 0; }} .resume {{ box-shadow: none; max-width: none; padding: 0; }} }}
 """
 
     @staticmethod

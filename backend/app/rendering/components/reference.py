@@ -17,7 +17,7 @@ from app.rendering.components.base import (
     SectionComponent,
     SectionContent,
 )
-from app.rendering.tree import BulletData, NodeKind, ParagraphData, RenderNode, TextData, TimeData
+from app.rendering.tree import BulletData, LinkData, NodeKind, ParagraphData, RenderNode, TextData, TimeData
 
 
 def _get(value: object, key: str) -> object:
@@ -81,6 +81,10 @@ def _time_unit(
 
 def _bullet(node_id: str, region: str | None, content_ref: str, text: str) -> RenderNode:
     return _node(node_id, NodeKind.BULLET, region, content_ref, data=BulletData(type="bullet", text=text))
+
+
+def _link(node_id: str, region: str | None, content_ref: str, url: str) -> RenderNode:
+    return _node(node_id, NodeKind.LINK, region, content_ref, data=LinkData(type="link", text=url, url=url))
 
 
 def _list(node_id: str, region: str | None, content_ref: str, bullets: tuple[RenderNode, ...]) -> RenderNode:
@@ -158,9 +162,12 @@ class ProfileComponent(_PlaceholderComponent):
         contact = " · ".join(
             part
             for part in (
+                _text_str(_get(profile, "location")),
                 _text_str(_get(profile, "email")),
                 _text_str(_get(profile, "phone")),
-                _text_str(_get(profile, "location")),
+                _text_str(_get(profile, "linkedin")),
+                _text_str(_get(profile, "github")),
+                _text_str(_get(profile, "website")),
             )
             if part
         )
@@ -337,3 +344,99 @@ class CertificationsComponent(_PlaceholderComponent):
         if date:
             children.append(_time_unit(f"{prefix}-date", region, ref, date, date, None, False))
         return _node(f"{prefix}-block", NodeKind.BLOCK, region, ref, children=tuple(children))
+
+
+class ProjectsComponent(_PlaceholderComponent):
+    _section_type = SectionType.PROJECTS.value
+    _name = "Projects"
+    _description = "Projects section."
+    _regions = ("main", "sidebar")
+
+    def build_render_nodes(self, content: SectionContent, *, region: str | None = None, order: int = 0) -> RenderNode:
+        ref = self._section_type
+        projects = _entries(content, ref) or [content]
+        children: list[RenderNode] = []
+        for index, project in enumerate(projects):
+            children.extend(self._project_nodes(index, project, region, ref))
+        return _section(f"section-{ref}", region, order, tuple(children))
+
+    def _project_nodes(self, index: int, project: object, region: str | None, ref: str) -> list[RenderNode]:
+        prefix = f"{ref}-{index}"
+        block_children: list[RenderNode] = []
+        name = _text_str(_get(project, "name"))
+        if name:
+            block_children.append(_text_unit(f"{prefix}-name", region, ref, name, classes=("resume-strong",)))
+        url = _text_str(_get(project, "url"))
+        if url:
+            block_children.append(_link(f"{prefix}-url", region, ref, url))
+        block = _node(f"{prefix}-block", NodeKind.BLOCK, region, ref, children=tuple(block_children))
+        nodes: list[RenderNode] = [block]
+
+        description = _text_str(_get(project, "description"))
+        if description:
+            lines = [line.strip() for line in description.split("\n") if line.strip()]
+            if len(lines) > 1:
+                bullets = tuple(_bullet(f"{prefix}-d{i}", region, ref, line) for i, line in enumerate(lines))
+                nodes.append(_list(f"{prefix}-desc", region, ref, bullets))
+            else:
+                paragraph = _paragraph(f"{prefix}-desc", region, ref, lines[0])
+                nodes.append(_node(f"{prefix}-desc-block", NodeKind.BLOCK, region, ref, children=(paragraph,)))
+
+        technologies = _get(project, "technologies")
+        tech_bullets = tuple(
+            _bullet(f"{prefix}-t{i}", region, ref, _text_str(tech))
+            for i, tech in enumerate(technologies or [])
+            if _text_str(tech)
+        )
+        if tech_bullets:
+            nodes.append(_list(f"{prefix}-tech", region, ref, tech_bullets))
+        return nodes
+
+
+class AwardsComponent(_PlaceholderComponent):
+    _section_type = SectionType.AWARDS.value
+    _name = "Awards"
+    _description = "Awards section."
+    _regions = ("main", "sidebar")
+
+    def build_render_nodes(self, content: SectionContent, *, region: str | None = None, order: int = 0) -> RenderNode:
+        ref = self._section_type
+        awards = _entries(content, ref) or [content]
+        blocks = tuple(self._award_block(index, award, region, ref) for index, award in enumerate(awards))
+        return _section(f"section-{ref}", region, order, blocks)
+
+    def _award_block(self, index: int, award: object, region: str | None, ref: str) -> RenderNode:
+        prefix = f"{ref}-{index}"
+        children: list[RenderNode] = []
+        title = _text_str(_get(award, "title"))
+        if title:
+            children.append(_text_unit(f"{prefix}-title", region, ref, title, classes=("resume-strong",)))
+        issuer = _text_str(_get(award, "issuer"))
+        if issuer:
+            children.append(_text_unit(f"{prefix}-issuer", region, ref, issuer, classes=("resume-muted",)))
+        date = _text_str(_get(award, "date"))
+        if date:
+            children.append(_time_unit(f"{prefix}-date", region, ref, date, date, None, False))
+        return _node(f"{prefix}-block", NodeKind.BLOCK, region, ref, children=tuple(children))
+
+
+class LanguagesComponent(_PlaceholderComponent):
+    _section_type = SectionType.LANGUAGES.value
+    _name = "Languages"
+    _description = "Languages section."
+    _regions = ("main", "sidebar")
+
+    def build_render_nodes(self, content: SectionContent, *, region: str | None = None, order: int = 0) -> RenderNode:
+        ref = self._section_type
+        languages = _entries(content, ref) or [content]
+        bullets: list[RenderNode] = []
+        for index, language in enumerate(languages):
+            name = _text_str(_get(language, "name"))
+            if not name:
+                continue
+            proficiency = _text_str(_get(language, "proficiency"))
+            bullets.append(_bullet(f"{ref}-{index}", region, ref, f"{name} — {proficiency}" if proficiency else name))
+        section = _section(f"section-{ref}", region, order, ())
+        if bullets:
+            return section.model_copy(update={"children": (_list(f"{ref}-list", region, ref, tuple(bullets)),)})
+        return section
