@@ -12,3 +12,13 @@ python-docx
 httpx
 pytest
 pytest-asyncio
+pytest-cov
+sqlalchemy[asyncio]
+asyncpg
+alembic
+psycopg2-binary
+ruff
+greenlet
+jinja2
+weasyprint
+pypdf
