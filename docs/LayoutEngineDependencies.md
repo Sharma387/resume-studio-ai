@@ -135,3 +135,12 @@ HTML` (`render_layout_html` / `render_resume_layout_html`). The renderer
 imports only tree/theme/common — no CVM, layouts, registries, preview, or
 legacy template system. The legacy `TemplateRegistry` preview path remains
 untouched; preview-API migration awaits the `template_id → layout` boundary.
+
+## Layout Engine Preview Integration (implemented)
+
+`backend/app/rendering/layout_preview.py` — orchestration bridging the engine
+into preview behind a clean mode boundary: `?layout_id=` renders through the
+new engine (CVM → RenderContext → TreeBuilder → RenderTree → HTML), while
+`?template_id=` keeps the legacy TemplateRegistry path. It reuses the shared
+preview cache directory (file endpoint + existing `frame-ancestors` CSP) and
+adds no renderer/legacy coupling beyond that storage seam.

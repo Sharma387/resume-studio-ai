@@ -293,3 +293,26 @@ LayoutDefinition).
   `Resume → TemplateRegistry → Jinja HTMLRenderer → PreviewService`. The new
   renderer is independently executable via the orchestration seam; wiring the
   existing preview API to it awaits the `template_id → layout` migration.
+
+## Layout Engine Preview Integration (Layout Engine, Phase 0)
+
+`backend/app/rendering/layout_preview.py` — the orchestration that bridges the
+new engine into Resume Studio preview, with a clean **rendering-mode boundary**:
+
+```
+Preview request
+   ├─ layout_id present → Layout Engine mode: CVM → RenderContext → TreeBuilder
+   │                        → RenderTree → RenderTreeHTMLRenderer → HTML (cached)
+   └─ else (template_id) → Legacy mode: TemplateRegistry → Jinja HTMLRenderer
+```
+
+- `GET /api/v1/resume/{id}/preview?layout_id=sidebar&theme=blue` renders through
+  the new engine (returns `mode: "layout"` + `preview_url`); `?template_id=…`
+  keeps the legacy path unchanged (backward compatible).
+- Layout/theme are resolved through the new Layout/Theme registries (reference
+  layouts/themes); unknown ids → `404` with a meaningful detail (no silent
+  fallback). The preview file is served by the same file endpoint under the
+  existing `frame-ancestors` CSP (no origin regression).
+- Frontend: the gallery gains a "New Engine Layouts" entry point and the
+  designer supports `?layout=` mode with layout + theme selectors — the
+  frontend only sends `layout_id` + `theme_id` and receives HTML.
