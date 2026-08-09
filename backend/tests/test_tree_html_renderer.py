@@ -147,14 +147,16 @@ class TestSameCVMDifferentLayouts:
         assert side_map["skills"] == "sidebar"
         assert modern_map["skills"] == "secondary"
         assert classic_map["skills"] == "main"
-        # Profile and summary stay in main everywhere (content constant).
+        # Profile lives in the full-width header region (executive/sidebar/modern),
+        # inline in main for the headerless classic layout.
+        assert exec_map["profile"] == "header"
+        assert side_map["profile"] == "header"
+        assert modern_map["profile"] == "header"
+        assert classic_map["profile"] == "main"
+        # Summary and experience stay in main everywhere (content constant).
         for mapping in (exec_map, side_map, modern_map, classic_map):
             assert mapping["summary"] == "main"
-            assert mapping["profile"] == "main"
-        # Experience follows the layout placement.
-        assert exec_map["experience"] == "main"
-        assert side_map["experience"] == "main"
-        assert modern_map["experience"] == "main"
+            assert mapping["experience"] == "main"
         # Certifications follows the layout placement (sidebar/secondary vs main).
         assert exec_map["certifications"] == "main"
         assert side_map["certifications"] == "sidebar"
@@ -178,12 +180,22 @@ class TestContentPreservation:
             "Jane Doe",
             "Principal Engineer",
             "Full-stack engineer with 8 years building platforms.",
-            "Senior Engineer — Acme (2016 – Present)",
-            "Engineer — Beta Inc (2014 – 2016)",
-            "Junior Engineer — Gamma (2012 – 2014)",
-            "B.Sc. in Computer Science — MIT",
-            "Languages: Python, Go",
-            "AWS Certified — Amazon",
+            "Senior Engineer",
+            "Acme",
+            "2016 – Present",
+            "Engineer",
+            "Beta Inc",
+            "2014 – 2016",
+            "Junior Engineer",
+            "Gamma",
+            "2012 – 2014",
+            "B.Sc. in Computer Science",
+            "MIT",
+            "Languages",
+            "Python",
+            "Go",
+            "AWS Certified",
+            "Amazon",
             "Experience",
             "Skills",
         ):
@@ -273,6 +285,129 @@ class TestOrchestration:
         assert 'data-region="sidebar"' in html
         assert "Full-stack engineer." in _body_text(html)
         assert "Engineer" in _body_text(html)
+
+
+# ── Structured component output ───────────────────────────────────────────────
+
+
+def _structured_cvm() -> ContentView:
+    return ContentView(
+        stable_id="resume.structured",
+        profile=Profile(full_name="Jane Doe", professional_title="Principal Engineer"),
+        summary="Backend engineer focused on distributed systems.",
+        experience=(
+            ExperienceEntry(
+                company="Acme Corp", title="Senior Engineer", location="Boston, MA",
+                start_date="2021", end_date="2024",
+                description=("Led the platform team", "Cut p99 latency by 40%"),
+            ),
+        ),
+        education=(
+            EducationEntry(institution="MIT", degree="M.S.", field="Computer Science",
+                           start_date="2014", end_date="2016", gpa=3.9),
+        ),
+        skills=(SkillGroup(category="Languages", skills=("Python", "Go")),),
+        certifications=(CertificationEntry(name="AWS Certified", issuer="Amazon", date="2022"),),
+    )
+
+
+class TestStructuredComponents:
+    def test_experience_is_structured(self):
+        html = render_layout_html(_structured_cvm(), sidebar_layout(), blue_theme())
+        body = _body_text(html)
+        assert "Senior Engineer" in body          # title
+        assert "Acme Corp · Boston, MA" in body   # company · location
+        assert "2021 – 2024" in body              # period
+        assert "Led the platform team" in body    # description bullet
+        assert "Cut p99 latency by 40%" in body
+        assert '<ul class="resume-list">' in html
+        assert html.count("<li>") >= 2            # two description bullets
+
+    def test_education_is_structured(self):
+        html = render_layout_html(_structured_cvm(), sidebar_layout(), blue_theme())
+        body = _body_text(html)
+        assert "M.S. in Computer Science" in body
+        assert "MIT" in body
+        assert "2014 – 2016" in body
+        assert "GPA: 3.9" in body
+
+    def test_skills_are_grouped(self):
+        html = render_layout_html(_structured_cvm(), sidebar_layout(), blue_theme())
+        body = _body_text(html)
+        assert "Languages" in body
+        assert "Python" in body and "Go" in body
+        assert '<ul class="resume-list">' in html
+
+    def test_certifications_are_structured(self):
+        html = render_layout_html(_structured_cvm(), sidebar_layout(), blue_theme())
+        body = _body_text(html)
+        assert "AWS Certified" in body
+        assert "Amazon" in body
+        assert "2022" in body
+
+
+# ── Long-content robustness ───────────────────────────────────────────────────
+
+
+def _long_cvm() -> ContentView:
+    companies = [f"Company {i} International Solutions Group" for i in range(6)]
+    jobs = tuple(
+        ExperienceEntry(
+            company=companies[i],
+            title=f"Senior Principal Engineering Manager {i}",
+            location=f"City {i}, State",
+            start_date=f"20{10 + i}",
+            end_date=None if i == 5 else f"20{15 + i}",
+            current=i == 5,
+            description=(
+                "Led a distributed team across three regions and multiple time zones",
+                "Designed and shipped a multi-tenant streaming platform serving millions of users",
+                "Reduced infrastructure cost by 35% through workload consolidation",
+            ),
+        )
+        for i in range(6)
+    )
+    return ContentView(
+        stable_id="resume.long",
+        profile=Profile(full_name="Alexandra Rivera", professional_title="Distinguished Platform Engineer"),
+        summary="Very long professional summary that keeps going across multiple lines of text " * 4,
+        experience=jobs,
+        education=tuple(
+            EducationEntry(institution=f"University {i}", degree="Ph.D.", field="Computer Science",
+                           start_date="2008", end_date="2012", gpa=3.9)
+            for i in range(3)
+        ),
+        skills=(
+            SkillGroup(category="Languages", skills=("Python", "Go", "Rust", "TypeScript", "Java", "C++", "C#", "Ruby")),
+            SkillGroup(category="Infrastructure", skills=("Kubernetes", "Docker", "AWS", "Terraform", "Kafka", "PostgreSQL", "Redis", "gRPC")),
+        ),
+        certifications=tuple(
+            CertificationEntry(name=f"Certification {i}", issuer="Major Vendor", date="2022")
+            for i in range(4)
+        ),
+    )
+
+
+class TestLongContent:
+    def test_all_long_content_present_no_clipping(self):
+        cvm = _long_cvm()
+        html = render_layout_html(cvm, sidebar_layout(), blue_theme())
+        body = _body_text(html)
+        assert len(cvm.experience) == 6
+        for company in [f"Company {i} International Solutions Group" for i in range(6)]:
+            assert company in body
+        assert "Distinguished Platform Engineer" in body
+        assert "Python" in body and "gRPC" in body
+        assert "Certification 3" in body
+        # No fixed-height clipping: the renderer never emits inline or px heights.
+        assert 'style="height:' not in html
+        assert re.search(r"height:\s*\d+px", html) is None
+
+    def test_long_content_same_across_layouts(self):
+        cvm = _long_cvm()
+        layouts = (executive_layout(), sidebar_layout(), modern_layout(), classic_layout())
+        counters = [_tokens(render_layout_html(cvm, layout, blue_theme())) for layout in layouts]
+        assert counters[0] == counters[1] == counters[2] == counters[3]
 
 
 # ── J + architecture: renderer independence ───────────────────────────────────

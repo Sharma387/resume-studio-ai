@@ -121,25 +121,34 @@ class TestStructuralLayoutAcceptance:
         classic_map = _region_sections(classic_doc)
 
         # Region composition differs by layout.
-        assert set(exec_map) == {"main"}
-        assert set(side_map) == {"main", "sidebar"}
-        assert set(modern_map) == {"main", "secondary"}
+        assert set(exec_map) == {"header", "main"}
+        assert set(side_map) == {"header", "main", "sidebar"}
+        assert set(modern_map) == {"header", "main", "secondary"}
         assert set(classic_map) == {"main"}
 
         # Same CVM, materially different section→region placement.
-        assert exec_map["main"] == ["profile", "summary", "experience", "education", "certifications", "skills"]
-        assert side_map["main"] == ["profile", "summary", "experience", "education"]
-        assert side_map["sidebar"] == ["skills", "certifications"]
-        assert modern_map["main"] == ["profile", "summary", "experience", "education"]
-        assert modern_map["secondary"] == ["skills", "certifications"]
+        assert exec_map == {
+            "header": ["profile"],
+            "main": ["summary", "experience", "education", "certifications", "skills"],
+        }
+        assert side_map == {
+            "header": ["profile"],
+            "main": ["summary", "experience", "education"],
+            "sidebar": ["skills", "certifications"],
+        }
+        assert modern_map == {
+            "header": ["profile"],
+            "main": ["summary", "experience", "education"],
+            "secondary": ["skills", "certifications"],
+        }
+        assert classic_map == {"main": ["profile", "summary", "experience", "education", "skills", "certifications"]}
 
-        # Skills relocates (structure), profile/summary stay in main (content constant).
+        # Skills relocates (structure), summary stays in main (content constant).
         assert "skills" in exec_map["main"]
         assert "skills" not in side_map["main"] and "skills" in side_map["sidebar"]
         assert "skills" not in modern_map["main"] and "skills" in modern_map["secondary"]
         for mapping in (exec_map, side_map, modern_map, classic_map):
             assert "summary" in mapping["main"]
-            assert "profile" in mapping["main"]
 
     def test_content_identical_across_layouts(self):
         builder = TreeBuilder(_registry())
@@ -151,13 +160,22 @@ class TestStructuralLayoutAcceptance:
 
         summary = ("summary", "Full-stack engineer with 8 years building platforms.")
         assert all(counter[summary] == 1 for counter in counters)
-        # All three jobs are carried in the CVM and preserved.
+        # All three jobs survive as structured fields (title/company/period).
         assert len(cvm.experience) == 3
-        assert counters[0][("experience", "Senior Engineer — Acme (2016 – Present)")] == 1
-        assert counters[0][("experience", "Engineer — Beta Inc (2014 – 2016)")] == 1
-        assert counters[0][("experience", "Junior Engineer — Gamma (2012 – 2014)")] == 1
-        assert counters[0][("profile", "Jane Doe — Principal Engineer")] == 1
-        assert counters[0][("certifications", "AWS Certified — Amazon")] == 1
+        for counter in counters:
+            assert counter[("experience", "Senior Engineer")] == 1
+            assert counter[("experience", "Acme")] == 1
+            assert counter[("experience", "2016 – Present")] == 1
+            assert counter[("experience", "Engineer")] == 1
+            assert counter[("experience", "Beta Inc")] == 1
+            assert counter[("experience", "2014 – 2016")] == 1
+            assert counter[("experience", "Junior Engineer")] == 1
+            assert counter[("experience", "Gamma")] == 1
+            assert counter[("experience", "2012 – 2014")] == 1
+            assert counter[("profile", "Jane Doe")] == 1
+            assert counter[("profile", "Principal Engineer")] == 1
+            assert counter[("certifications", "AWS Certified")] == 1
+            assert counter[("certifications", "Amazon")] == 1
 
     def test_cvm_unchanged_across_layouts(self):
         builder = TreeBuilder(_registry())

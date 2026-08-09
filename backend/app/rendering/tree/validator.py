@@ -240,13 +240,17 @@ class TreeValidator:
             for child in node.children
             if child.kind is NodeKind.REGION or child.kind is NodeKind.BLOCK
         ]
-        total = sum(child.span for child in span_children)
+        # Full-width children (span == budget) occupy their own row; only the
+        # remaining children must fit the column budget.
+        partial_total = sum(
+            child.span for child in span_children if child.span < self._columns
+        )
         for child in span_children:
             if child.span > self._columns:
                 errors.append(
                     f"node '{child.id}' span {child.span} exceeds column budget {self._columns}"
                 )
-        if total > self._columns:
+        if partial_total > self._columns:
             errors.append(
-                f"node '{node.id}' children span sum {total} exceeds column budget {self._columns}"
+                f"node '{node.id}' children span sum {partial_total} exceeds column budget {self._columns}"
             )

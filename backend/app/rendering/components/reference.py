@@ -1,9 +1,9 @@
 """Reference section components proving the ComponentRegistry contract.
 
-These are intentionally lightweight placeholders. They demonstrate
-registration, resolution, and node building end-to-end and emit deterministic
-per-item content from CVM-shaped input so the generated RenderTree carries the
-substantive resume content; real detailed section rendering ships later.
+These are lightweight but structured: each renders its section's CVM content
+into distinct Render Tree nodes (title/company/location/dates/description,
+degree/institution/gpa, grouped skills, certification/issuer/date) so the HTML
+is genuinely readable. Real detailed section rendering can still expand later.
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ from app.rendering.components.base import (
     SectionComponent,
     SectionContent,
 )
-from app.rendering.tree import NodeKind, RenderNode, TextData
+from app.rendering.tree import BulletData, NodeKind, ParagraphData, RenderNode, TextData, TimeData
 
 
 def _get(value: object, key: str) -> object:
@@ -26,127 +26,104 @@ def _get(value: object, key: str) -> object:
     return getattr(value, key, None)
 
 
-def _format_entry(value: object) -> str | None:
-    """Format a CVM entry into a substantive one-line string (placeholder)."""
-    if isinstance(value, str):
-        return value.strip() or None
-
-    title = _get(value, "title")
-    company = _get(value, "company")
-    institution = _get(value, "institution")
-    degree = _get(value, "degree")
-    field = _get(value, "field")
-    category = _get(value, "category")
-    skills = _get(value, "skills")
-    name = _get(value, "name")
-    issuer = _get(value, "issuer")
-    full_name = _get(value, "full_name")
-    prof_title = _get(value, "professional_title")
-    start = _get(value, "start_date")
-    end = _get(value, "end_date")
-    current = _get(value, "current")
-
-    parts: list[str] = []
-    if title and company:
-        parts.append(f"{title} — {company}")
-    elif title:
-        parts.append(str(title))
-    elif degree:
-        base = str(degree)
-        if field:
-            base += f" in {field}"
-        if institution:
-            base += f" — {institution}"
-        parts.append(base)
-    elif category:
-        base = str(category)
-        if skills:
-            base += f": {', '.join(str(skill) for skill in skills)}"
-        parts.append(base)
-    elif name:
-        base = str(name)
-        if issuer:
-            base += f" — {issuer}"
-        parts.append(base)
-    elif full_name:
-        base = str(full_name)
-        if prof_title:
-            base += f" — {prof_title}"
-        parts.append(base)
-
-    if not parts:
-        return None
-
-    result = " | ".join(parts)
-    if start or end or current:
-        period = f"{start or ''} – Present" if (current or not end) else f"{start or ''} – {end}"
-        result += f" ({period.strip()})"
-    return result or None
+def _text_str(value: object) -> str:
+    return str(value).strip() if value is not None else ""
 
 
-def _coerce_items(value: object) -> list[str]:
-    """Coerce a CVM section value into one display string per item."""
-    if isinstance(value, (tuple, list)):
-        items: list[str] = []
-        for item in value:
-            text = _format_entry(item)
-            if text:
-                items.append(text)
-        return items
-    text = _format_entry(value)
-    return [text] if text else []
-
-
-def _extract_items(content: SectionContent, keys: tuple[str, ...]) -> list[str]:
-    for key in keys:
-        items = _coerce_items(content.get(key))
-        if items:
-            return items
-    return []
-
-
-def _placeholder_section(
-    section_type: str,
-    items: list[str],
-    *,
+def _node(
+    node_id: str,
+    kind: NodeKind,
     region: str | None,
-    order: int,
+    content_ref: str,
+    *,
+    classes: tuple[str, ...] = (),
+    children: tuple[RenderNode, ...] = (),
+    data=None,
+    order: int = 0,
 ) -> RenderNode:
-    node_id = f"section-{section_type}"
-    blocks = tuple(
-        RenderNode(
-            id=f"{node_id}-block-{index}",
-            kind=NodeKind.BLOCK,
-            region=region,
-            children=(
-                RenderNode(
-                    id=f"{node_id}-text-{index}",
-                    kind=NodeKind.TEXT,
-                    content_ref=section_type,
-                    region=region,
-                    data=TextData(type="text", text=item),
-                ),
-            ),
-        )
-        for index, item in enumerate(items)
-    )
     return RenderNode(
         id=node_id,
-        kind=NodeKind.SECTION,
-        content_ref=section_type,
+        kind=kind,
         region=region,
+        content_ref=content_ref,
+        classes=classes,
+        children=children,
+        data=data,
         order=order,
-        children=blocks,
     )
+
+
+def _text_unit(node_id: str, region: str | None, content_ref: str, text: str, classes: tuple[str, ...] = ()) -> RenderNode:
+    return _node(node_id, NodeKind.TEXT, region, content_ref, classes=classes, data=TextData(type="text", text=text))
+
+
+def _paragraph(node_id: str, region: str | None, content_ref: str, text: str) -> RenderNode:
+    return _node(node_id, NodeKind.PARAGRAPH, region, content_ref, data=ParagraphData(type="paragraph", text=text))
+
+
+def _time_unit(
+    node_id: str,
+    region: str | None,
+    content_ref: str,
+    text: str,
+    start: str | None,
+    end: str | None,
+    current: bool,
+) -> RenderNode:
+    return _node(
+        node_id,
+        NodeKind.TIME,
+        region,
+        content_ref,
+        data=TimeData(type="time", text=text, start=start, end=end, current=current),
+    )
+
+
+def _bullet(node_id: str, region: str | None, content_ref: str, text: str) -> RenderNode:
+    return _node(node_id, NodeKind.BULLET, region, content_ref, data=BulletData(type="bullet", text=text))
+
+
+def _list(node_id: str, region: str | None, content_ref: str, bullets: tuple[RenderNode, ...]) -> RenderNode:
+    blocks = tuple(
+        _node(f"{node_id}-b{index}", NodeKind.BLOCK, region, content_ref, children=(bullet,))
+        for index, bullet in enumerate(bullets)
+    )
+    return _node(node_id, NodeKind.LIST, region, content_ref, children=blocks)
+
+
+def _section(node_id: str, region: str | None, order: int, children: tuple[RenderNode, ...]) -> RenderNode:
+    return _node(
+        node_id,
+        NodeKind.SECTION,
+        region,
+        node_id.removeprefix("section-"),
+        children=children,
+        data=None,
+        order=order,
+    )
+
+
+def _period(start: object, end: object, current: object) -> str:
+    if not start and not end and not current:
+        return ""
+    if current or not end:
+        return f"{_text_str(start)} – Present".strip()
+    return f"{_text_str(start)} – {_text_str(end)}".strip(" –")
+
+
+def _entries(content: SectionContent, key: str) -> list[object]:
+    value = content.get(key)
+    if isinstance(value, (tuple, list)):
+        return list(value)
+    return [value] if value is not None else []
 
 
 class _PlaceholderComponent(SectionComponent):
-    """Shared placeholder implementation for the reference components."""
+    """Base for the reference components: identity + validation only."""
 
     _section_type: str = ""
     _name: str = ""
     _description: str = ""
-    _text_keys: tuple[str, ...] = ()
     _regions: tuple[str, ...] = ("main",)
 
     def metadata(self) -> ComponentMetadata:
@@ -161,64 +138,202 @@ class _PlaceholderComponent(SectionComponent):
     def validate_input(self, content: SectionContent) -> ComponentValidationResult:
         return ComponentValidationResult(valid=True)
 
-    def build_render_nodes(
-        self,
-        content: SectionContent,
-        *,
-        region: str | None = None,
-        order: int = 0,
-    ) -> RenderNode:
-        return _placeholder_section(
-            self._section_type,
-            _extract_items(content, self._text_keys),
-            region=region,
-            order=order,
-        )
-
 
 class ProfileComponent(_PlaceholderComponent):
     _section_type = SectionType.PROFILE.value
     _name = "Profile"
     _description = "Candidate identity section."
-    _text_keys = ("profile", "full_name", "name")
     _regions = ("main", "header")
+
+    def build_render_nodes(self, content: SectionContent, *, region: str | None = None, order: int = 0) -> RenderNode:
+        ref = self._section_type
+        profile = content.get("profile")
+        children: list[RenderNode] = []
+        name = _text_str(_get(profile, "full_name"))
+        if name:
+            children.append(_text_unit(f"{ref}-name", region, ref, name, classes=("resume-name",)))
+        title = _text_str(_get(profile, "professional_title"))
+        if title:
+            children.append(_text_unit(f"{ref}-title", region, ref, title, classes=("resume-muted",)))
+        contact = " · ".join(
+            part
+            for part in (
+                _text_str(_get(profile, "email")),
+                _text_str(_get(profile, "phone")),
+                _text_str(_get(profile, "location")),
+            )
+            if part
+        )
+        if contact:
+            children.append(_text_unit(f"{ref}-contact", region, ref, contact, classes=("resume-muted",)))
+        block = _node(f"{ref}-block", NodeKind.BLOCK, region, ref, children=tuple(children)) if children else None
+        return _section(f"section-{ref}", region, order, (block,) if block else ())
 
 
 class SummaryComponent(_PlaceholderComponent):
     _section_type = SectionType.SUMMARY.value
     _name = "Summary"
     _description = "Professional summary section."
-    _text_keys = ("summary", "text")
     _regions = ("main",)
+
+    def build_render_nodes(self, content: SectionContent, *, region: str | None = None, order: int = 0) -> RenderNode:
+        ref = self._section_type
+        text = _text_str(content.get("summary")) or _text_str(content.get("text"))
+        paragraph = _paragraph(f"{ref}-text", region, ref, text) if text else None
+        block = _node(f"{ref}-block", NodeKind.BLOCK, region, ref, children=(paragraph,)) if paragraph else None
+        return _section(f"section-{ref}", region, order, (block,) if block else ())
 
 
 class ExperienceComponent(_PlaceholderComponent):
     _section_type = SectionType.EXPERIENCE.value
     _name = "Experience"
     _description = "Work experience section."
-    _text_keys = ("experience", "title", "company", "text")
     _regions = ("main", "sidebar")
+
+    def build_render_nodes(self, content: SectionContent, *, region: str | None = None, order: int = 0) -> RenderNode:
+        ref = self._section_type
+        entries = _entries(content, ref) or [content]
+        children: list[RenderNode] = []
+        for index, entry in enumerate(entries):
+            children.extend(self._entry_nodes(index, entry, region, ref))
+        return _section(f"section-{ref}", region, order, tuple(children))
+
+    def _entry_nodes(self, index: int, entry: object, region: str | None, ref: str) -> list[RenderNode]:
+        prefix = f"{ref}-{index}"
+        children: list[RenderNode] = []
+        title = _text_str(_get(entry, "title"))
+        if title:
+            children.append(_text_unit(f"{prefix}-title", region, ref, title, classes=("resume-strong",)))
+        meta = " · ".join(
+            part
+            for part in (_text_str(_get(entry, "company")), _text_str(_get(entry, "location")))
+            if part
+        )
+        if meta:
+            children.append(_text_unit(f"{prefix}-meta", region, ref, meta, classes=("resume-muted",)))
+        period = _period(_get(entry, "start_date"), _get(entry, "end_date"), _get(entry, "current"))
+        if period:
+            children.append(
+                _time_unit(
+                    f"{prefix}-time",
+                    region,
+                    ref,
+                    period,
+                    _text_str(_get(entry, "start_date")) or None,
+                    _text_str(_get(entry, "end_date")) or None,
+                    bool(_get(entry, "current")),
+                )
+            )
+        block = _node(f"{prefix}-block", NodeKind.BLOCK, region, ref, children=tuple(children))
+        nodes: list[RenderNode] = [block]
+        description = _get(entry, "description")
+        bullets = tuple(
+            _bullet(f"{prefix}-d{i}", region, ref, _text_str(item))
+            for i, item in enumerate(description or [])
+            if _text_str(item)
+        )
+        if bullets:
+            nodes.append(_list(f"{prefix}-desc", region, ref, bullets))
+        return nodes
 
 
 class EducationComponent(_PlaceholderComponent):
     _section_type = SectionType.EDUCATION.value
     _name = "Education"
     _description = "Education section."
-    _text_keys = ("education", "degree", "institution", "text")
     _regions = ("main", "sidebar")
+
+    def build_render_nodes(self, content: SectionContent, *, region: str | None = None, order: int = 0) -> RenderNode:
+        ref = self._section_type
+        entries = _entries(content, ref) or [content]
+        blocks = tuple(self._entry_block(index, entry, region, ref) for index, entry in enumerate(entries))
+        return _section(f"section-{ref}", region, order, blocks)
+
+    def _entry_block(self, index: int, entry: object, region: str | None, ref: str) -> RenderNode:
+        prefix = f"{ref}-{index}"
+        children: list[RenderNode] = []
+        degree = _text_str(_get(entry, "degree"))
+        field = _text_str(_get(entry, "field"))
+        heading = degree + (f" in {field}" if field else "")
+        if heading:
+            children.append(_text_unit(f"{prefix}-degree", region, ref, heading, classes=("resume-strong",)))
+        institution = _text_str(_get(entry, "institution"))
+        if institution:
+            children.append(_text_unit(f"{prefix}-institution", region, ref, institution, classes=("resume-muted",)))
+        period = _period(_get(entry, "start_date"), _get(entry, "end_date"), _get(entry, "current"))
+        if period:
+            children.append(
+                _time_unit(
+                    f"{prefix}-time",
+                    region,
+                    ref,
+                    period,
+                    _text_str(_get(entry, "start_date")) or None,
+                    _text_str(_get(entry, "end_date")) or None,
+                    False,
+                )
+            )
+        gpa = _get(entry, "gpa")
+        if gpa is not None:
+            children.append(_text_unit(f"{prefix}-gpa", region, ref, f"GPA: {gpa}", classes=("resume-muted",)))
+        return _node(f"{prefix}-block", NodeKind.BLOCK, region, ref, children=tuple(children))
 
 
 class SkillsComponent(_PlaceholderComponent):
     _section_type = SectionType.SKILLS.value
     _name = "Skills"
     _description = "Skills section."
-    _text_keys = ("skills", "category", "skills", "text")
     _regions = ("main", "sidebar")
+
+    def build_render_nodes(self, content: SectionContent, *, region: str | None = None, order: int = 0) -> RenderNode:
+        ref = self._section_type
+        groups = _entries(content, ref) or [content]
+        children: list[RenderNode] = []
+        for index, group in enumerate(groups):
+            children.extend(self._group_nodes(index, group, region, ref))
+        return _section(f"section-{ref}", region, order, tuple(children))
+
+    def _group_nodes(self, index: int, group: object, region: str | None, ref: str) -> list[RenderNode]:
+        prefix = f"{ref}-{index}"
+        block_children: list[RenderNode] = []
+        category = _text_str(_get(group, "category"))
+        if category:
+            block_children.append(_text_unit(f"{prefix}-category", region, ref, category, classes=("resume-strong",)))
+        block = _node(f"{prefix}-block", NodeKind.BLOCK, region, ref, children=tuple(block_children))
+        nodes: list[RenderNode] = [block]
+        skills = _get(group, "skills")
+        bullets = tuple(
+            _bullet(f"{prefix}-s{i}", region, ref, _text_str(item))
+            for i, item in enumerate(skills or [])
+            if _text_str(item)
+        )
+        if bullets:
+            nodes.append(_list(f"{prefix}-list", region, ref, bullets))
+        return nodes
 
 
 class CertificationsComponent(_PlaceholderComponent):
     _section_type = SectionType.CERTIFICATIONS.value
     _name = "Certifications"
     _description = "Certifications section."
-    _text_keys = ("certifications", "name", "issuer")
     _regions = ("main", "sidebar")
+
+    def build_render_nodes(self, content: SectionContent, *, region: str | None = None, order: int = 0) -> RenderNode:
+        ref = self._section_type
+        certs = _entries(content, ref) or [content]
+        blocks = tuple(self._cert_block(index, cert, region, ref) for index, cert in enumerate(certs))
+        return _section(f"section-{ref}", region, order, blocks)
+
+    def _cert_block(self, index: int, cert: object, region: str | None, ref: str) -> RenderNode:
+        prefix = f"{ref}-{index}"
+        children: list[RenderNode] = []
+        name = _text_str(_get(cert, "name"))
+        if name:
+            children.append(_text_unit(f"{prefix}-name", region, ref, name, classes=("resume-strong",)))
+        issuer = _text_str(_get(cert, "issuer"))
+        if issuer:
+            children.append(_text_unit(f"{prefix}-issuer", region, ref, issuer, classes=("resume-muted",)))
+        date = _text_str(_get(cert, "date"))
+        if date:
+            children.append(_time_unit(f"{prefix}-date", region, ref, date, date, None, False))
+        return _node(f"{prefix}-block", NodeKind.BLOCK, region, ref, children=tuple(children))

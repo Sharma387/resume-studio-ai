@@ -148,9 +148,15 @@ class TestLayoutChangesStructure:
         for layout in LAYOUTS:
             body = _body_text(results[layout])
             assert "Jane Doe" in body
-            assert "Senior Engineer — Acme (2016 – Present)" in body
-            assert "Engineer — Beta Inc (2014 – 2016)" in body
-            assert "Junior Engineer — Gamma (2012 – 2014)" in body
+            assert "Senior Engineer" in body
+            assert "Acme" in body
+            assert "2016 – Present" in body
+            assert "Engineer" in body
+            assert "Beta Inc" in body
+            assert "2014 – 2016" in body
+            assert "Junior Engineer" in body
+            assert "Gamma" in body
+            assert "2012 – 2014" in body
 
 
 # ── D: theme changes appearance, not structure ────────────────────────────────

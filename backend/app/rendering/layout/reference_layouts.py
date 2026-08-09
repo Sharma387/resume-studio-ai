@@ -1,7 +1,11 @@
-"""Reference layouts — lightweight data-only layouts validating the registry.
+"""Reference layouts — data-only layouts validating the registry and the
+structural identities of the layout engine.
 
-These exist purely to exercise the Layout Registry. They contain no rendering
-logic; real archetypes ship in a later phase.
+- Executive: full-width header + single main column (experience-dominant).
+- Sidebar:   full-width header + asymmetric main/sidebar columns.
+- Modern:    full-width header + balanced main/secondary columns.
+- Classic:   single main column, ATS-first.
+- Timeline / Minimal: single-column variations.
 """
 
 from __future__ import annotations
@@ -25,8 +29,38 @@ def _main(span: int = 12, *, allowed: tuple[str, ...] = ()) -> RegionDefinition:
     )
 
 
-#: Candidate identity/header section — placed first in the main region.
-_PROFILE_RULE = PlacementRule(section="profile", preferred_region="main", ordering=-10, required=True)
+def _header() -> RegionDefinition:
+    return RegionDefinition(
+        identifier="header",
+        display_name="Header",
+        region_type=RegionType.HEADER,
+        column_span=12,
+        ordering=0,
+        allowed_sections=("profile",),
+        required=True,
+    )
+
+
+def _sidebar() -> RegionDefinition:
+    return RegionDefinition(
+        identifier="sidebar",
+        display_name="Sidebar",
+        region_type=RegionType.SIDEBAR,
+        column_span=5,
+        ordering=1,
+        allowed_sections=("skills", "certifications", "languages", "interests"),
+    )
+
+
+def _secondary() -> RegionDefinition:
+    return RegionDefinition(
+        identifier="secondary",
+        display_name="Secondary",
+        region_type=RegionType.CUSTOM,
+        column_span=6,
+        ordering=1,
+        allowed_sections=("skills", "certifications", "languages"),
+    )
 
 
 def _build(
@@ -36,7 +70,7 @@ def _build(
     description: str,
     regions: tuple[RegionDefinition, ...],
     capabilities: LayoutCapabilities,
-    placement: tuple[PlacementRule, ...] = (),
+    placement: tuple[PlacementRule, ...],
     recommended: tuple[str, ...] = (),
     ats_score: int = 70,
     ats_safe: bool = True,
@@ -70,15 +104,15 @@ def _build(
 
 
 def executive_layout() -> LayoutDefinition:
-    """Single full-width main column; classic executive presentation."""
+    """Full-width header + single main column; experience-dominant."""
     return _build(
         "executive",
         display_name="Executive",
-        description="Full-width header and clean single-column sections.",
-        regions=(_main(),),
-        capabilities=LayoutCapabilities(),
+        description="Full-width profile header and a dominant single-column body.",
+        regions=(_header(), _main()),
+        capabilities=LayoutCapabilities(multi_column=True),
         placement=(
-            _PROFILE_RULE,
+            PlacementRule(section="profile", preferred_region="header", required=True, ordering=-10),
             PlacementRule(section="summary", preferred_region="main", required=True, ordering=0),
             PlacementRule(section="experience", preferred_region="main", ordering=10),
             PlacementRule(section="education", preferred_region="main", ordering=20),
@@ -90,25 +124,15 @@ def executive_layout() -> LayoutDefinition:
 
 
 def modern_layout() -> LayoutDefinition:
-    """Balanced two-column layout."""
+    """Full-width header + balanced main/secondary columns."""
     return _build(
         "modern",
         display_name="Modern",
-        description="Balanced two-column layout with a secondary column.",
-        regions=(
-            _main(span=6, allowed=("profile", "summary", "experience", "education")),
-            RegionDefinition(
-                identifier="secondary",
-                display_name="Secondary",
-                region_type=RegionType.CUSTOM,
-                column_span=6,
-                ordering=1,
-                allowed_sections=("skills", "certifications", "languages"),
-            ),
-        ),
+        description="Contemporary balanced columns with separated secondary content.",
+        regions=(_header(), _main(span=6, allowed=("summary", "experience", "education")), _secondary()),
         capabilities=LayoutCapabilities(multi_column=True),
         placement=(
-            _PROFILE_RULE,
+            PlacementRule(section="profile", preferred_region="header", required=True, ordering=-10),
             PlacementRule(section="summary", preferred_region="main", required=True),
             PlacementRule(section="experience", preferred_region="main"),
             PlacementRule(section="skills", preferred_region="secondary"),
@@ -119,25 +143,15 @@ def modern_layout() -> LayoutDefinition:
 
 
 def sidebar_layout() -> LayoutDefinition:
-    """Asymmetric main + sidebar layout."""
+    """Full-width header + asymmetric main/sidebar columns."""
     return _build(
         "sidebar",
         display_name="Sidebar",
-        description="Main column with a narrow sidebar for skills and contact.",
-        regions=(
-            _main(span=7, allowed=("profile", "summary", "experience", "education", "projects")),
-            RegionDefinition(
-                identifier="sidebar",
-                display_name="Sidebar",
-                region_type=RegionType.SIDEBAR,
-                column_span=5,
-                ordering=1,
-                allowed_sections=("skills", "certifications", "languages", "interests"),
-            ),
-        ),
+        description="Two-column layout with a narrow sidebar rail.",
+        regions=(_header(), _main(span=7, allowed=("summary", "experience", "education", "projects")), _sidebar()),
         capabilities=LayoutCapabilities(sidebar=True, multi_column=True),
         placement=(
-            _PROFILE_RULE,
+            PlacementRule(section="profile", preferred_region="header", required=True, ordering=-10),
             PlacementRule(section="summary", preferred_region="main", required=True),
             PlacementRule(section="experience", preferred_region="main"),
             PlacementRule(section="skills", preferred_region="sidebar", fallback_region="main"),
@@ -156,7 +170,7 @@ def timeline_layout() -> LayoutDefinition:
         regions=(_main(),),
         capabilities=LayoutCapabilities(timeline=True, metrics=True),
         placement=(
-            _PROFILE_RULE,
+            PlacementRule(section="profile", preferred_region="main", required=True, ordering=-10),
             PlacementRule(section="summary", preferred_region="main", required=True),
             PlacementRule(section="experience", preferred_region="main", default_variant="timeline"),
         ),
@@ -166,15 +180,15 @@ def timeline_layout() -> LayoutDefinition:
 
 
 def classic_layout() -> LayoutDefinition:
-    """Traditional single-column, ATS-first layout."""
+    """Single main column; ATS-first traditional resume."""
     return _build(
         "classic",
         display_name="Classic",
-        description="Traditional single-column, ATS-first layout.",
+        description="Clean single-column, ATS-friendly resume.",
         regions=(_main(),),
         capabilities=LayoutCapabilities(),
         placement=(
-            _PROFILE_RULE,
+            PlacementRule(section="profile", preferred_region="main", required=True, ordering=-10),
             PlacementRule(section="summary", preferred_region="main", required=True),
             PlacementRule(section="experience", preferred_region="main"),
             PlacementRule(section="education", preferred_region="main"),
@@ -195,7 +209,7 @@ def minimal_layout() -> LayoutDefinition:
         regions=(_main(),),
         capabilities=LayoutCapabilities(),
         placement=(
-            _PROFILE_RULE,
+            PlacementRule(section="profile", preferred_region="main", required=True, ordering=-10),
             PlacementRule(section="summary", preferred_region="main", required=True),
             PlacementRule(section="experience", preferred_region="main"),
         ),

@@ -273,8 +273,8 @@ class TestLayoutIndependence:
     def test_layouts_are_materially_different(self):
         exec_regions = [(r.identifier, r.column_span) for r in executive_layout().regions]
         side_regions = [(r.identifier, r.column_span) for r in sidebar_layout().regions]
-        assert exec_regions == [("main", 12)]
-        assert side_regions == [("main", 7), ("sidebar", 5)]
+        assert exec_regions == [("header", 12), ("main", 12)]
+        assert side_regions == [("header", 12), ("main", 7), ("sidebar", 5)]
 
     def test_same_cvm_accepted_by_two_layouts(self):
         cvm = _rich_cvm()

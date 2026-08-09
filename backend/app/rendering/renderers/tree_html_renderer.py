@@ -85,7 +85,7 @@ class RenderTreeHTMLRenderer:
         )
 
     def _render_block(self, node: RenderNode) -> str:
-        return f'<div class="resume-block">\n{self._render_children(node)}\n</div>'
+        return f'<div class="{self._cls(node, "resume-block")}">\n{self._render_children(node)}\n</div>'
 
     def _render_grid(self, node: RenderNode) -> str:
         return f'<div class="resume-grid">\n{self._render_children(node)}\n</div>'
@@ -94,7 +94,11 @@ class RenderTreeHTMLRenderer:
         return f'<div class="resume-row">\n{self._render_children(node)}\n</div>'
 
     def _render_list(self, node: RenderNode) -> str:
-        return f'<ul class="resume-list">\n{self._render_children(node)}\n</ul>'
+        items = []
+        for child in node.children:
+            text = " ".join(self._leaf_text(leaf) for leaf in child.children)
+            items.append(f"<li>{text}</li>")
+        return '<ul class="resume-list">\n' + "\n".join(items) + "\n</ul>"
 
     def _render_timeline(self, node: RenderNode) -> str:
         return f'<div class="resume-timeline">\n{self._render_children(node)}\n</div>'
@@ -102,10 +106,10 @@ class RenderTreeHTMLRenderer:
     # ── Leaf units ────────────────────────────────────────────────────────────
 
     def _render_text(self, node: RenderNode) -> str:
-        return f'<p class="resume-text">{_html.escape(node.data.text)}</p>'
+        return f'<p class="{self._cls(node, "resume-text")}">{_html.escape(node.data.text)}</p>'
 
     def _render_paragraph(self, node: RenderNode) -> str:
-        return f'<p class="resume-text">{_html.escape(node.data.text)}</p>'
+        return f'<p class="{self._cls(node, "resume-text")}">{_html.escape(node.data.text)}</p>'
 
     def _render_bullet(self, node: RenderNode) -> str:
         return f"<li>{_html.escape(node.data.text)}</li>"
@@ -114,7 +118,7 @@ class RenderTreeHTMLRenderer:
         return f'<a href="{_html.escape(node.data.url, quote=True)}">{_html.escape(node.data.text)}</a>'
 
     def _render_time(self, node: RenderNode) -> str:
-        return f'<time class="resume-time">{_html.escape(node.data.text)}</time>'
+        return f'<time class="{self._cls(node, "resume-time")}">{_html.escape(node.data.text)}</time>'
 
     def _render_icon(self, node: RenderNode) -> str:
         label = f" {_html.escape(node.data.label)}" if node.data.label else ""
@@ -150,6 +154,16 @@ class RenderTreeHTMLRenderer:
     # ── Helpers ───────────────────────────────────────────────────────────────
 
     @staticmethod
+    def _cls(node: RenderNode, base: str) -> str:
+        return f"{base} {' '.join(node.classes)}" if node.classes else base
+
+    @staticmethod
+    def _leaf_text(node: RenderNode) -> str:
+        if node.data is not None and hasattr(node.data, "text"):
+            return _html.escape(node.data.text)
+        return ""
+
+    @staticmethod
     def _section_title(content_ref: str | None) -> str:
         if not content_ref:
             return ""
@@ -173,6 +187,11 @@ body {{ font-family: var(--font-family, 'Inter', sans-serif); font-size: var(--f
        border-bottom: 1px solid var(--border, #e2e8f0); padding-bottom: 3px; margin-bottom: 6px; }}
 .resume-block {{ margin-bottom: var(--block-spacing, 6px); }}
 .resume-text {{ margin-bottom: 2px; }}
+.resume-name {{ font-size: 1.6em; font-weight: 700; color: var(--primary, #2563eb); }}
+.resume-strong {{ font-weight: 700; }}
+.resume-muted {{ color: var(--muted, #64748b); }}
+.resume-time {{ color: var(--muted, #64748b); font-size: 0.9em; display: block; }}
+.resume-list {{ margin: 2px 0 0 18px; padding: 0; }}
 .resume-badge {{ display: inline-block; border: var(--border-width, 0.5px) solid var(--border, #e2e8f0);
        border-radius: var(--radius, 0); padding: 1px 6px; margin-right: 4px; }}
 a {{ color: var(--accent, #1e40af); }}

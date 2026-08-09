@@ -97,16 +97,19 @@ class LayoutDefinition(BaseModel):
         if not self.regions:
             raise ValueError("layout must declare at least one region")
 
-        # Region structural checks
+        # Region structural checks: full-width regions (span == columns) occupy
+        # their own grid row; the remaining regions must fit the column budget.
         region_ids = [region.identifier for region in self.regions]
         if len(region_ids) != len(set(region_ids)):
             raise ValueError("region identifiers must be unique")
         if len(self.regions) > self.grid.columns:
             raise ValueError("more regions than grid columns")
-        span_sum = sum(region.column_span for region in self.regions)
-        if span_sum > self.grid.columns:
+        partial_span = sum(
+            region.column_span for region in self.regions if region.column_span < self.grid.columns
+        )
+        if partial_span > self.grid.columns:
             raise ValueError(
-                f"region column spans sum {span_sum} exceeds grid columns {self.grid.columns}"
+                f"region column spans sum {partial_span} exceeds grid columns {self.grid.columns}"
             )
         for region in self.regions:
             if region.column_span > self.grid.columns:
