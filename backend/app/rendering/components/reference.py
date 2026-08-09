@@ -165,14 +165,15 @@ class ProfileComponent(_PlaceholderComponent):
                 _text_str(_get(profile, "location")),
                 _text_str(_get(profile, "email")),
                 _text_str(_get(profile, "phone")),
-                _text_str(_get(profile, "linkedin")),
-                _text_str(_get(profile, "github")),
-                _text_str(_get(profile, "website")),
             )
             if part
         )
         if contact:
             children.append(_text_unit(f"{ref}-contact", region, ref, contact, classes=("resume-muted",)))
+        for key in ("linkedin", "github", "website"):
+            url = _text_str(_get(profile, key))
+            if url:
+                children.append(_link(f"{ref}-{key}", region, ref, url))
         block = _node(f"{ref}-block", NodeKind.BLOCK, region, ref, children=tuple(children)) if children else None
         return _section(f"section-{ref}", region, order, (block,) if block else ())
 
