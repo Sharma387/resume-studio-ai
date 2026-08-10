@@ -7,11 +7,13 @@ import {
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { authFetch } from '../services/authFetch';
+import { downloadResumeExport, type ExportFormat } from '../services/exportService';
 import API_URL from '../config';
 
 // New layout-engine ids (match backend reference layouts/themes).
 const LAYOUT_IDS = ['executive', 'modern', 'sidebar', 'timeline', 'classic', 'minimal'];
 const THEME_IDS = ['blue', 'slate', 'forest', 'gold', 'minimal'];
+const EXPORT_FORMATS: ExportFormat[] = ['pdf', 'docx', 'html'];
 
 const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -31,6 +33,22 @@ export default function TemplateDesignerPage() {
   const [theme, setTheme] = useState(isLayoutMode ? 'blue' : 'default');
   const [layout, setLayout] = useState(layoutId || 'executive');
   const [sectionOrder, setSectionOrder] = useState<string[]>([]);
+  const [exporting, setExporting] = useState<ExportFormat | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
+
+  const handleExport = async (format: ExportFormat) => {
+    if (!resumeId) return;
+    setExporting(format);
+    setExportError(null);
+    try {
+      await downloadResumeExport(resumeId, layout, theme, format);
+    } catch (e) {
+      const message = e instanceof Error && e.message ? e.message : "We couldn't generate the export. Please try again.";
+      setExportError(message);
+    } finally {
+      setExporting(null);
+    }
+  };
 
   useEffect(() => {
     if (isLayoutMode) {
@@ -136,6 +154,24 @@ export default function TemplateDesignerPage() {
                 ))}
               </Select>
             </FormControl>
+
+            {/* Export */}
+            <Divider sx={{ my: 2 }} />
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>Export</Typography>
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+              {EXPORT_FORMATS.map((fmt) => (
+                <Button
+                  key={fmt}
+                  size="small"
+                  variant="outlined"
+                  disabled={exporting !== null}
+                  onClick={() => handleExport(fmt)}
+                >
+                  {exporting === fmt ? `Exporting ${fmt.toUpperCase()}...` : fmt.toUpperCase()}
+                </Button>
+              ))}
+            </Box>
+            {exportError && <Alert severity="error" sx={{ mt: 1 }}>{exportError}</Alert>}
           </>
         ) : (
           <>
