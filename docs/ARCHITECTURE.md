@@ -316,3 +316,56 @@ Preview request
 - Frontend: the gallery gains a "New Engine Layouts" entry point and the
   designer supports `?layout=` mode with layout + theme selectors — the
   frontend only sends `layout_id` + `theme_id` and receives HTML.
+
+## Layout-Centric Canonical Path (template_id → layout_id Migration)
+
+`layout_id` is the canonical rendering identity. `template_id` is kept for
+backward compatibility only and resolves through a single mapping boundary.
+
+```
+                 CANONICAL
+                     │
+                     ▼
+                 layout_id
+                     │
+                     ▼
+             LayoutDefinition
+                     │
+                     ▼
+                RenderTree
+                /   |   \
+             HTML  PDF  DOCX
+
+
+             COMPATIBILITY
+                     │
+                     ▼
+                template_id
+                     │
+                     ▼
+             TEMPLATE_TO_LAYOUT
+                     │
+                     ▼
+             legacy compatibility
+```
+
+- **`layout_id` is canonical**: the gallery, designer, preview, and export all
+  key off the layout engine.
+- **`template_id` is compatibility-only**: `backend/app/rendering/legacy_templates.py`
+  maps all 13 legacy templates deterministically to a layout
+  (`TEMPLATE_TO_LAYOUT`), and `resolve_legacy_template()` rejects unknown ids
+  with `UnknownLegacyTemplateError` (no silent fallback).
+- **`Resume` does not persist `template_id`**; it exists only where legacy
+  resume variants require it.
+- **Preview API**: `?layout_id=` is the canonical parameter; `?template_id=`
+  alone keeps the byte-identical legacy path; both together → `400`.
+- `GET /api/v1/resume/templates/{id}` exposes the mapped `layout_id` so the
+  frontend can redirect legacy template URLs to the canonical layout URL.
+- `GET /api/v1/resume/layouts` lists the layout-engine layouts straight from
+  `REFERENCE_LAYOUTS` so the frontend never duplicates the layout list.
+- **Frontend**: the gallery is layout-centric; the designer treats the URL as
+  the single source of truth (`/designer?layout=<id>&resume=<id>[&theme=<id>]`)
+  so refresh and Back/Forward preserve layout + theme, and legacy
+  `/designer?template=…` URLs redirect to the mapped layout.
+- **Legacy rendering** (TemplateRegistry + Jinja HTMLRenderer) remains in place
+  temporarily; its removal is a separate future phase.

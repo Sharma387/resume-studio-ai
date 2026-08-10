@@ -144,3 +144,49 @@ new engine (CVM → RenderContext → TreeBuilder → RenderTree → HTML), whil
 `?template_id=` keeps the legacy TemplateRegistry path. It reuses the shared
 preview cache directory (file endpoint + existing `frame-ancestors` CSP) and
 adds no renderer/legacy coupling beyond that storage seam.
+
+## Canonical layout path / legacy compatibility (template_id → layout_id)
+
+`layout_id` is the canonical rendering identity; `template_id` is
+compatibility-only. `backend/app/rendering/legacy_templates.py` is the single
+mapping boundary (`TEMPLATE_TO_LAYOUT` maps all 13 legacy templates
+deterministically; `resolve_legacy_template()` rejects unknown ids with
+`UnknownLegacyTemplateError` — no silent fallback; `DEFAULT_LEGACY_THEME`).
+
+```
+                 CANONICAL
+                     │
+                     ▼
+                 layout_id
+                     │
+                     ▼
+             LayoutDefinition
+                     │
+                     ▼
+                RenderTree
+                /   |   \
+             HTML  PDF  DOCX
+
+
+             COMPATIBILITY
+                     │
+                     ▼
+                template_id
+                     │
+                     ▼
+             TEMPLATE_TO_LAYOUT
+                     │
+                     ▼
+             legacy compatibility
+```
+
+- `layout_id` is canonical (preview + export + gallery + designer).
+- `template_id` is compatibility-only, and `Resume` does not persist it.
+- Preview rejects `template_id` + `layout_id` together (`400`); `template_id`
+  alone stays on the byte-identical legacy path.
+- `/resume/templates/{id}` exposes the mapped `layout_id`; `/resume/layouts`
+  lists layouts from `REFERENCE_LAYOUTS`.
+- Frontend: `/designer?layout=<id>&resume=<id>[&theme=<id>]` is canonical and
+  URL is the single source of truth; `/designer?template=…` redirects to the
+  mapped layout.
+- Legacy rendering remains temporarily; removal is a separate future phase.
