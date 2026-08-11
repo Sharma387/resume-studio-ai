@@ -20,14 +20,13 @@ import SchoolOutlined from '@mui/icons-material/SchoolOutlined';
 import VerifiedOutlined from '@mui/icons-material/VerifiedOutlined';
 import FolderOutlined from '@mui/icons-material/FolderOutlined';
 import PictureAsPdfOutlined from '@mui/icons-material/PictureAsPdfOutlined';
-import DownloadOutlined from '@mui/icons-material/DownloadOutlined';
 import TravelExploreOutlined from '@mui/icons-material/TravelExploreOutlined';
 import HistoryOutlined from '@mui/icons-material/HistoryOutlined';
 import AutoAwesomeOutlined from '@mui/icons-material/AutoAwesomeOutlined';
 import MailOutlined from '@mui/icons-material/MailOutlined';
 import type { Resume } from '../types/resume';
-import { fetchResume, saveResume, generatePdf, getPdfDownloadUrl } from '../services/resumeService';
-import { authDownload } from '../services/authDownload';
+import { fetchResume, saveResume } from '../services/resumeService';
+import { downloadResumeExport } from '../services/exportService';
 import SectionNav from '../components/review/SectionNav';
 import PersonalInfoSection from '../components/review/PersonalInfoSection';
 import SummarySection from '../components/review/SummarySection';
@@ -60,6 +59,10 @@ function ReviewPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const fileParam = searchParams.get('file');
+  // Single source of truth: the canonical layout/theme selection carried in the
+  // URL (defaults match the designer's canonical defaults).
+  const layout = searchParams.get('layout') || 'executive';
+  const theme = searchParams.get('theme') || 'blue';
 
   const [resume, setResume] = useState<Resume | null>(null);
   const [original, setOriginal] = useState<Resume | null>(null);
@@ -67,7 +70,6 @@ function ReviewPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [pdfGenerating, setPdfGenerating] = useState(false);
-  const [pdfReady, setPdfReady] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [error, setError] = useState('');
 
@@ -112,14 +114,14 @@ function ReviewPage() {
     }
   };
 
-  const handleGeneratePdf = async () => {
+  const handleDownloadPdf = async () => {
     if (!fileParam) return;
     setPdfGenerating(true);
     try {
-      await generatePdf(fileParam);
-      setPdfReady(true);
-    } catch {
-      setError('Failed to generate PDF');
+      await downloadResumeExport(fileParam, layout, theme, 'pdf');
+    } catch (err) {
+      const message = err instanceof Error && err.message ? err.message : 'Failed to generate PDF';
+      setError(message);
     } finally {
       setPdfGenerating(false);
     }
@@ -147,7 +149,7 @@ function ReviewPage() {
     );
   }
 
-  if (error) {
+  if (error && !resume) {
     return (
       <Box sx={{ p: 4 }}>
         <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>
@@ -183,19 +185,11 @@ function ReviewPage() {
           onClick={handleSave} disabled={!changed || saving} sx={{ textTransform: 'none', borderRadius: 2 }}>
           {saving ? 'Saving...' : 'Save'}
         </Button>
-        {!pdfReady ? (
-          <Button size="small" variant="outlined"
-            startIcon={pdfGenerating ? <CircularProgress size={14} /> : <PictureAsPdfOutlined />}
-            onClick={handleGeneratePdf} disabled={pdfGenerating} sx={{ textTransform: 'none', borderRadius: 2 }}>
-            {pdfGenerating ? 'Generating...' : 'PDF'}
-          </Button>
-        ) : (
-          <Button size="small" variant="contained" color="success" startIcon={<DownloadOutlined />}
-            onClick={() => authDownload(getPdfDownloadUrl(fileParam || ''), `resume_${(resume?.full_name || 'download').toLowerCase().replace(/\s+/g, '_')}.pdf`)}
-            sx={{ textTransform: 'none', borderRadius: 2 }}>
-            Download
-          </Button>
-        )}
+        <Button size="small" variant="outlined"
+          startIcon={pdfGenerating ? <CircularProgress size={14} /> : <PictureAsPdfOutlined />}
+          onClick={handleDownloadPdf} disabled={pdfGenerating} sx={{ textTransform: 'none', borderRadius: 2 }}>
+          {pdfGenerating ? 'Generating PDF…' : 'Download PDF'}
+        </Button>
         <IconButton size="small" onClick={() => setHistoryOpen(true)} aria-label="Open version history" sx={{ color: 'text.secondary' }}>
           <HistoryOutlined />
         </IconButton>

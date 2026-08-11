@@ -53,17 +53,6 @@ export async function saveResume(id: string, resume: Resume): Promise<ResumeResp
   return res.json();
 }
 
-export interface PdfGenerateResponse {
-  success: boolean;
-  downloadUrl: string;
-}
-
-export async function generatePdf(id: string): Promise<PdfGenerateResponse> {
-  const res = await authFetch(`${API_URL}/resume/${id}/pdf`, { method: 'POST' });
-  if (!res.ok) throw new Error('Failed to generate PDF');
-  return res.json();
-}
-
 export interface SuggestionResponse {
   success: boolean;
   data: {
@@ -130,10 +119,6 @@ export async function restoreVersion(id: string, versionId: string): Promise<Ver
   const res = await authFetch(`${API_URL}/resume/${id}/versions/${versionId}/restore`, { method: 'POST' });
   if (!res.ok) throw new Error('Restore failed');
   return res.json();
-}
-
-export function getPdfDownloadUrl(id: string): string {
-  return `${API_URL}/resume/${id}/pdf/download`;
 }
 
 export interface MatchResponse {
