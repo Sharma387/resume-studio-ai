@@ -7,12 +7,6 @@ import {
 import { authFetch } from '../services/authFetch';
 import API_URL from '../config';
 
-interface TemplateInfo {
-  id: string; name: string; description: string; category: string;
-  ats_score: number; colour_themes: string[]; tags: string[];
-  has_preview: boolean; has_thumbnail: boolean; layout_id?: string | null;
-}
-
 interface LayoutInfo {
   layout_id: string; name: string; description: string;
 }
@@ -30,16 +24,14 @@ const FALLBACK_LAYOUTS: LayoutInfo[] = [
 export default function TemplateGalleryPage() {
   const navigate = useNavigate();
   const [layouts, setLayouts] = useState<LayoutInfo[]>(FALLBACK_LAYOUTS);
-  const [legacyTemplates, setLegacyTemplates] = useState<TemplateInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [resumeId, setResumeId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [lRes, tRes, rRes] = await Promise.all([
+      const [lRes, rRes] = await Promise.all([
         authFetch(`${API_URL}/resume/layouts`),
-        authFetch(`${API_URL}/resume/templates`),
         authFetch(`${API_URL}/resumes`),
       ]);
       const lBody = await lRes.json();
@@ -52,8 +44,6 @@ export default function TemplateGalleryPage() {
           ),
         );
       }
-      const tBody = await tRes.json();
-      if (tBody.success) setLegacyTemplates(tBody.data);
       const rBody = await rRes.json();
       if (rBody.success && rBody.data?.length) setResumeId(rBody.data[0].id);
     } catch { /* keep fallbacks */ }
@@ -98,28 +88,10 @@ export default function TemplateGalleryPage() {
               </Grid>
             ))}
           </Grid>
-
-          {legacyTemplates.length > 0 && (
-            <>
-              <Typography variant="h6" sx={{ fontWeight: 600, mt: 5, mb: 0.5 }}>Legacy Templates</Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Legacy templates open through their mapped layout (compatibility).
-              </Typography>
-              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                {legacyTemplates.map((t) => (
-                  <Button key={t.id} size="small" variant="outlined"
-                    disabled={!t.layout_id}
-                    onClick={() => t.layout_id && navigate(designerUrl(t.layout_id))}>
-                    {t.name}
-                  </Button>
-                ))}
-              </Box>
-            </>
-          )}
         </>
       )}
 
-      {!loading && legacyTemplates.length === 0 && layouts.length === 0 && (
+      {!loading && layouts.length === 0 && (
         <Alert severity="info">No layouts available.</Alert>
       )}
     </Box>
