@@ -109,3 +109,43 @@ class TestPreviewConflict:
         rid = _save_resume(user_id="other")
         response = await client.get(f"/api/v1/resume/{rid}/preview?layout_id=sidebar")
         assert response.status_code == 404
+
+
+class TestVariantCompatibility:
+    """Prove stored legacy ``template_id`` variants remain actionable through the
+    canonical pipeline, so retiring TemplateRegistry does not strand variant data."""
+
+    def test_every_legacy_template_resolves_into_a_registered_layout(self):
+        from app.rendering.layout_preview import default_layout_registry
+
+        registry = default_layout_registry()
+        for template_id in LEGACY_TEMPLATE_IDS:
+            layout_id = resolve_legacy_template(template_id)
+            assert layout_id in LAYOUTS
+            assert registry.contains(layout_id)
+
+    async def test_stored_variant_regenerates_through_canonical_export(self, client):
+        from app.rendering.layout_preview import default_layout_registry
+        from app.services.resume_variants.service import create as create_variant
+        from app.services.storage_service import load_resume
+
+        rid = _save_resume()
+        resume = load_resume(rid, user_id="test")
+        assert resume is not None
+
+        variant = create_variant(resume, "test", "Legacy Template Variant", template_id="modern-ats")
+        assert variant["template_id"] == "modern-ats"
+        layout_id = resolve_legacy_template(variant["template_id"])
+        assert layout_id == "classic"
+        assert default_layout_registry().contains(layout_id)
+
+        response = await client.post(
+            f"/api/v1/resume/{rid}/export",
+            json={"layout_id": layout_id, "theme_id": "blue", "format": "pdf"},
+        )
+        assert response.status_code == 200
+        assert response.headers["content-type"] == "application/pdf"
+
+    def test_legacy_variant_default_template_id_resolves(self):
+        # Variant creation defaults to "executive-elite" (matches the DB model default).
+        assert resolve_legacy_template("executive-elite") == "sidebar"
