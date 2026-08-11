@@ -44,6 +44,25 @@ async def list_resume_layouts():
     }
 
 
+@router.get("/resume/themes")
+async def list_resume_themes():
+    """List the layout-engine themes from the theme registry."""
+    from app.rendering.layout_preview import default_theme_registry
+    return {
+        "success": True,
+        "data": [
+            {
+                "theme_id": theme.metadata.theme_id,
+                "name": theme.metadata.display_name,
+                "description": theme.metadata.description,
+                "style": theme.metadata.style,
+                "tags": list(theme.metadata.tags),
+            }
+            for theme in default_theme_registry().palettes()
+        ],
+    }
+
+
 @router.get("/resume/templates/{template_id}")
 async def get_resume_template(template_id: str):
     """Get a single template's metadata, including its mapped layout."""
@@ -67,14 +86,23 @@ async def generate_resume_preview(
 ):
     """Generate an HTML preview of the resume.
 
-    Canonical mode (``layout_id``) renders through the new layout engine.
-    Legacy mode (``template_id``) renders through the TemplateRegistry and is
-    preserved for compatibility. Providing both is rejected as ambiguous.
+    Exactly one render mode must be selected:
+
+    - ``layout_id`` (canonical): renders through the new layout engine.
+    - ``template_id`` (legacy compatibility): renders through the TemplateRegistry.
+
+    Neither ``layout_id`` nor ``template_id`` → ``400``; both → ``400``;
+    unknown ids → ``404``. There is no implicit fallback.
     """
     resume = get_resume_repository().get_by_id(resume_id, getattr(current_user, "id", None))
     if resume is None:
         raise HTTPException(status_code=404, detail="Resume not found")
 
+    if layout_id is None and template_id is None:
+        raise HTTPException(
+            status_code=400,
+            detail="Specify either layout_id or template_id",
+        )
     if layout_id is not None and template_id is not None:
         raise HTTPException(
             status_code=400,
@@ -106,10 +134,13 @@ async def generate_resume_preview(
             },
         }
 
+    # Explicit legacy compatibility path — no default template fallback.
+    if rendering.get_template(template_id) is None:
+        raise HTTPException(status_code=404, detail=f"Template '{template_id}' not found")
+
+    logger.debug("Legacy preview requested", resume_id=resume_id, template_id=template_id, theme=theme, mode="legacy")
     try:
-        legacy_template = template_id or "executive"
-        logger.debug("Legacy preview requested", resume_id=resume_id, template_id=legacy_template, theme=theme, mode="legacy")
-        preview_path = rendering.generate_preview(resume, legacy_template, theme=theme)
+        preview_path = rendering.generate_preview(resume, template_id, theme=theme)
         return {"success": True, "data": {"preview_url": f"/api/v1/resume/preview/file/{Path(preview_path).name}"}}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

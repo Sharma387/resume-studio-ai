@@ -10,9 +10,8 @@ import { authFetch } from '../services/authFetch';
 import { downloadResumeExport, type ExportFormat } from '../services/exportService';
 import API_URL from '../config';
 
-// Theme ids match the backend reference themes; layouts load from the
-// registry endpoint so the frontend does not duplicate the layout list.
-const THEME_IDS = ['blue', 'slate', 'forest', 'gold', 'minimal'];
+// Layouts and themes load from the registry endpoints so the frontend does
+// not duplicate either list.
 const EXPORT_FORMATS: ExportFormat[] = ['pdf', 'docx', 'html'];
 
 const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -32,6 +31,8 @@ export default function TemplateDesignerPage() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [layoutOptions, setLayoutOptions] = useState<string[]>([layout]);
+  const [themeOptions, setThemeOptions] = useState<string[]>([theme]);
+  const [themesError, setThemesError] = useState<string | null>(null);
   const [exporting, setExporting] = useState<ExportFormat | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
   const previewSeqRef = useRef(0);
@@ -45,6 +46,24 @@ export default function TemplateDesignerPage() {
           setLayoutOptions(body.data.map((l: { layout_id: string }) => l.layout_id));
         }
       } catch { /* keep current options */ }
+    };
+    load();
+  }, []);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await authFetch(`${API_URL}/resume/themes`);
+        const body = await res.json();
+        if (body.success && Array.isArray(body.data) && body.data.length) {
+          setThemeOptions(body.data.map((t: { theme_id: string }) => t.theme_id));
+          setThemesError(null);
+        } else {
+          setThemesError('Themes are temporarily unavailable.');
+        }
+      } catch {
+        setThemesError('Themes are temporarily unavailable.');
+      }
     };
     load();
   }, []);
@@ -169,11 +188,16 @@ export default function TemplateDesignerPage() {
         <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>Theme</Typography>
         <FormControl size="small" fullWidth>
           <Select value={theme} onChange={(e) => updateSelection({ theme: String(e.target.value) })}>
-            {THEME_IDS.map((id) => (
+            {themeOptions.map((id) => (
               <MenuItem key={id} value={id}>{titleCase(id)}</MenuItem>
             ))}
           </Select>
         </FormControl>
+        {themesError && (
+          <Typography variant="caption" color="error" sx={{ display: 'block', mt: 0.5 }}>
+            {themesError}
+          </Typography>
+        )}
 
         {/* Export */}
         <Divider sx={{ my: 2 }} />

@@ -25,10 +25,13 @@ def client() -> AsyncClient:
     return AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
 
 
+def _make_resume(user_id="test") -> Resume:
+    return Resume(user_id=user_id, full_name="Migrate User", email="mig@test.com")
+
+
 def _save_resume(user_id="test") -> str:
     resume_id = uuid.uuid4().hex
-    resume = Resume(user_id=user_id, full_name="Migrate User", email="mig@test.com")
-    save_resume(resume_id, resume)
+    save_resume(resume_id, _make_resume(user_id))
     return resume_id
 
 
@@ -76,6 +79,12 @@ class TestTemplateLookup:
 
 
 class TestPreviewConflict:
+    async def test_missing_both_ids_rejected(self, client):
+        rid = _save_resume()
+        response = await client.get(f"/api/v1/resume/{rid}/preview")
+        assert response.status_code == 400
+        assert "layout_id or template_id" in response.json()["detail"]
+
     async def test_ambiguous_template_and_layout_rejected(self, client):
         rid = _save_resume()
         response = await client.get(f"/api/v1/resume/{rid}/preview?template_id=executive&layout_id=sidebar")
@@ -100,6 +109,11 @@ class TestPreviewConflict:
         response = await client.get(f"/api/v1/resume/{rid}/preview?layout_id=nope")
         assert response.status_code == 404
 
+    async def test_unknown_template_404(self, client):
+        rid = _save_resume()
+        response = await client.get(f"/api/v1/resume/{rid}/preview?template_id=does-not-exist")
+        assert response.status_code == 404
+
     async def test_unknown_theme_404(self, client):
         rid = _save_resume()
         response = await client.get(f"/api/v1/resume/{rid}/preview?layout_id=sidebar&theme=nope")
@@ -109,6 +123,62 @@ class TestPreviewConflict:
         rid = _save_resume(user_id="other")
         response = await client.get(f"/api/v1/resume/{rid}/preview?layout_id=sidebar")
         assert response.status_code == 404
+
+
+class TestThemeRegistryAPI:
+    async def test_themes_endpoint_returns_registered_themes(self, client):
+        from app.rendering.layout_preview import default_theme_registry
+
+        response = await client.get("/api/v1/resume/themes")
+        assert response.status_code == 200
+        data = response.json()["data"]
+        assert isinstance(data, list)
+        registry_ids = {t.theme_id for t in default_theme_registry().palettes()}
+        assert registry_ids
+        assert {item["theme_id"] for item in data} == registry_ids
+        for item in data:
+            assert item["name"]
+            assert "theme_id" in item
+
+
+class TestPdfDownloadOwnership:
+    async def test_own_resume_pdf_download_allowed(self, client):
+        from app.services.pdf_service import generate_pdf
+        from app.services.pdf_templates.engine import PDF_DIR
+
+        rid = _save_resume()
+        resume = _make_resume()
+        generate_pdf(rid, resume, "executive")
+        assert (PDF_DIR / f"{rid}.pdf").exists()
+
+        response = await client.get(f"/api/v1/resume/{rid}/pdf/download")
+        assert response.status_code == 200
+        assert "application/pdf" in response.headers.get("content-type", "")
+
+    async def test_another_users_resume_pdf_download_404(self, client):
+        from app.services.pdf_service import generate_pdf
+        from app.services.pdf_templates.engine import PDF_DIR
+
+        rid = _save_resume(user_id="other")
+        resume = _make_resume(user_id="other")
+        # Simulate the owner having generated a PDF earlier.
+        generate_pdf(rid, resume, "executive")
+        assert (PDF_DIR / f"{rid}.pdf").exists()
+
+        response = await client.get(f"/api/v1/resume/{rid}/pdf/download")
+        assert response.status_code == 404
+
+
+class TestCleanup:
+    def test_thumbnail_service_module_removed(self):
+        import importlib.util
+
+        assert importlib.util.find_spec("app.services.thumbnail_service") is None
+
+    def test_designer_has_no_dead_rendering_init(self):
+        import app.api.v1.designer as designer
+
+        assert not hasattr(designer, "rendering")
 
 
 class TestVariantCompatibility:
