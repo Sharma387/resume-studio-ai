@@ -77,7 +77,8 @@ export default function TemplateDesignerPage() {
   };
 
   // Legacy template URLs resolve to the canonical layout URL through the
-  // backend mapping (the template endpoint exposes the mapped layout_id).
+  // backend compatibility mapping endpoint (no legacy template registry is
+  // fetched by the canonical frontend).
   useEffect(() => {
     if (!templateId) {
       setLoading(false);
@@ -85,7 +86,7 @@ export default function TemplateDesignerPage() {
     }
     const resolve = async () => {
       try {
-        const tRes = await authFetch(`${API_URL}/resume/templates/${templateId}`);
+        const tRes = await authFetch(`${API_URL}/resume/template-resolve/${templateId}`);
         const tBody = await tRes.json();
         if (tBody.success && tBody.data?.layout_id) {
           navigate(
