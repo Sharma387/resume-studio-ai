@@ -35,6 +35,19 @@ TEMPLATE_TO_LAYOUT: dict[str, str] = {
 #: all supported legacy template ids (the keys of the mapping, sorted).
 LEGACY_TEMPLATE_IDS: tuple[str, ...] = tuple(sorted(TEMPLATE_TO_LAYOUT))
 
+#: representative legacy ``template_id`` per canonical ``layout_id`` (reverse
+#: compatibility boundary). Several legacy templates map onto the same layout;
+#: the value below is the representative for that layout. ``timeline`` has no
+#: legacy equivalent, so it maps to ``None``.
+LAYOUT_TO_TEMPLATE: dict[str, str | None] = {
+    "executive": "executive",
+    "sidebar": "executive-elite",
+    "modern": "consulting-pro",
+    "classic": "modern-ats",
+    "minimal": "minimal-professional",
+    "timeline": None,
+}
+
 
 class UnknownLegacyTemplateError(KeyError):
     """Raised when a template id is not part of the supported mapping."""

@@ -262,6 +262,7 @@ new = after - before
 
 # Legacy rendering stack that the migrated endpoint must not require.
 banned = (
+    "app.rendering.registry.template_registry",  # TemplateRegistry
     "app.rendering.service",               # ResumeRenderingService
     "app.rendering.preview.service",       # PreviewService
     "app.rendering.renderers.html_renderer",  # legacy Jinja HTMLRenderer
