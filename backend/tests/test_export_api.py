@@ -217,27 +217,3 @@ class TestThemeViaAPI:
         _, _, gold = await _export(client, rid, {"layout_id": "sidebar", "theme_id": "gold", "format": "pdf"})
         assert _tokens(_pdf_text(blue)) == _tokens(_pdf_text(gold))
         assert "Sharma Rajasekar" in _pdf_text(blue) and "Sharma Rajasekar" in _pdf_text(gold)
-
-
-# ── legacy compatibility ──────────────────────────────────────────────────────
-
-
-class TestLegacyCompatibility:
-    async def test_legacy_template_preview_still_works(self, client):
-        rid = _save_resume()
-        response = await client.get(f"/api/v1/resume/{rid}/preview?template_id=executive")
-        assert response.status_code == 200
-        body = response.json()
-        assert body["success"] is True
-        assert "mode" not in body["data"]  # legacy shape unchanged
-
-    async def test_legacy_pdf_still_works(self, client):
-        rid = _save_resume()
-        response = await client.post(f"/api/v1/resume/{rid}/pdf?template=executive")
-        assert response.status_code == 200
-        body = response.json()
-        assert body["success"] is True
-        assert "downloadUrl" in body
-        download = await client.get(body["downloadUrl"])
-        assert download.status_code == 200
-        assert download.headers["content-type"] == "application/pdf"

@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from app.models.user import User
 from app.services.ats_scoring import analyze as analyze_ats
 from app.services.auth_deps import require_user
-from app.services.recommendation_service import recommend as recommend_templates
+from app.services.recommendation_service import recommend as recommend_layouts
 from app.services.repositories.factory import get_resume_repository
 from app.services.version_history import autosave, get_autosave, list_versions, save_version
 
@@ -58,5 +58,5 @@ async def get_design_recommendations(variant_id: str, body: dict,
     from app.models.resume import Resume
     resume = Resume(**resume_data)
     ats = analyze_ats(resume)
-    recs = recommend_templates(resume)
+    recs = recommend_layouts(resume)
     return {"success": True, "data": {"ats": ats, "recommended_templates": recs}}

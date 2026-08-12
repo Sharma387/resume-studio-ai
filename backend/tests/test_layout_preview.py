@@ -1,8 +1,7 @@
-"""Integration tests for the new layout-engine preview path (real API).
+"""Integration tests for the canonical layout-engine preview path (real API).
 
-These exercise the actual preview API endpoint: layout mode (``layout_id``)
-renders through the new engine; legacy mode (``template_id``) must remain
-compatible.
+These exercise the actual preview API endpoint: ``layout_id`` renders through
+the layout engine; the legacy ``template_id`` mode was retired.
 """
 
 import re
@@ -171,25 +170,6 @@ class TestThemeSeparation:
         assert _section_regions(blue_html) == _section_regions(gold_html)
         assert "--primary: #2563eb" in blue_html
         assert "--primary: #b98a2f" in gold_html
-
-
-# ── E: legacy preview compatibility ───────────────────────────────────────────
-
-
-class TestLegacyCompatibility:
-    async def test_legacy_template_preview_still_works(self, client):
-        resume_id = _save_resume()
-        response = await client.get(f"/api/v1/resume/{resume_id}/preview?template_id=executive")
-        assert response.status_code == 200
-        body = response.json()
-        assert body["success"] is True
-        assert "mode" not in body["data"]  # legacy shape unchanged
-        file_response = await client.get(body["data"]["preview_url"])
-        assert file_response.status_code == 200
-        legacy_html = file_response.text
-        assert "Jane Doe" in legacy_html
-        # Legacy output uses the legacy structure, not the new engine regions.
-        assert "data-region" not in legacy_html
 
 
 # ── F/G: error handling ───────────────────────────────────────────────────────

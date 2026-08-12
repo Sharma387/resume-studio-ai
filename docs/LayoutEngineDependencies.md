@@ -133,25 +133,19 @@ template-id hardcoded). `backend/app/rendering/layout_html.py` is the
 orchestration seam `Resume → CVM → RenderContext → TreeBuilder → RenderTree →
 HTML` (`render_layout_html` / `render_resume_layout_html`). The renderer
 imports only tree/theme/common — no CVM, layouts, registries, preview, or
-legacy template system. The legacy `TemplateRegistry` preview path remains
-untouched; preview-API migration awaits the `template_id → layout` boundary.
+legacy template system. The legacy `TemplateRegistry`/Jinja stack was retired.
 
 ## Layout Engine Preview Integration (implemented)
 
 `backend/app/rendering/layout_preview.py` — orchestration bridging the engine
-into preview behind a clean mode boundary: `?layout_id=` renders through the
-new engine (CVM → RenderContext → TreeBuilder → RenderTree → HTML), while
-`?template_id=` keeps the legacy TemplateRegistry path. It reuses the shared
-preview cache directory (file endpoint + existing `frame-ancestors` CSP) and
-adds no renderer/legacy coupling beyond that storage seam.
+into preview: `?layout_id=` renders through the engine (CVM → RenderContext →
+TreeBuilder → RenderTree → HTML). The legacy `?template_id=` preview mode was
+retired (rejected with `400`). It reuses the shared preview cache directory
+(file endpoint + existing `frame-ancestors` CSP).
 
-## Canonical layout path / legacy compatibility (template_id → layout_id)
+## Canonical layout path (legacy retirement complete)
 
-`layout_id` is the canonical rendering identity; `template_id` is
-compatibility-only. `backend/app/rendering/legacy_templates.py` is the single
-mapping boundary (`TEMPLATE_TO_LAYOUT` maps all 13 legacy templates
-deterministically; `resolve_legacy_template()` rejects unknown ids with
-`UnknownLegacyTemplateError` — no silent fallback; `DEFAULT_LEGACY_THEME`).
+`layout_id` is the sole canonical rendering identity; `theme_id` is canonical.
 
 ```
                  CANONICAL
@@ -160,33 +154,22 @@ deterministically; `resolve_legacy_template()` rejects unknown ids with
                  layout_id
                      │
                      ▼
-             LayoutDefinition
+             LayoutDefinition / ThemePalette
                      │
                      ▼
                 RenderTree
                 /   |   \
              HTML  PDF  DOCX
-
-
-             COMPATIBILITY
-                     │
-                     ▼
-                template_id
-                     │
-                     ▼
-             TEMPLATE_TO_LAYOUT
-                     │
-                     ▼
-             legacy compatibility
 ```
 
 - `layout_id` is canonical (preview + export + gallery + designer).
-- `template_id` is compatibility-only, and `Resume` does not persist it.
-- Preview rejects `template_id` + `layout_id` together (`400`); `template_id`
-  alone stays on the byte-identical legacy path.
-- `/resume/templates/{id}` exposes the mapped `layout_id`; `/resume/layouts`
-  lists layouts from `REFERENCE_LAYOUTS`.
+- `Resume` does not persist `template_id`; `resume_variants` keeps it only as
+  opaque historical/business metadata.
+- Preview requires `layout_id`; a `template_id` preview request → `400`.
+- `/resume/layouts` lists layouts from `REFERENCE_LAYOUTS`.
 - Frontend: `/designer?layout=<id>&resume=<id>[&theme=<id>]` is canonical and
-  URL is the single source of truth; `/designer?template=…` redirects to the
-  mapped layout.
-- Legacy rendering remains temporarily; removal is a separate future phase.
+  URL is the single source of truth; no legacy `?template=` redirect exists.
+- The legacy rendering stack (TemplateRegistry, Jinja templates, legacy
+  HTMLRenderer, PreviewService, ResumeRenderingService, ReportLab resume PDF,
+  the template→layout mapping, and the template-resolve URL shim) has been
+  removed. Resume PDF/DOCX/HTML go through the RenderTree renderers only.

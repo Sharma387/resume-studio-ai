@@ -7,7 +7,7 @@ A. ``recommendation_service``, the optimize path (``app.api.v1.designer``),
    longer import the legacy rendering stack (TemplateRegistry,
    ResumeRenderingService, PreviewService, Jinja HTMLRenderer, ReportLab).
 B. Behavioral contracts for /recommendations, /optimize, and /target-job are
-   preserved, including the legacy ``template_id`` compatibility field.
+   preserved and operate purely on canonical ``layout_id``.
 """
 
 import subprocess
@@ -20,7 +20,6 @@ from httpx import ASGITransport, AsyncClient
 
 from app.main import app
 from app.models.resume import Resume
-from app.rendering import legacy_templates
 from app.rendering.layout_preview import default_layout_registry
 from app.services.recommendation_service import recommend
 from app.services.storage_service import save_resume
@@ -124,22 +123,10 @@ class TestRecommendationsBehavior:
         for r in recs:
             assert 0 <= r["score"] <= 100
             assert r["layout_id"] in registry_ids
-            assert "template_id" in r
             assert "name" in r and r["name"]
             assert "category" in r
             assert "ats_score" in r
             assert "best_for" in r
-
-    def test_legacy_template_id_compat_resolves_back_to_layout(self):
-        recs = recommend(_resume())
-        compat = {r["template_id"] for r in recs if r["template_id"] is not None}
-        assert compat == {
-            "executive", "executive-elite", "consulting-pro",
-            "modern-ats", "minimal-professional",
-        }
-        for r in recs:
-            if r["template_id"] is not None:
-                assert legacy_templates.resolve_legacy_template(r["template_id"]) == r["layout_id"]
 
     def test_empty_resume_still_returns_all_layouts(self):
         recs = recommend(Resume(user_id="test", full_name="Edge", email="edge@test.com"))
@@ -161,7 +148,6 @@ class TestRecommendationsBehavior:
         data = body["data"]
         assert isinstance(data, list) and data
         assert "layout_id" in data[0]
-        assert "template_id" in data[0]
 
     @pytest.mark.asyncio
     async def test_recommendations_unknown_resume_404(self, client):
@@ -190,7 +176,6 @@ class TestOptimizeBehavior:
         scores = [r["score"] for r in recs]
         assert scores == sorted(scores, reverse=True)
         for r in recs:
-            assert "template_id" in r
             assert "layout_id" in r
 
     @pytest.mark.asyncio
@@ -248,43 +233,35 @@ class TestTargetJobBehavior:
         assert response.status_code == 422
 
 
-# ── E. Legacy compatibility smoke (endpoints retained, not migrated) ──────────
+# ── E. Retired legacy endpoints are gone (Step 6 security) ────────────────────
 
 
-class TestLegacyCompatibilitySmoke:
-    """The decoupling of recommendation/optimize/target-job must not have
-    disturbed the retained legacy compatibility surface."""
-
-    @pytest.mark.asyncio
-    async def test_legacy_template_preview_still_works(self, client):
-        for template_id in ("executive", "executive-elite"):
-            rid = _save_resume()
-            response = await client.get(f"/api/v1/resume/{rid}/preview?template_id={template_id}")
-            assert response.status_code == 200
-            body = response.json()
-            assert body["success"] is True
-            assert "mode" not in body["data"]  # legacy preview shape
+class TestRetiredEndpointsGone:
+    """The retired legacy API surface must no longer be reachable."""
 
     @pytest.mark.asyncio
-    async def test_resume_templates_endpoints_still_work(self, client):
-        listing = await client.get("/api/v1/resume/templates")
-        assert listing.status_code == 200
-        assert len(listing.json()["data"]) >= 12
-        detail = await client.get("/api/v1/resume/templates/executive")
-        assert detail.status_code == 200
-        assert detail.json()["data"]["layout_id"] == "executive"
-
-    def test_admin_template_service_still_works(self):
-        from app.services import template_admin_service as tas
-
-        assert len(tas.list_templates()) >= 12
-        assert "executive" in tas.get_categories() or bool(tas.get_categories())
+    async def test_legacy_resume_templates_gone(self, client):
+        assert (await client.get("/api/v1/resume/templates")).status_code == 404
+        assert (await client.get("/api/v1/resume/templates/executive")).status_code == 404
 
     @pytest.mark.asyncio
-    async def test_legacy_reportlab_pdf_still_works(self, client):
+    async def test_legacy_reportlab_pdf_gone(self, client):
+        assert (await client.post("/api/v1/resume/r1/pdf")).status_code == 404
+        assert (await client.get("/api/v1/resume/r1/pdf/download")).status_code == 404
+        assert (await client.get("/api/v1/templates")).status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_export_pdf_gone(self, client):
+        assert (await client.post("/api/v1/resume/r1/export-pdf", json={"resume_data": {}})).status_code == 404
+        assert (await client.get("/api/v1/resume/export/x.pdf")).status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_admin_templates_gone(self, client):
+        assert (await client.get("/api/v1/admin/templates")).status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_legacy_template_preview_rejected(self, client):
         rid = _save_resume()
-        generated = await client.post(f"/api/v1/resume/{rid}/pdf?template=executive")
-        assert generated.status_code == 200
-        download = await client.get(generated.json()["downloadUrl"])
-        assert download.status_code == 200
-        assert download.headers["content-type"] == "application/pdf"
+        response = await client.get(f"/api/v1/resume/{rid}/preview?template_id=executive")
+        assert response.status_code == 400
+        assert "retired" in response.json()["detail"]

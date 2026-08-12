@@ -37,7 +37,7 @@ Resume Studio AI allows users to upload a resume (PDF, DOCX, or TXT), extract it
 2. **Extract** text from the file
 3. **Parse** into structured Resume model via AI
 4. **Review and edit** the 7 resume sections
-5. **Generate PDF** with one of 5 professional templates
+5. **Design** with a layout + theme and **export** as PDF/DOCX/HTML
 6. **Match** against job descriptions for ATS optimization
 7. **Generate** cover letters with tone selection
 8. **Track** applications with status and timeline
@@ -51,7 +51,7 @@ Resume Studio AI allows users to upload a resume (PDF, DOCX, or TXT), extract it
 | **AI Parsing** | OmniRoute-powered resume parsing, structured data extraction |
 | **Resume Editing** | 7-section editor (Personal Info, Summary, Skills, Experience, Education, Projects, Certifications) |
 | **Version History** | Save snapshots, restore previous versions |
-| **PDF Export** | 5 templates (Executive, ATS, Technical, Modern, Minimal), cover letter PDF |
+| **Rendering & Export** | Layout + theme → RenderTree → HTML/PDF/DOCX via unified export, cover letter PDF |
 | **ATS Matching** | Job description analysis, skill gap detection, AI recommendations |
 | **AI Writer** | Section-level improvement suggestions, accept/reject/regenerate |
 | **Cover Letters** | AI generation with tone selection, edit, PDF export |
@@ -142,7 +142,8 @@ Parse  → PromptService → OmniRoute → JSON → Pydantic validation → Resu
 | Framework | FastAPI (Python 3.12+) |
 | Validation | Pydantic v2 |
 | Auth | python-jose (JWT), bcrypt |
-| PDF | ReportLab |
+| PDF (resume) | WeasyPrint via RenderTree export |
+| PDF (cover letters) | ReportLab |
 | Doc Extraction | PyMuPDF (fitz), python-docx |
 | AI Gateway | OmniRoute (OpenAI-compatible) |
 | HTTP Client | httpx |
@@ -176,9 +177,8 @@ backend/
 │   │       ├── health.py          # Health check
 │   │       ├── interviews.py      # Interview sessions + AI
 │   │       ├── job_match.py       # ATS matching
-│   │       ├── parse.py           # Resume parsing
-│   │       ├── pdf.py             # PDF generation + templates
-│   │       ├── resume_crud.py     # Resume read/update
+│       │       ├── parse.py           # Resume parsing
+│       │       ├── resume_crud.py     # Resume read/update
 │   │       ├── suggestions.py     # Resume versions + suggestions
 │   │       ├── upload.py          # File upload
 │   │       └── writer.py          # AI writer suggestions
@@ -210,11 +210,6 @@ backend/
 │       │   ├── normalizer.py      # Text normalization
 │       │   ├── metadata.py        # Word/char/page count
 │       │   └── extractors/        # PDFExtractor, DOCXExtractor, TXTExtractor
-│       ├── pdf_templates/         # PDF template engine
-│       │   ├── base.py            # BaseTemplate ABC
-│       │   ├── registry.py        # TemplateRegistry
-│       │   ├── engine.py          # PDF rendering
-│       │   └── *.py               # 5 template implementations
 │       ├── repositories/          # Data access layer
 │       │   ├── interfaces.py      # UserRepository, RefreshTokenRepository ABCs
 │       │   ├── json_user_repo.py  # JSON user storage
@@ -229,7 +224,6 @@ backend/
 │       ├── matching_service.py
 │       ├── omniroute_service.py   # AI gateway HTTP client
 │       ├── parser_service.py      # Resume parsing orchestration
-│       ├── pdf_service.py         # PDF generation facade
 │       ├── prompt_service.py      # Prompt template loader (cached)
 │       ├── storage_service.py     # JSON CRUD for all entities
 │       ├── suggestion_service.py  # AI suggestion application
@@ -330,8 +324,7 @@ User visits /
        │
        ├── Review → /review?file={id}
        │   ├── Edit sections → PUT /api/v1/resume/{id}
-       │   ├── Generate PDF → POST /api/v1/resume/{id}/pdf
-       │   ├── Download PDF → GET /api/v1/resume/{id}/pdf/download
+       │   ├── Export → POST /api/v1/resume/{id}/export (pdf|docx|html, layout_id+theme_id)
        │   ├── ATS Match → POST /api/v1/job-match
        │   ├── AI Writer → POST /api/v1/resume/{id}/writer/suggest
        │   ├── Cover Letter → POST /api/v1/resume/{id}/cover-letter
@@ -509,7 +502,8 @@ All endpoints under `/api/v1/`. Full documentation at `docs/API.md`.
 | extract | 1 | Text extraction |
 | parse | 1 | AI resume parsing |
 | resume_crud | 3 | Resume list, read, update |
-| pdf | 3 | PDF generate, download, template list |
+| rendering | 5 | Layouts, themes, canonical preview, preview file |
+| export | 1 | Unified export (pdf/docx/html) |
 | suggestions | 6 | Version CRUD + AI suggestion apply |
 | writer | 6 | AI writing suggestions |
 | cover_letter | 7 | Cover letter CRUD + PDF + regenerate |
@@ -559,9 +553,8 @@ storage/
 ├── timeline/{app_id}/{event_id}.json
 ├── interviews/{app_id}/sessions/{session_id}.json
 ├── writer_suggestions/{resume_id}/{suggestion_id}.json
-├── pdfs/{resume_id}.pdf
 ├── cover_letter_pdfs/{letter_id}.pdf
-└── (resumes dir + uploads dir)
+└── (resumes dir + uploads dir + previews dir)
 ```
 
 **Future:** PostgreSQL migration prepared via repository interfaces in `app/services/repositories/`. JSON can be replaced by implementing the same `UserRepository` / `RefreshTokenRepository` interfaces with SQL.

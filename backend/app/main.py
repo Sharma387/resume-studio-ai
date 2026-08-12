@@ -14,7 +14,6 @@ from app.api.v1.health import router as health_router
 from app.api.v1.interviews import router as interviews_router
 from app.api.v1.job_match import router as job_match_router
 from app.api.v1.parse import router as parse_router
-from app.api.v1.pdf import router as pdf_router
 from app.api.v1.rendering import router as rendering_router
 from app.api.v1.resume_crud import router as resume_crud_router
 from app.api.v1.suggestions import router as suggestions_router
@@ -92,7 +91,6 @@ app.include_router(parse_router, prefix="/api/v1")
 app.include_router(rendering_router, prefix="/api/v1")
 app.include_router(export_router, prefix="/api/v1")
 app.include_router(resume_crud_router, prefix="/api/v1")
-app.include_router(pdf_router, prefix="/api/v1")
 app.include_router(job_match_router, prefix="/api/v1")
 app.include_router(suggestions_router, prefix="/api/v1")
 app.include_router(writer_router, prefix="/api/v1")

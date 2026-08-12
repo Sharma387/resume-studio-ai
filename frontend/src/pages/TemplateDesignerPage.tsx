@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
   Box, Drawer, Typography, Button, Select, MenuItem, FormControl,
-  CircularProgress, Alert, IconButton, Divider,
+  Alert, IconButton, Divider,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import RefreshIcon from '@mui/icons-material/Refresh';
@@ -19,7 +19,6 @@ const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 export default function TemplateDesignerPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const templateId = searchParams.get('template');
   const resumeId = searchParams.get('resume');
   // The URL is the single source of truth for layout and theme so that
   // refresh and Back/Forward always preserve the current selection.
@@ -27,7 +26,6 @@ export default function TemplateDesignerPage() {
   const theme = searchParams.get('theme') || 'blue';
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
-  const [loading, setLoading] = useState(true);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [layoutOptions, setLayoutOptions] = useState<string[]>([layout]);
@@ -76,34 +74,6 @@ export default function TemplateDesignerPage() {
     navigate(`/designer?${params.toString()}`, { replace: true });
   };
 
-  // Legacy template URLs resolve to the canonical layout URL through the
-  // backend compatibility mapping endpoint (no legacy template registry is
-  // fetched by the canonical frontend).
-  useEffect(() => {
-    if (!templateId) {
-      setLoading(false);
-      return;
-    }
-    const resolve = async () => {
-      try {
-        const tRes = await authFetch(`${API_URL}/resume/template-resolve/${templateId}`);
-        const tBody = await tRes.json();
-        if (tBody.success && tBody.data?.layout_id) {
-          navigate(
-            `/designer?layout=${tBody.data.layout_id}${resumeId ? `&resume=${resumeId}` : ''}`,
-            { replace: true },
-          );
-          return;
-        }
-        setError('This template cannot be opened in the layout designer.');
-      } catch {
-        setError('Template not found.');
-      }
-      setLoading(false);
-    };
-    resolve();
-  }, [templateId, resumeId, navigate]);
-
   const generatePreview = useCallback(async () => {
     if (!resumeId) return;
     const seq = ++previewSeqRef.current;
@@ -140,7 +110,6 @@ export default function TemplateDesignerPage() {
     }
   };
 
-  if (loading) return <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}><CircularProgress /></Box>;
   if (error && !previewUrl) return <Alert severity="error">{error}</Alert>;
 
   return (

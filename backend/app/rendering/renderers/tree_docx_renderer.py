@@ -8,8 +8,8 @@ cell per region; sections become headings with content; lists become bullets;
 links become clickable hyperlinks; page size/margins come from the PAGE node.
 
 This renderer is a pure RenderTree consumer: it knows nothing about Resume,
-ContentView, LayoutDefinition, ComponentRegistry, TemplateRegistry, Jinja,
-PreviewService, database, or API layers.
+ContentView, LayoutDefinition, ComponentRegistry, the retired legacy
+template/Jinja stack, PreviewService, database, or API layers.
 """
 
 from __future__ import annotations

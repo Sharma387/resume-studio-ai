@@ -16,7 +16,7 @@ Bridges the new rendering pipeline into Resume Studio preview:
       ↓
     HTML (written to the shared preview cache, served by the preview file API)
 
-The legacy TemplateRegistry preview path is not involved here. Layout and theme
+The retired legacy template/Jinja preview path is not involved here. Layout and theme
 are resolved through the new Layout/Theme registries; unknown ids raise their
 respective lookup errors (mapped to 404 by the API).
 """
@@ -32,7 +32,7 @@ from app.rendering.context import RenderMode, RenderState
 from app.rendering.layout.layout_registry import LayoutRegistry
 from app.rendering.layout.reference_layouts import REFERENCE_LAYOUTS
 from app.rendering.layout_html import render_layout_html
-from app.rendering.preview.service import PREVIEW_DIR
+from app.rendering.paths import PREVIEW_DIR
 from app.rendering.theme.reference_themes import REFERENCE_THEMES
 from app.rendering.theme.theme_registry import ThemeRegistry
 

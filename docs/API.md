@@ -35,13 +35,16 @@ Base URL: `http://localhost:8000/api/v1`
 | GET | /resume/{id} | No | Get stored resume by ID |
 | PUT | /resume/{id} | No | Update stored resume |
 
-## PDF Generation
+## Rendering — Canonical (Layout Engine)
+
+The single resume rendering pipeline is `Resume → CVM → RenderContext → TreeBuilder → RenderTree → HTML/PDF/DOCX`.
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| POST | /resume/{id}/pdf?template= | No | Generate resume PDF (template: executive, ats, technical, modern, minimal) |
-| GET | /resume/{id}/pdf/download | No | Download generated resume PDF |
-| GET | /templates | No | List available PDF template names |
+| GET | /resume/{id}/preview?layout_id=<layout>&theme=<theme> | No | HTML preview via the layout engine (`layout_id` required; `template_id` retired → 400) |
+| POST | /resume/{id}/export | No | Export in the requested `{layout_id, theme_id, format}` where format is `pdf`, `docx`, or `html` |
+| GET | /resume/layouts | No | List canonical layouts (`layout_id`, `name`, `description`) |
+| GET | /resume/themes | No | List canonical themes (`theme_id`, `name`, `description`, `style`, `tags`) |
 
 ## Version History
 

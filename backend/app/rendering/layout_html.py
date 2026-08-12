@@ -1,10 +1,9 @@
-"""New RenderTree → HTML pipeline orchestration (additive).
+"""New RenderTree → HTML pipeline orchestration.
 
 Wires: Resume → CVM → RenderContext → TreeBuilder → RenderTree → HTML.
 
-This is the new production path (Layout Engine). It does NOT touch the legacy
-TemplateRegistry path, PreviewService, or any API. PreviewService integration
-awaits the ``template_id → layout`` migration.
+This is the canonical production path (Layout Engine). It does not touch the
+retired legacy template/Jinja stack, PreviewService, or any API.
 """
 
 from __future__ import annotations

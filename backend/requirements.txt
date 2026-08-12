@@ -19,6 +19,5 @@ alembic
 psycopg2-binary
 ruff
 greenlet
-jinja2
 weasyprint
 pypdf

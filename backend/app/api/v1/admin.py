@@ -224,59 +224,6 @@ async def get_configuration_diagnostics(_: User = Depends(_admin_only)):
     return {"success": True, "data": data}
 
 
-# ── Admin Template Management ──────────────────────────────────────────────────
-# LEGACY COMPATIBILITY surface — the admin console manages the on-disk legacy
-# template catalog. Imported lazily so the canonical application does not load
-# the legacy TemplateRegistry/Jinja stack at startup.
-
-
-@router.get("/admin/templates")
-async def admin_list_templates(_: User = Depends(_admin_only)):
-    from app.services import template_admin_service as tas
-
-    return {"success": True, "data": tas.list_templates()}
-
-
-@router.get("/admin/templates/categories")
-async def admin_template_categories(_: User = Depends(_admin_only)):
-    from app.services import template_admin_service as tas
-
-    return {"success": True, "data": tas.get_categories()}
-
-
-@router.get("/admin/templates/{template_id}")
-async def admin_get_template(template_id: str, _: User = Depends(_admin_only)):
-    from app.services import template_admin_service as tas
-
-    result = tas.get_template_detail(template_id)
-    if result is None:
-        raise HTTPException(status_code=404, detail="Template not found")
-    return {"success": True, "data": result}
-
-
-@router.post("/admin/templates/{template_id}/validate")
-async def admin_validate_template(template_id: str, _: User = Depends(_admin_only)):
-    from app.services import template_admin_service as tas
-
-    return {"success": True, "data": tas.validate_template(template_id)}
-
-
-@router.post("/admin/templates/reload")
-async def admin_reload_templates(_: User = Depends(_admin_only)):
-    from app.services import template_admin_service as tas
-
-    return {"success": True, "data": tas.reload_registry()}
-
-
-@router.delete("/admin/templates/{template_id}")
-async def admin_delete_template(template_id: str, _: User = Depends(_admin_only)):
-    from app.services import template_admin_service as tas
-
-    if not tas.delete_template(template_id):
-        raise HTTPException(status_code=404, detail="Template not found")
-    return {"success": True, "message": f"Template '{template_id}' deleted"}
-
-
 # ── User Management ────────────────────────────────────────────────────────────
 
 from app.services import admin_user_service as usvc

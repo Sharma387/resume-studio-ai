@@ -11,7 +11,6 @@ storage/
 ├── resumes/{resume_id}.json
 ├── versions/{resume_id}/{version_id}.json
 ├── matches/{match_id}.json
-├── pdfs/{resume_id}.pdf
 ├── cover_letters/{resume_id}/{letter_id}.json
 ├── cover_letter_pdfs/{letter_id}.pdf
 ├── applications/{app_id}.json

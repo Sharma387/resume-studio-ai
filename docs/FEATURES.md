@@ -21,8 +21,8 @@ PromptService loads prompt templates from `prompts/` directory. OmniRouteService
 ## RSAI-007 — Resume Review Page
 Editable `/review` page with left navigation (Personal Info, Summary, Skills, Experience, Education, Projects, Certifications). Add/edit/delete for Experience, Education, Projects, Certifications. Add/remove/categorize Skills. Save/Cancel with unsaved changes indicator.
 
-## RSAI-008 — Professional PDF Generation
-ReportLab PDF generation with professional layout. `POST /api/v1/resume/{id}/pdf` generates, `GET .../pdf/download` serves with meaningful filename (`resume_<name>.pdf`). Page numbers, proper spacing, automatic page breaks.
+## RSAI-008 — Resume Rendering & Export (RenderTree)
+Unified layout-based rendering: `Resume → CVM → RenderContext → TreeBuilder → RenderTree → HTML/PDF/DOCX`. Canonical APIs: `GET /resume/{id}/preview?layout_id=…&theme=…`, `POST /resume/{id}/export {layout_id, theme_id, format}`. The legacy Jinja template / ReportLab resume PDF stack was retired; cover letters keep their own PDF implementation.
 
 ## RSAI-011 — ATS Job Matching
 `POST /api/v1/job-match` compares resume against job description. Returns overall score (0-100), matched/missing skills, categorized recommendations with priority. ATS score gauge (color-coded), match summary, keyword analysis.
@@ -30,8 +30,9 @@ ReportLab PDF generation with professional layout. `POST /api/v1/resume/{id}/pdf
 ## RSAI-012 — Document Intelligence Engine
 Modular document processing: `BaseExtractor` ABC → `PDFExtractor` (PyMuPDF), `DOCXExtractor` (python-docx), `TXTExtractor`. `DocumentDetector` maps extensions to extractors. `TextNormalizer` + `MetadataExtractor` utilities. Upload/extract supports PDF, DOCX, TXT.
 
-## RSAI-013 — Resume Template Engine
+## RSAI-013 — Resume Template Engine (RETIRED)
 `BaseTemplate` ABC with default renderers for all resume sections. 5 templates: Executive (water blue accent), ATS (minimal, compact), Technical (Courier font, purple), Modern (teal, generous spacing), Minimal (no colors, tight). Template registry with name→class mapping.
+**Status: RETIRED.** Superseded by the layout-based RenderTree system (RSAI-008 above). No longer present in the codebase.
 
 ## RSAI-014 — AI Resume Writer
 AI-powered writing suggestions per section: phrasing, grammar, skills, summary, achievements, completeness, full review. Preview before applying. Accept, reject, or regenerate each suggestion. Quick-action prompts (strengthen, grammar, skills, etc.). Configurable via dict.

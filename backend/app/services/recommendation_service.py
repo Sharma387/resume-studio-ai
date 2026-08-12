@@ -1,13 +1,11 @@
 """Layout recommendation based on resume characteristics.
 
 Recommendations operate on canonical layouts (``LayoutRegistry`` via the
-reference layouts) and never initialize the legacy template stack.
+reference layouts) and never initialize a legacy rendering stack.
 
-Each recommendation exposes the canonical ``layout_id``. A legacy
-``template_id`` compatibility field is retained and resolved from the
-deterministic ``TEMPLATE_TO_LAYOUT`` boundary (``LAYOUT_TO_TEMPLATE`` in
-:mod:`app.rendering.legacy_templates`), so external consumers that still
-speak ``template_id`` do not silently change semantics.
+Each recommendation exposes the canonical ``layout_id``. The legacy
+``template_id`` compatibility field was removed together with the legacy
+retirement.
 
 This module must not import TemplateRegistry / Jinja / PreviewService /
 ResumeRenderingService / ReportLab (verified by import-graph tests).
@@ -17,7 +15,6 @@ from __future__ import annotations
 
 from app.models.resume import Resume
 from app.rendering.layout_preview import default_layout_registry
-from app.rendering.legacy_templates import LAYOUT_TO_TEMPLATE
 
 #: coarse category label per canonical layout (kept for response stability).
 _LAYOUT_CATEGORY: dict[str, str] = {
@@ -67,7 +64,6 @@ def recommend(resume: Resume) -> list[dict]:
 
         scored.append({
             "layout_id": m.layout_id,
-            "template_id": LAYOUT_TO_TEMPLATE.get(m.layout_id),
             "name": m.display_name,
             "score": min(100, score),
             "category": _LAYOUT_CATEGORY.get(m.layout_id, "professional"),

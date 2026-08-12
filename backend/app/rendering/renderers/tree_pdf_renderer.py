@@ -9,8 +9,8 @@ correspond to the preview. Page size/margins are taken from the RenderTree's
 PAGE node.
 
 This renderer is a pure RenderTree consumer: it knows nothing about Resume,
-ContentView, LayoutDefinition, ComponentRegistry, TemplateRegistry, Jinja,
-PreviewService, database, or API layers.
+ContentView, LayoutDefinition, ComponentRegistry, the retired legacy
+template/Jinja stack, PreviewService, database, or API layers.
 """
 
 from __future__ import annotations
