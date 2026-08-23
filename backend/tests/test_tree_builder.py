@@ -122,9 +122,9 @@ class TestStructuralLayoutAcceptance:
 
         # Region composition differs by layout.
         assert set(exec_map) == {"header", "main"}
-        assert set(side_map) == {"header", "main", "sidebar"}
+        assert set(side_map) == {"main", "sidebar"}
         assert set(modern_map) == {"header", "main", "secondary"}
-        assert set(classic_map) == {"main"}
+        assert set(classic_map) == {"main", "secondary"}
 
         # Same CVM, materially different section→region placement.
         assert exec_map == {
@@ -132,16 +132,18 @@ class TestStructuralLayoutAcceptance:
             "main": ["summary", "experience", "education", "certifications", "skills"],
         }
         assert side_map == {
-            "header": ["profile"],
             "main": ["summary", "experience", "education"],
-            "sidebar": ["skills", "certifications"],
+            "sidebar": ["profile", "skills", "certifications"],
         }
         assert modern_map == {
             "header": ["profile"],
-            "main": ["summary", "experience", "education"],
+            "main": ["summary", "experience"],
+            "secondary": ["skills", "certifications", "education"],
+        }
+        assert classic_map == {
+            "main": ["profile", "summary", "experience", "education"],
             "secondary": ["skills", "certifications"],
         }
-        assert classic_map == {"main": ["profile", "summary", "experience", "education", "skills", "certifications"]}
 
         # Skills relocates (structure), summary stays in main (content constant).
         assert "skills" in exec_map["main"]

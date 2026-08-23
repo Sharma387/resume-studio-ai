@@ -1,8 +1,8 @@
 from pathlib import Path
 
 from app.services.document.extractors.base import BaseExtractor
-from app.services.document.extractors.pdf import PDFExtractor
 from app.services.document.extractors.docx import DOCXExtractor
+from app.services.document.extractors.pdf import PDFExtractor
 from app.services.document.extractors.txt import TXTExtractor
 
 # Maps file extension → (mime_type, extractor_class, file_type)
@@ -17,9 +17,7 @@ EXTRACTOR_REGISTRY: dict[str, tuple[str, type[BaseExtractor], str]] = {
 }
 
 # MIME type → file_type lookup
-MIME_TO_TYPE: dict[str, tuple[str, type[BaseExtractor]]] = {
-    v[0]: (v[2], v[1]) for v in EXTRACTOR_REGISTRY.values()
-}
+MIME_TO_TYPE: dict[str, tuple[str, type[BaseExtractor]]] = {v[0]: (v[2], v[1]) for v in EXTRACTOR_REGISTRY.values()}
 
 
 def detect_file_type(filename: str) -> str | None:

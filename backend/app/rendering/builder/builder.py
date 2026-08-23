@@ -20,7 +20,7 @@ from app.rendering.components.registry import ComponentRegistry
 from app.rendering.content.models import ContentView
 from app.rendering.context.render_context import RenderContext
 from app.rendering.layout.layout_definition import LayoutDefinition
-from app.rendering.layout.layout_regions import RegionDefinition
+from app.rendering.layout.layout_regions import RegionDefinition, RegionType
 from app.rendering.layout.placement_rules import PlacementRule
 from app.rendering.tree import A4, LETTER, NodeKind, PageMargins, PageSize, RenderNode
 from app.rendering.tree.validator import TreeValidator
@@ -30,6 +30,9 @@ _PAGE_SIZES: dict[str, PageSize] = {"A4": A4, "Letter": LETTER}
 #: Ordering assigned to sections with no explicit placement rule (placed after
 #: rule-ordered sections, then by content order).
 _UNRULED_ORDER = 1_000_000
+
+#: Region types that participate in an explicit two-column fr template.
+_COLUMN_TYPES = (RegionType.MAIN, RegionType.SIDEBAR, RegionType.CUSTOM)
 
 
 class TreeBuilderError(ValueError):
@@ -55,8 +58,14 @@ class TreeBuilder:
         self._check_content_reference(cvm, context)
         layout = context.layout
 
+        column_template, placement = self._two_column_grid(layout)
         page_children = tuple(
-            self._build_region(layout, cvm, region)
+            self._build_region(
+                layout,
+                cvm,
+                region,
+                column_index=placement.get(region.identifier, None),
+            )
             for region in sorted(layout.regions, key=lambda r: (r.ordering, r.identifier))
         )
         page = RenderNode(
@@ -64,11 +73,14 @@ class TreeBuilder:
             kind=NodeKind.PAGE,
             page_size=self._page_size(layout),
             margins=self._margins(layout),
+            column_ratios=column_template,
+            gap_mm=layout.grid.gap_mm if column_template is not None else None,
             children=page_children,
         )
         document = RenderNode(
             id=f"doc-{cvm.stable_id}",
             kind=NodeKind.DOCUMENT,
+            classes=(f"layout-{layout.layout_id}",),
             children=(page,),
         )
         self._validator.assert_valid(document)
@@ -76,7 +88,14 @@ class TreeBuilder:
 
     # ── Region / section assembly ─────────────────────────────────────────────
 
-    def _build_region(self, layout: LayoutDefinition, cvm: ContentView, region: RegionDefinition) -> RenderNode:
+    def _build_region(
+        self,
+        layout: LayoutDefinition,
+        cvm: ContentView,
+        region: RegionDefinition,
+        *,
+        column_index: int | None = None,
+    ) -> RenderNode:
         children: list[RenderNode] = []
         for section_id, order in self._sections_for_region(layout, cvm, region):
             component = self._components.get(section_id)
@@ -96,6 +115,7 @@ class TreeBuilder:
             kind=NodeKind.REGION,
             region=region.identifier,
             span=region.column_span,
+            column_index=column_index,
             order=region.ordering,
             children=tuple(children),
         )
@@ -115,6 +135,31 @@ class TreeBuilder:
         return [(section_id, index) for index, (section_id, _, _) in enumerate(candidates)]
 
     # ── Placement resolution ──────────────────────────────────────────────────
+
+    def _two_column_grid(
+        self, layout: LayoutDefinition
+    ) -> tuple[tuple[int, int] | None, dict[str, int]]:
+        """Derive a visual-order (left→right) fr column template + per-region
+        track indices for an explicit two-column grid.
+
+        Returns ``(None, {})`` when the layout has no ``column_ratios`` or does
+        not resolve to exactly two column regions (header/footer/full-width
+        regions never become tracks).
+        """
+        ratios = layout.grid.column_ratios
+        if ratios is None:
+            return None, {}
+        rail_pct, main_pct = ratios
+        ordered = sorted(layout.regions, key=lambda r: (r.ordering, r.identifier))
+        columns = [region for region in ordered if region.region_type in _COLUMN_TYPES]
+        if len(columns) != 2:
+            return None, {}
+        template: tuple[int, int] = tuple(
+            rail_pct if region.region_type is not RegionType.MAIN else main_pct
+            for region in columns
+        )
+        placement = {region.identifier: index for index, region in enumerate(columns, start=1)}
+        return template, placement
 
     def _placement_rule(self, layout: LayoutDefinition, section_id: str) -> PlacementRule | None:
         for rule in layout.placement_rules:

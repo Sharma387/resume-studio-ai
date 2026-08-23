@@ -1,9 +1,8 @@
-from pathlib import Path
 
-from app.services.upload_service import UPLOAD_DIR
-from app.services.document.detector import get_extractor_for_filename, detect_file_type
-from app.services.document.normalizer import TextNormalizer
+from app.services.document.detector import get_extractor_for_filename
 from app.services.document.metadata import MetadataExtractor
+from app.services.document.normalizer import TextNormalizer
+from app.services.upload_service import UPLOAD_DIR
 
 
 class ExtractResult:

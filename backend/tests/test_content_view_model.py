@@ -260,6 +260,26 @@ class TestSourcePreservation:
         assert cvm.projects[0].name == "OpenMetrics"
         assert cvm.certifications[0].name == "AWS Certified"
 
+    def test_cvm_from_resume_preserves_grouped_certifications(self):
+        resume = _resume().model_copy(
+            update={
+                "certifications": [
+                    ResumeCertification(
+                        category="Professional Credentials",
+                        values=["PRINCE2 Practitioner", "Certified Scrum Master (CSM)"],
+                    ),
+                    ResumeCertification(name="PMP", issuer="PMI", date="2025"),
+                ]
+            }
+        )
+        cvm = cvm_from_resume(resume, stable_id="resume.r2")
+        assert cvm.certifications[0].category == "Professional Credentials"
+        assert cvm.certifications[0].values == ("PRINCE2 Practitioner", "Certified Scrum Master (CSM)")
+        assert cvm.certifications[0].name is None
+        assert cvm.certifications[1].name == "PMP"
+        assert cvm.certifications[1].category is None
+        assert cvm.certifications[1].issuer == "PMI"
+
     def test_cvm_from_resume_stable_id(self):
         resume = _resume()
         assert cvm_from_resume(resume, stable_id="r1").stable_id == "resume.r1"
@@ -274,7 +294,7 @@ class TestLayoutIndependence:
         exec_regions = [(r.identifier, r.column_span) for r in executive_layout().regions]
         side_regions = [(r.identifier, r.column_span) for r in sidebar_layout().regions]
         assert exec_regions == [("header", 12), ("main", 12)]
-        assert side_regions == [("header", 12), ("main", 7), ("sidebar", 5)]
+        assert side_regions == [("main", 8), ("sidebar", 4)]
 
     def test_same_cvm_accepted_by_two_layouts(self):
         cvm = _rich_cvm()

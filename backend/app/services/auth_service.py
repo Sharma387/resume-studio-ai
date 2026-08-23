@@ -5,9 +5,9 @@ from datetime import datetime, timedelta, timezone
 from jose import JWTError, jwt
 
 from app.core.config import settings
-from app.models.user import User, TokenPair
+from app.models.user import TokenPair, User
+from app.services.repositories.factory import get_refresh_token_repository
 from app.services.repositories.interfaces import RefreshTokenRepository
-from app.services.repositories.json_token_repo import JsonRefreshTokenRepository
 from app.services.user_service import UserService
 
 
@@ -18,7 +18,7 @@ class AuthenticationService:
         token_repo: RefreshTokenRepository | None = None,
     ):
         self.user_service = user_service or UserService()
-        self.token_repo = token_repo or JsonRefreshTokenRepository()
+        self.token_repo = token_repo or get_refresh_token_repository()
 
     # ── Token generation ────────────────────────────────────────
 

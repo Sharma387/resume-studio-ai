@@ -59,12 +59,17 @@ def render_layout_html(
     state: RenderState | None = None,
     registry: ComponentRegistry | None = None,
     renderer: RenderTreeHTMLRenderer | None = None,
+    density: str | None = None,
 ) -> str:
-    """Render a ContentView through ``layout`` + ``theme`` into HTML."""
+    """Render a ContentView through ``layout`` + ``theme`` into HTML.
+
+    ``density`` (``compact``/``normal``/``spacious``) scales the spacing
+    custom properties; ``None``/``normal`` keeps the current values.
+    """
     context = RenderContext(layout=layout, theme=theme, state=state or RenderState())
     builder = TreeBuilder(registry or default_component_registry())
     document = builder.build(cvm, context)
-    return (renderer or RenderTreeHTMLRenderer()).render(document, theme=theme)
+    return (renderer or RenderTreeHTMLRenderer()).render(document, theme=theme, density=density)
 
 
 def render_resume_layout_html(
@@ -74,10 +79,11 @@ def render_resume_layout_html(
     *,
     stable_id: str | None = None,
     state: RenderState | None = None,
+    density: str | None = None,
 ) -> str:
     """Build a CVM from ``resume`` and render it through ``layout`` + ``theme``."""
     cvm = cvm_from_resume(resume, stable_id=stable_id)
-    return render_layout_html(cvm, layout, theme, state=state)
+    return render_layout_html(cvm, layout, theme, state=state, density=density)
 
 
 def render_layout_pdf(
@@ -88,11 +94,13 @@ def render_layout_pdf(
     state: RenderState | None = None,
     registry: ComponentRegistry | None = None,
     renderer: RenderTreePDFRenderer | None = None,
+    density: str | None = None,
 ) -> bytes:
     """Render a ContentView through ``layout`` + ``theme`` into PDF bytes.
 
     Orchestration seam mirroring ``render_layout_html``: CVM → RenderContext →
-    TreeBuilder → RenderTree → RenderTreePDFRenderer.
+    TreeBuilder → RenderTree → RenderTreePDFRenderer. ``density`` is forwarded
+    to the HTML renderer so the PDF inherits density spacing values.
     """
     context = RenderContext(
         layout=layout,
@@ -101,7 +109,7 @@ def render_layout_pdf(
     )
     builder = TreeBuilder(registry or default_component_registry())
     document = builder.build(cvm, context)
-    return (renderer or RenderTreePDFRenderer()).render(document, theme=theme)
+    return (renderer or RenderTreePDFRenderer()).render(document, theme=theme, density=density)
 
 
 def render_resume_layout_pdf(
@@ -111,10 +119,11 @@ def render_resume_layout_pdf(
     *,
     stable_id: str | None = None,
     state: RenderState | None = None,
+    density: str | None = None,
 ) -> bytes:
     """Build a CVM from ``resume`` and render it through ``layout`` + ``theme`` to PDF."""
     cvm = cvm_from_resume(resume, stable_id=stable_id)
-    return render_layout_pdf(cvm, layout, theme, state=state)
+    return render_layout_pdf(cvm, layout, theme, state=state, density=density)
 
 
 def render_layout_docx(

@@ -1,11 +1,10 @@
 from pathlib import Path
 
-from reportlab.lib.pagesizes import A4
-from reportlab.lib.units import mm
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.colors import HexColor
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, KeepTogether
-from reportlab.lib.enums import TA_LEFT, TA_RIGHT
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.units import mm
+from reportlab.platypus import KeepTogether, Paragraph, SimpleDocTemplate, Spacer
 
 from app.models.cover_letter import CoverLetter
 from app.models.resume import Resume
@@ -44,6 +43,7 @@ def generate_cover_letter_pdf(resume_id: str, letter_id: str, letter: CoverLette
         content.append(Paragraph(contact, styles["SenderInfo"]))
 
     from datetime import datetime
+
     content.append(Paragraph(datetime.now().strftime("%B %d, %Y"), styles["DateLine"]))
 
     recipient_lines = []

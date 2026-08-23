@@ -1,6 +1,6 @@
 from app.models.application import Application
-from app.services.repositories.interfaces import ApplicationRepository
 from app.services import storage_service as store
+from app.services.repositories.interfaces import ApplicationRepository
 
 
 class JsonApplicationRepository(ApplicationRepository):

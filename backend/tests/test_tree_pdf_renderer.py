@@ -3,6 +3,7 @@
 import ast
 import importlib
 import inspect
+import re
 from collections import Counter
 from pathlib import Path
 
@@ -117,11 +118,26 @@ def _compact_cvm() -> ContentView:
 
 
 def _pdf_text(reader: PdfReader) -> str:
-    return " ".join((page.extract_text() or "") for page in reader.pages)
+    """Reconstruct page text per text-showing run so line wraps and adjacent
+    line breaks never merge words (pypdf default extraction can join them)."""
+    words: list[str] = []
+    for page in reader.pages:
+        runs: list[tuple[float, float, str]] = []
+
+        def _visit(text, cm, tm, font, size):
+            if text.strip():
+                runs.append((tm[5], tm[4], text.strip()))
+
+        page.extract_text(visitor_text=_visit)
+        runs.sort(key=lambda run: (run[0], run[1]))
+        words.extend(run[2] for run in runs)
+    return " ".join(words)
 
 
 def _tokens(text: str) -> Counter:
-    return Counter(text.split())
+    """Normalized word tokens: layout styling such as bullet glyphs (—/•) and
+    text casing are presentation, not content, so they must not differ."""
+    return Counter(re.findall(r"[a-z0-9]+", text.lower()))
 
 
 def _x_positions(reader: PdfReader, targets: tuple[str, ...]) -> dict[str, float]:

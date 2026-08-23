@@ -2,8 +2,8 @@ from pathlib import Path
 
 import fitz
 
-from app.services.document.extractors.base import BaseExtractor
 from app.models.document import ExtractionResult
+from app.services.document.extractors.base import BaseExtractor
 
 
 class PDFExtractor(BaseExtractor):

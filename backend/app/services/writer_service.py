@@ -3,13 +3,13 @@ import uuid
 
 from pydantic import ValidationError
 
+from app.core.logging import get_logger
 from app.models.resume import Resume
 from app.models.writer import ResumeSuggestion, WriterRequest
+from app.services.ai_core import AIServiceUnavailable, call_with_retry, extract_json_array
 from app.services.prompt_service import PromptService
-from app.services.ai_core import extract_json_array, call_with_retry, AIServiceUnavailable
 from app.services.repositories.factory import get_resume_repository, get_suggestion_repository
 
-from app.core.logging import get_logger
 logger = get_logger(__name__)
 
 
@@ -46,7 +46,11 @@ async def suggest(resume_id: str, request: WriterRequest, user_id: str) -> list[
                 sug = ResumeSuggestion(
                     id=uuid.uuid4().hex,
                     resume_id=resume_id,
-                    **{k: v for k, v in item.items() if k in ResumeSuggestion.model_fields and k not in ("id", "resume_id", "created_at")},
+                    **{
+                        k: v
+                        for k, v in item.items()
+                        if k in ResumeSuggestion.model_fields and k not in ("id", "resume_id", "created_at")
+                    },
                 )
                 get_suggestion_repository().save(sug)
                 suggestions.append(sug)
@@ -102,7 +106,7 @@ async def reject_suggestion(resume_id: str, suggestion_id: str, user_id: str) ->
 
 
 async def regenerate_suggestion(resume_id: str, suggestion_id: str) -> ResumeSuggestion:
-    suggestion = get_suggestion_repository().get_by_id(resume_id, suggestion_id, user_id)
+    suggestion = get_suggestion_repository().get_by_id(resume_id, suggestion_id)
     if suggestion is None:
         raise FileNotFoundError(f"Suggestion '{suggestion_id}' not found")
 
@@ -110,5 +114,5 @@ async def regenerate_suggestion(resume_id: str, suggestion_id: str) -> ResumeSug
         prompt=f"Improve the {suggestion.section} section, specifically: {suggestion.reason}",
         focus_section=suggestion.section,
     )
-    results = await suggest(resume_id, request, user_id)
+    results = await suggest(resume_id, request, suggestion.user_id)
     return results[0] if results else suggestion

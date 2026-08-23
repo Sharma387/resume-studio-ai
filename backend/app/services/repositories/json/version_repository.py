@@ -1,6 +1,6 @@
 from app.models.version import ResumeVersion
-from app.services.repositories.interfaces import ResumeVersionRepository
 from app.services import storage_service as store
+from app.services.repositories.interfaces import ResumeVersionRepository
 
 
 class JsonResumeVersionRepository(ResumeVersionRepository):

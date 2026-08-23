@@ -3,20 +3,18 @@ from datetime import datetime, timezone
 
 from app.models.application import (
     Application,
+    ApplicationNote,
     ApplicationStatus,
     ApplicationView,
     DashboardSummary,
     TimelineEvent,
     TimelineEventType,
-    ApplicationNote,
 )
 from app.services.repositories.factory import (
     get_application_repository,
-    get_timeline_event_repository,
-    get_resume_repository,
-    get_cover_letter_repository,
-    get_match_repository,
     get_interview_session_repository,
+    get_resume_repository,
+    get_timeline_event_repository,
 )
 
 
@@ -24,7 +22,9 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def _add_timeline(app_id: str, event_type: TimelineEventType, title: str, description: str = "", metadata: dict | None = None) -> TimelineEvent:
+def _add_timeline(
+    app_id: str, event_type: TimelineEventType, title: str, description: str = "", metadata: dict | None = None
+) -> TimelineEvent:
     event = TimelineEvent(
         id=uuid.uuid4().hex,
         application_id=app_id,
@@ -43,10 +43,14 @@ def create(company: str, role_title: str, user_id: str, **kwargs) -> Application
         user_id=user_id,
         company=company,
         role_title=role_title,
-        **{k: v for k, v in kwargs.items() if k in Application.model_fields and k not in ("id", "created_at", "updated_at")},
+        **{
+            k: v
+            for k, v in kwargs.items()
+            if k in Application.model_fields and k not in ("id", "created_at", "updated_at")
+        },
     )
     get_application_repository().save(app)
-    _add_timeline(app.id, TimelineEventType.CREATED, f"Application created", f"Added {role_title} at {company}")
+    _add_timeline(app.id, TimelineEventType.CREATED, "Application created", f"Added {role_title} at {company}")
     return app
 
 
@@ -81,7 +85,8 @@ def change_status(app_id: str, new_status: ApplicationStatus, user_id: str | Non
     app.last_activity = _now()
     get_application_repository().save(app)
     _add_timeline(
-        app_id, TimelineEventType.STATUS_CHANGED,
+        app_id,
+        TimelineEventType.STATUS_CHANGED,
         f"Status changed to {new_status.value}",
         f"Moved from {old} to {new_status.value}",
         {"old_status": old, "new_status": new_status.value},
@@ -109,13 +114,12 @@ def get_view(app_id: str, user_id: str | None = None) -> ApplicationView | None:
 
     resume_name = None
     if app.resume_id:
-        resume = load_resume(app.resume_id)
+        resume = get_resume_repository().get_by_id(app.resume_id)
         if resume:
             resume_name = resume.full_name
 
     timeline = get_timeline_event_repository().list_by_application(app_id)[:10]
 
-    
     sessions = get_interview_session_repository().list_by_application(app_id, user_id)
     assessments = []  # TODO: implement readiness assessment storage
 

@@ -72,14 +72,20 @@ class SkillGroup(BaseModel):
 
 
 class CertificationEntry(BaseModel):
-    """A single certification."""
+    """A single certification card or a grouped professional-development record.
+
+    ``category`` present → grouped record (rendered as one logical bullet);
+    ``category`` absent → individual certification card.
+    """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    name: str = Field(min_length=1)
+    name: str | None = Field(default=None, min_length=1)
     issuer: str | None = None
     date: str | None = None
     url: str | None = None
+    category: str | None = Field(default=None, min_length=1)
+    values: tuple[str, ...] = ()
 
 
 class ProjectEntry(BaseModel):

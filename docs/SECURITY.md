@@ -80,7 +80,8 @@ check_resource_owner(resource.user_id, current_user)
 
 - Security headers set by `SecurityHeadersMiddleware`:
   - `X-Content-Type-Options: nosniff`
-  - `X-Frame-Options: DENY`
+  - `X-Frame-Options: DENY` (all responses except generated preview HTML, which uses
+    `Content-Security-Policy: frame-ancestors <FRAME_ANCESTORS>` so the designer iframe can embed it)
   - `X-XSS-Protection: 1; mode=block`
   - `Referrer-Policy: strict-origin-when-cross-origin`
   - `Permissions-Policy: camera=(), microphone=(), geolocation=()`

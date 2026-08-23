@@ -1,6 +1,6 @@
 from app.models.resume import Resume
-from app.services.repositories.interfaces import ResumeRepository
 from app.services import storage_service as store
+from app.services.repositories.interfaces import ResumeRepository
 
 
 class JsonResumeRepository(ResumeRepository):

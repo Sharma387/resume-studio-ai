@@ -90,6 +90,21 @@ class PageMargins(BaseModel):
 # ── Leaf unit payloads ────────────────────────────────────────────────────────
 
 
+class InlineRun(BaseModel):
+    """A styled inline fragment inside a text unit.
+
+    When ``runs`` is present on a unit, renderers MUST emit the runs and MUST
+    ignore the unit's plain ``text`` for presentation; ``text`` remains the
+    concatenation of the runs and is the ATS/plain-text representation.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    text: str
+    bold: bool = False
+    italic: bool = False
+
+
 class TextData(BaseModel):
     """Plain text unit."""
 
@@ -97,6 +112,7 @@ class TextData(BaseModel):
 
     type: Literal["text"]
     text: str
+    runs: tuple[InlineRun, ...] = Field(default=())
 
 
 class ParagraphData(TextData):
@@ -297,11 +313,14 @@ class RenderNode(BaseModel):
     content_ref: str | None = None
     region: str | None = None
     span: int = Field(default=1, ge=1)
+    column_index: int | None = Field(default=None, ge=1)
     order: int = Field(default=0)
     classes: tuple[str, ...] = Field(default_factory=tuple)
     token_keys: dict[str, str] = Field(default_factory=dict)
     page_size: PageSize | None = None
     margins: PageMargins | None = None
+    column_ratios: tuple[int, int] | None = None
+    gap_mm: float | None = None
     children: tuple[RenderNode, ...] = Field(default_factory=tuple)
     data: RenderUnitData | None = None
 

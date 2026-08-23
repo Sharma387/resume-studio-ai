@@ -34,10 +34,18 @@ class Skill(BaseModel):
 
 
 class Certification(BaseModel):
-    name: str = Field(..., min_length=1)
+    name: str | None = Field(default=None, min_length=1)
     issuer: str | None = None
     date: str | None = None
     url: HttpUrl | None = None
+    category: str | None = Field(default=None, min_length=1)
+    values: list[str] = []
+
+    @model_validator(mode="after")
+    def require_name_or_category(self) -> "Certification":
+        if not self.name and not self.category:
+            raise ValueError("certification must define name or category")
+        return self
 
 
 class Award(BaseModel):

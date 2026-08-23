@@ -6,15 +6,20 @@ without changing business services.
 
 from abc import ABC, abstractmethod
 
-from app.models.resume import Resume
-from app.models.application import Application
+from app.models.application import Application, TimelineEvent
 from app.models.cover_letter import CoverLetter
+from app.models.interview import (
+    InterviewAnswer,
+    InterviewQuestion,
+    InterviewSession,
+    ReadinessAssessment,
+    SessionSummary,
+)
 from app.models.match import MatchResult
+from app.models.resume import Resume
+from app.models.user import User
 from app.models.version import ResumeVersion
 from app.models.writer import ResumeSuggestion
-from app.models.interview import InterviewSession, InterviewQuestion, InterviewAnswer, ReadinessAssessment, SessionSummary
-from app.models.application import TimelineEvent
-from app.models.user import User
 
 
 class UserRepository(ABC):
@@ -48,6 +53,19 @@ class ResumeRepository(ABC):
     def get_by_id(self, resume_id: str, user_id: str | None = None) -> Resume | None: ...
     @abstractmethod
     def list_by_user(self, user_id: str, limit: int = 10) -> list[tuple[str, Resume]]: ...
+
+
+class VariantRepository(ABC):
+    """Read/write of ``resume_variants.customization`` (namespaced dict).
+
+    Consumers write their own sub-key (e.g. ``layout_config``) into the
+    customization dict; unrelated keys are preserved by implementations.
+    """
+
+    @abstractmethod
+    def get_customization(self, resume_id: str, user_id: str) -> dict: ...
+    @abstractmethod
+    def set_customization(self, resume_id: str, user_id: str, customization: dict) -> None: ...
 
 
 class ApplicationRepository(ABC):
@@ -96,16 +114,22 @@ class WriterSuggestionRepository(ABC):
     @abstractmethod
     def get_by_id(self, resume_id: str, suggestion_id: str, user_id: str | None = None) -> ResumeSuggestion | None: ...
     @abstractmethod
-    def list_by_resume(self, resume_id: str, status: str | None = None, user_id: str | None = None) -> list[ResumeSuggestion]: ...
+    def list_by_resume(
+        self, resume_id: str, status: str | None = None, user_id: str | None = None
+    ) -> list[ResumeSuggestion]: ...
     @abstractmethod
-    def update(self, resume_id: str, suggestion_id: str, user_id: str | None = None, **updates) -> ResumeSuggestion | None: ...
+    def update(
+        self, resume_id: str, suggestion_id: str, user_id: str | None = None, **updates
+    ) -> ResumeSuggestion | None: ...
 
 
 class InterviewSessionRepository(ABC):
     @abstractmethod
     def save(self, session: InterviewSession) -> None: ...
     @abstractmethod
-    def get_by_id(self, application_id: str, session_id: str, user_id: str | None = None) -> InterviewSession | None: ...
+    def get_by_id(
+        self, application_id: str, session_id: str, user_id: str | None = None
+    ) -> InterviewSession | None: ...
     @abstractmethod
     def list_by_application(self, application_id: str, user_id: str | None = None) -> list[InterviewSession]: ...
     @abstractmethod

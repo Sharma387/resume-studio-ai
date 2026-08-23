@@ -19,7 +19,14 @@ from app.rendering.content.models import (
     ProjectEntry,
     SkillGroup,
 )
-from app.rendering.layout.reference_layouts import classic_layout, executive_layout, modern_layout, sidebar_layout
+from app.rendering.layout.reference_layouts import (
+    classic_layout,
+    executive_layout,
+    minimal_layout,
+    modern_layout,
+    sidebar_layout,
+    timeline_layout,
+)
 from app.rendering.layout_html import render_layout_docx
 from app.rendering.renderers.tree_docx_renderer import RenderTreeDOCXRenderer
 from app.rendering.theme.reference_themes import blue_theme, gold_theme
@@ -181,6 +188,53 @@ class TestContentPreservation:
         assert "Led a 12-engineer platform organization" in text
         assert "Python" in text and "Go" in text and "Rust" in text
 
+    def test_grouped_skill_is_one_paragraph_with_bold_category(self):
+        doc = _open(render_layout_docx(_comprehensive_cvm(), sidebar_layout(), blue_theme()))
+        runs = []
+        for table in doc.tables:
+            for row in table.rows:
+                for cell in row.cells:
+                    for paragraph in cell.paragraphs:
+                        if "Languages:" in (paragraph.text or ""):
+                            runs.append([(run.text, run.bold) for run in paragraph.runs])
+        assert len(runs) == 1, runs
+        assert runs[0] == [
+            ("\u2022 ", None),
+            ("Languages:", True),
+            (" Python, Go, Rust", False),
+        ]
+
+    def test_grouped_certification_is_one_paragraph_with_bold_category(self):
+        cvm = _comprehensive_cvm().model_copy(
+            update={
+                "certifications": (
+                    CertificationEntry(
+                        category="Professional Credentials",
+                        values=("PRINCE2 Practitioner", "Certified Scrum Master (CSM)"),
+                    ),
+                    CertificationEntry(name="PMP", issuer="PMI", date="2025"),
+                )
+            }
+        )
+        doc = _open(render_layout_docx(cvm, sidebar_layout(), blue_theme()))
+        grouped = []
+        individual = []
+        for table in doc.tables:
+            for row in table.rows:
+                for cell in row.cells:
+                    for paragraph in cell.paragraphs:
+                        if "Professional Credentials" in (paragraph.text or ""):
+                            grouped.append([(run.text, run.bold) for run in paragraph.runs])
+                        elif paragraph.text == "PMP":
+                            individual.append([(run.text, run.bold) for run in paragraph.runs])
+        assert len(grouped) == 1, grouped
+        assert grouped[0] == [
+            ("\u2022 ", None),
+            ("Professional Credentials:", True),
+            (" PRINCE2 Practitioner | Certified Scrum Master (CSM)", False),
+        ]
+        assert individual == [[("PMP", True)]]
+
 
 # ── layout structure ──────────────────────────────────────────────────────────
 
@@ -188,7 +242,7 @@ class TestContentPreservation:
 class TestLayoutStructure:
     def test_single_column_layouts_have_no_table(self):
         cvm = _comprehensive_cvm()
-        for layout in (executive_layout(), classic_layout()):
+        for layout in (executive_layout(), timeline_layout(), minimal_layout()):
             doc = _open(render_layout_docx(cvm, layout, blue_theme()))
             assert len(doc.tables) == 0, f"{layout.layout_id} should be single-column"
 
@@ -238,7 +292,12 @@ class TestThemeSeparation:
 
         def heading_colors(doc: Document):
             colors = set()
-            for p in doc.paragraphs:
+            paragraphs = list(doc.paragraphs)
+            for table in doc.tables:
+                for row in table.rows:
+                    for cell in row.cells:
+                        paragraphs.extend(cell.paragraphs)
+            for p in paragraphs:
                 if p.text.strip().upper() in ("PROFILE", "SUMMARY", "EXPERIENCE", "EDUCATION"):
                     for run in p.runs:
                         if run.font.color is not None and run.font.color.rgb is not None:

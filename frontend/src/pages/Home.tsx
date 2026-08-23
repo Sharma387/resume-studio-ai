@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Box, Card, CardContent, Typography } from '@mui/material';
 import EditOutlined from '@mui/icons-material/EditOutlined';
+import AdminPanelSettingsOutlined from '@mui/icons-material/AdminPanelSettingsOutlined';
+import TemplateOutlined from '@mui/icons-material/ViewQuiltOutlined';
 import Header from '../components/Header';
 import UploadZone from '../components/UploadZone';
 import FeaturePanel from '../components/FeaturePanel';
@@ -10,7 +12,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { fetchResumes } from '../services/resumeService';
 
 function Home() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
   const [existingResumeId, setExistingResumeId] = useState<string | null>(null);
 
@@ -55,6 +57,54 @@ function Home() {
                 <Box>
                   <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>Continue Editing</Typography>
                   <Typography variant="caption" sx={{ color: 'text.secondary' }}>Resume your previous work</Typography>
+                </Box>
+              </CardContent>
+            </Card>
+          )}
+
+          {isAuthenticated && (
+            <Card
+              sx={{
+                p: 2,
+                cursor: 'pointer',
+                animation: 'fadeIn 0.5s ease-out',
+                '&:hover': { transform: 'translateY(-2px)', boxShadow: 4 },
+                transition: 'all 0.2s ease',
+              }}
+              onClick={() => navigate('/templates')}
+            >
+              <CardContent sx={{ p: 0, '&:last-child': { pb: 0 }, display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Box sx={{ width: 44, height: 44, borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'secondary.main', color: 'secondary.contrastText' }}>
+                  <TemplateOutlined />
+                </Box>
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>Template Gallery</Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>Choose from professional resume templates</Typography>
+                </Box>
+              </CardContent>
+            </Card>
+          )}
+
+          {isAuthenticated && user?.role === 'admin' && (
+            <Card
+              sx={{
+                p: 2,
+                cursor: 'pointer',
+                animation: 'fadeIn 0.5s ease-out',
+                '&:hover': { transform: 'translateY(-2px)', boxShadow: 4 },
+                transition: 'all 0.2s ease',
+                borderLeft: 4,
+                borderColor: 'warning.main',
+              }}
+              onClick={() => navigate('/admin')}
+            >
+              <CardContent sx={{ p: 0, '&:last-child': { pb: 0 }, display: 'flex', alignItems: 'center', gap: 2 }}>
+                <Box sx={{ width: 44, height: 44, borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'warning.main', color: 'warning.contrastText' }}>
+                  <AdminPanelSettingsOutlined />
+                </Box>
+                <Box>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>Administration</Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>System configuration, diagnostics, and monitoring</Typography>
                 </Box>
               </CardContent>
             </Card>

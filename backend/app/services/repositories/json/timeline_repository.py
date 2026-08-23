@@ -1,6 +1,6 @@
 from app.models.application import TimelineEvent
-from app.services.repositories.interfaces import TimelineEventRepository
 from app.services import storage_service as store
+from app.services.repositories.interfaces import TimelineEventRepository
 
 
 class JsonTimelineEventRepository(TimelineEventRepository):

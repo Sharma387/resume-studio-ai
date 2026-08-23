@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from app.models.resume import Resume, Education, Experience, Project, Skill, Certification
+from app.models.resume import Certification, Education, Experience, Project, Resume, Skill
 
 
 class TestEducation:
@@ -91,6 +91,32 @@ class TestCertification:
     def test_empty_name(self):
         with pytest.raises(ValidationError):
             Certification(name="")
+
+    def test_grouped_record_without_name(self):
+        c = Certification(category="Professional Credentials", values=["PRINCE2 Practitioner", "CSM"])
+        assert c.name is None
+        assert c.category == "Professional Credentials"
+        assert c.values == ["PRINCE2 Practitioner", "CSM"]
+
+    def test_grouped_record_without_name_or_category_rejected(self):
+        with pytest.raises(ValidationError):
+            Certification(values=["PRINCE2 Practitioner"])
+
+    def test_individual_serialization_round_trip(self):
+        c = Certification(name="PMP", issuer="PMI", date="2025")
+        restored = Certification.model_validate_json(c.model_dump_json())
+        assert restored == c
+        assert restored.name == "PMP"
+        assert restored.issuer == "PMI"
+        assert restored.date == "2025"
+
+    def test_grouped_serialization_round_trip(self):
+        c = Certification(category="Professional Credentials", values=["PRINCE2 Practitioner", "CSM"])
+        restored = Certification.model_validate_json(c.model_dump_json())
+        assert restored == c
+        assert restored.category == "Professional Credentials"
+        assert restored.values == ["PRINCE2 Practitioner", "CSM"]
+        assert restored.name is None
 
 
 class TestResume:

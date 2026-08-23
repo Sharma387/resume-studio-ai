@@ -1,6 +1,6 @@
 from app.models.match import MatchResult
-from app.services.repositories.interfaces import MatchRepository
 from app.services import storage_service as store
+from app.services.repositories.interfaces import MatchRepository
 
 
 class JsonMatchRepository(MatchRepository):

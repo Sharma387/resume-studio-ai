@@ -19,8 +19,9 @@ import MenuIcon from '@mui/icons-material/Menu';
 import DarkModeOutlined from '@mui/icons-material/DarkModeOutlined';
 import LightModeOutlined from '@mui/icons-material/LightModeOutlined';
 import GitHubIcon from '@mui/icons-material/GitHub';
-import SettingsOutlined from '@mui/icons-material/SettingsOutlined';
+import AdminPanelSettingsOutlined from '@mui/icons-material/AdminPanelSettingsOutlined';
 import LogoutOutlined from '@mui/icons-material/LogoutOutlined';
+import PersonOutlined from '@mui/icons-material/PersonOutlined';
 import LoginOutlined from '@mui/icons-material/LoginOutlined';
 import { useThemeMode } from '../contexts/useThemeMode';
 import { useAuth } from '../contexts/AuthContext';
@@ -111,6 +112,9 @@ function Header() {
 
           {isAuthenticated ? (
             <>
+              <IconButton onClick={() => navigate('/profile')} aria-label="Profile" sx={{ color: 'text.secondary' }}>
+                <PersonOutlined />
+              </IconButton>
               <Typography variant="caption" sx={{ color: 'text.secondary', mr: 1, display: { xs: 'none', sm: 'block' } }}>
                 {user?.full_name}
               </Typography>
@@ -140,9 +144,11 @@ function Header() {
             <GitHubIcon />
           </IconButton>
 
-          <IconButton aria-label="Settings" disabled sx={{ color: 'text.secondary' }}>
-            <SettingsOutlined />
-          </IconButton>
+          {user?.role === 'admin' && (
+            <IconButton aria-label="Administration" onClick={() => navigate('/admin')} sx={{ color: 'text.secondary' }}>
+              <AdminPanelSettingsOutlined />
+            </IconButton>
+          )}
         </Toolbar>
       </AppBar>
 

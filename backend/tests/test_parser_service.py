@@ -81,5 +81,5 @@ async def test_parse_retry_on_validation_error(monkeypatch):
 @pytest.mark.asyncio
 async def test_parse_falls_back_to_mock_after_retries(monkeypatch):
     _mock_call_with_retry([AIServiceUnavailable("failed"), AIServiceUnavailable("failed")], monkeypatch)
-    result = await parse_resume("text")
-    assert result.full_name == "Alexandra Chen"
+    with pytest.raises(ParseError, match="AI parsing unavailable"):
+        result = await parse_resume("text")

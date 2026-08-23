@@ -32,8 +32,17 @@ class GridConfig(BaseModel):
 
     columns: int = Field(default=12, ge=1, le=24)
     template_areas: tuple[str, ...] = ()
+    column_ratios: tuple[int, int] | None = None
     gap_mm: float = Field(default=0, ge=0)
     max_content_width_mm: float | None = Field(default=None, gt=0)
+
+    @model_validator(mode="after")
+    def _validate_grid(self) -> GridConfig:
+        if self.column_ratios is not None and (
+            self.column_ratios[0] <= 0 or self.column_ratios[1] <= 0
+        ):
+            raise ValueError("column_ratios entries must be positive")
+        return self
 
 
 class PageMargins(BaseModel):

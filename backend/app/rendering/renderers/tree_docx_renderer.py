@@ -17,13 +17,14 @@ from __future__ import annotations
 from io import BytesIO
 
 from docx import Document
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 from docx.shared import Mm, Pt, RGBColor
 
 from app.rendering.common.section_types import SECTION_REGISTRY
 from app.rendering.theme.theme_palette import ThemePalette
-from app.rendering.tree import NodeKind, RenderNode
+from app.rendering.tree import InlineRun, NodeKind, RenderNode
 from app.rendering.tree.validator import TreeValidator
 
 REL_HYPERLINK = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink"
@@ -63,13 +64,19 @@ def _group_rows(regions: list[RenderNode], max_span: int) -> list[list[RenderNod
     return rows
 
 
+#: Column count of the canonical grid. Every region span is relative to this
+#: width; regions spanning it are full-width rows, partial spans share a table.
+_GRID_COLUMNS = 12
+
+
 class _Writer:
     """Writes DOCX content into the document body or an active table cell."""
 
-    def __init__(self, document: Document, theme: ThemePalette | None) -> None:
+    def __init__(self, document: Document, theme: ThemePalette | None, layout_id: str | None = None) -> None:
         self.document = document
         self._container = document
         self._theme = theme
+        self._layout_id = layout_id
         self._apply_base_typography()
 
     # ── theme / fonts ─────────────────────────────────────────────────────────
@@ -77,6 +84,12 @@ class _Writer:
     @property
     def _colors(self):
         return self._theme.tokens.colors if self._theme is not None else None
+
+    @property
+    def _heading_font(self) -> str:
+        if self._layout_id in ("executive", "modern"):
+            return "Georgia"
+        return _font_name(self._theme.tokens.typography.heading_family) if self._theme is not None else ""
 
     def _apply_base_typography(self) -> None:
         if self._theme is None:
@@ -117,6 +130,7 @@ class _Writer:
         alignment=None,
         space_before: int = 0,
         space_after: int = 4,
+        font_name: str | None = None,
     ):
         p = self._add_paragraph()
         run = p.add_run(text)
@@ -126,6 +140,8 @@ class _Writer:
             run.font.size = Pt(size)
         if color is not None:
             run.font.color.rgb = color
+        if font_name:
+            run.font.name = font_name
         fmt = p.paragraph_format
         fmt.space_before = Pt(space_before)
         fmt.space_after = Pt(space_after)
@@ -137,18 +153,29 @@ class _Writer:
         is_name = "resume-name" in classes
         is_strong = "resume-strong" in classes
         is_muted = "resume-muted" in classes
-        size = 20 if is_name else (11 if is_strong else 10)
-        color = self._color("primary") if is_name else (self._color("muted") if is_muted else self._color("text"))
-        self.paragraph(text, bold=is_name or is_strong, size=size, color=color, space_after=(4 if is_strong else 2))
+        if is_name:
+            size = 20 if self._layout_id != "modern" else 24
+            color = self._color("primary")
+        else:
+            size = 11 if is_strong else 10
+            color = self._color("muted") if is_muted else self._color("text")
+        p = self.paragraph(text, bold=is_name or is_strong, size=size, color=color, space_after=(4 if is_strong else 2))
+        if is_name:
+            if self._heading_font:
+                for run in p.runs:
+                    run.font.name = self._heading_font
+            if self._layout_id == "executive":
+                p.paragraph_format.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
     def heading(self, text: str) -> None:
         self.paragraph(
             text.upper(),
-            bold=True,
+            bold=not self._layout_id in ("executive", "modern"),
             size=11,
-            color=self._color("primary"),
+            color=self._color("muted") if self._layout_id in ("executive", "minimal") else self._color("primary"),
             space_before=10,
             space_after=4,
+            font_name=self._heading_font,
         )
 
     def time(self, text: str) -> None:
@@ -158,6 +185,18 @@ class _Writer:
         p = self._add_paragraph()
         p.add_run("\u2022 ").font.size = Pt(10)
         p.add_run(text).font.size = Pt(10)
+        fmt = p.paragraph_format
+        fmt.left_indent = Mm(8)
+        fmt.space_after = Pt(2)
+
+    def bullet_runs(self, runs: tuple[InlineRun, ...]) -> None:
+        p = self._add_paragraph()
+        p.add_run("\u2022 ").font.size = Pt(10)
+        for run in runs:
+            text_run = p.add_run(run.text)
+            text_run.bold = run.bold
+            text_run.italic = run.italic
+            text_run.font.size = Pt(10)
         fmt = p.paragraph_format
         fmt.left_indent = Mm(8)
         fmt.space_after = Pt(2)
@@ -198,7 +237,7 @@ class RenderTreeDOCXRenderer:
         self._validator.assert_valid(tree)
         document = Document()
         self._configure_page(document, tree)
-        writer = _Writer(document, theme)
+        writer = _Writer(document, theme, layout_id=self._layout_key(tree))
         page = self._first_page(tree)
         if page is not None:
             self._render_page(writer, page)
@@ -206,7 +245,12 @@ class RenderTreeDOCXRenderer:
         document.save(buffer)
         return buffer.getvalue()
 
-    # ── page ──────────────────────────────────────────────────────────────────
+    @staticmethod
+    def _layout_key(tree: RenderNode) -> str | None:
+        for cls in tree.classes:
+            if cls.startswith("layout-"):
+                return cls[len("layout-") :]
+        return None
 
     @staticmethod
     def _first_page(node: RenderNode) -> RenderNode | None:
@@ -236,8 +280,7 @@ class RenderTreeDOCXRenderer:
         regions = [child for child in page.children if child.kind is NodeKind.REGION]
         if not regions:
             return
-        max_span = max(region.span for region in regions)
-        for row in _group_rows(regions, max_span):
+        for row in _group_rows(regions, _GRID_COLUMNS):
             if len(row) == 1:
                 writer.set_container(writer.document)
                 self._render_region(writer, row[0])
@@ -301,7 +344,11 @@ class RenderTreeDOCXRenderer:
         for child in node.children:
             for leaf in child.children:
                 if leaf.kind is NodeKind.BULLET:
-                    writer.bullet(leaf.data.text)
+                    runs = getattr(leaf.data, "runs", None) or ()
+                    if runs:
+                        writer.bullet_runs(runs)
+                    else:
+                        writer.bullet(leaf.data.text)
 
     def _render_text(self, writer: _Writer, node: RenderNode) -> None:
         writer.styled_text(node.data.text, node.classes)

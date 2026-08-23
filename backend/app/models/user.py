@@ -24,6 +24,7 @@ class AccountStatus(str, Enum):
 
 class OwnedResource(BaseModel):
     """Base model for resources that belong to a user."""
+
     user_id: str | None = Field(None, description="Owner user ID. None during migration.")
 
 
@@ -39,6 +40,10 @@ class User(BaseModel):
     is_active: bool = True
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     last_login: str | None = None
+    must_change_password: bool = False
+    disabled: bool = False
+    last_login_at: str | None = None
+    last_password_change: str | None = None
 
 
 class TokenPair(BaseModel):

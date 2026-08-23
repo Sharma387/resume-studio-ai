@@ -76,7 +76,14 @@ def cvm_from_resume(resume: Resume, *, stable_id: str | None = None) -> ContentV
     )
 
     certifications = tuple(
-        CertificationEntry(name=cert.name, issuer=cert.issuer, date=cert.date, url=_url(cert.url))
+        CertificationEntry(
+            name=cert.name,
+            issuer=cert.issuer,
+            date=cert.date,
+            url=_url(cert.url),
+            category=cert.category,
+            values=tuple(cert.values),
+        )
         for cert in resume.certifications
     )
 

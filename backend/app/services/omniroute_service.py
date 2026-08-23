@@ -12,6 +12,20 @@ class OmniRouteError(Exception):
     pass
 
 
+async def check_ai_connection() -> bool:
+    """Lightweight connectivity check against the OmniRoute AI endpoint."""
+    if not settings.omniroute_api_url:
+        return False
+    try:
+        import httpx
+
+        async with httpx.AsyncClient(timeout=5) as client:
+            response = await client.get(settings.omniroute_api_url.replace("/chat/completions", "/models"))
+            return response.status_code < 500
+    except Exception:
+        return False
+
+
 class OmniRouteService:
     def __init__(
         self,
@@ -37,7 +51,9 @@ class OmniRouteService:
                 logger.warning("OmniRoute timeout (attempt %d/%d)", attempt + 1, self.max_retries + 1)
                 last_error = e
             except httpx.HTTPStatusError as e:
-                logger.error("OmniRoute HTTP %s (attempt %d/%d)", e.response.status_code, attempt + 1, self.max_retries + 1)
+                logger.error(
+                    "OmniRoute HTTP %s (attempt %d/%d)", e.response.status_code, attempt + 1, self.max_retries + 1
+                )
                 last_error = e
                 if attempt < self.max_retries:
                     continue

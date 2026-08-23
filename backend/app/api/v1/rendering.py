@@ -16,18 +16,35 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import HTMLResponse
+from pydantic import ValidationError
 
 from app.core.logging import get_logger
 from app.models.user import User
 from app.rendering import layout_preview
+from app.rendering.content import cvm_from_resume
+from app.rendering.layout.effective import resolve_effective_layout
+from app.rendering.layout.layout_config import LayoutConfig
 from app.rendering.layout.layout_registry import LayoutLookupError
 from app.rendering.theme.theme_registry import ThemeLookupError
 from app.services.auth_deps import require_user
+from app.services.layout_config_service import get_layout_config as load_persisted_layout_config
 from app.services.repositories.factory import get_resume_repository
 
 logger = get_logger(__name__)
 
 router = APIRouter()
+
+
+def _load_persisted_config(resume_id: str, user_id: str | None) -> LayoutConfig | None:
+    """Load and validate the persisted per-resume layout config (None if absent/invalid)."""
+    persisted = load_persisted_layout_config(resume_id, user_id or "")
+    if not persisted:
+        return None
+    try:
+        return LayoutConfig.model_validate(persisted)
+    except ValidationError:
+        logger.warning("Stored layout_config is invalid; ignoring it", resume_id=resume_id)
+        return None
 
 
 @router.get("/resume/layouts")
@@ -72,13 +89,21 @@ async def generate_resume_preview(
     layout_id: str | None = Query(default=None),
     theme: str | None = Query(default=None),
     template_id: str | None = Query(default=None),
+    layout_config: str | None = Query(default=None),
+    auto_balance: bool = Query(default=False),
     current_user: User = Depends(require_user),
 ):
     """Generate an HTML preview of the resume through the canonical layout engine.
 
     ``layout_id`` is required (``400`` when missing); ``theme`` defaults to the
-    engine default. The legacy ``template_id`` parameter was retired — requests
-    still using it are rejected explicitly (no translation, no fallback).
+    engine default. ``layout_config`` is an optional JSON-encoded
+    :class:`LayoutConfig` that overrides any persisted customization
+    (explicit request > persisted customization > engine default behaviour).
+    ``auto_balance`` enables content-aware layout balancing (opt-in); when set
+    without an explicit ``layout_config`` the persisted customization is ignored
+    for this request and the layout is balanced from the resume content.
+    The legacy ``template_id`` parameter was retired — requests still using it
+    are rejected explicitly (no translation, no fallback).
     """
     resume = get_resume_repository().get_by_id(resume_id, getattr(current_user, "id", None))
     if resume is None:
@@ -89,29 +114,64 @@ async def generate_resume_preview(
     if layout_id is None:
         raise HTTPException(status_code=400, detail="Specify layout_id")
 
+    user_id = getattr(current_user, "id", None)
+    # Request-explicit config wins; persisted config seeds auto-balance only.
+    explicit_config = None
+    if layout_config is not None:
+        try:
+            explicit_config = LayoutConfig.model_validate_json(layout_config)
+        except ValidationError as e:
+            raise HTTPException(status_code=422, detail=f"Invalid layout_config: {e}")
+    base_config = _load_persisted_config(resume_id, user_id)
+
     logger.debug(
         "Layout preview requested",
         resume_id=resume_id,
         layout_id=layout_id,
         theme=theme,
         mode="layout",
+        customization=explicit_config is not None,
+        auto_balance=auto_balance,
     )
     try:
-        preview_path = layout_preview.generate_layout_preview(resume, layout_id, theme)
+        base = layout_preview.resolve_preview_layout(layout_id, None)
+        cvm = cvm_from_resume(resume)
+        resolved, effective_config, balance_result = resolve_effective_layout(
+            base,
+            cvm,
+            explicit_config=explicit_config,
+            auto_balance=auto_balance,
+            base_config=base_config,
+            return_balance_result=True,
+        )
+        density = effective_config.density.value if effective_config is not None else None
+        preview_path = layout_preview.generate_layout_preview(
+            resume, layout_id, theme, layout=resolved, density=density
+        )
     except LayoutLookupError:
         raise HTTPException(status_code=404, detail=f"Layout '{layout_id}' not found")
     except ThemeLookupError:
         raise HTTPException(status_code=404, detail=f"Theme '{theme}' not found")
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    return {
-        "success": True,
-        "data": {
-            "mode": "layout",
-            "layout_id": layout_id,
-            "preview_url": f"/api/v1/resume/preview/file/{Path(preview_path).name}",
-        },
+    data: dict[str, object] = {
+        "mode": "layout",
+        "layout_id": layout_id,
+        "preview_url": f"/api/v1/resume/preview/file/{Path(preview_path).name}",
     }
+    if balance_result is not None:
+        cfg = balance_result.config
+        data["auto_balance"] = True
+        data["layout_rationale"] = balance_result.rationale
+        data["balanced_layout"] = {
+            "mode": cfg.mode.value,
+            "ratio": cfg.ratio.value,
+            "sidebar": cfg.sidebar.value,
+        }
+        # Full effective config so the UI can persist it verbatim via the
+        # existing layout-config PUT (mode/sidebar/ratio/density/gap/sections).
+        data["balanced_config"] = cfg.model_dump(mode="json")
+    return {"success": True, "data": data}
 
 
 @router.get("/resume/preview/file/{filename}")

@@ -59,7 +59,20 @@ def _body_text(html: str) -> str:
 
 
 def _pdf_text(data: bytes) -> str:
-    return " ".join((page.extract_text() or "") for page in PdfReader(io_bytes(data)).pages)
+    """Reconstruct page text per text-showing run so line wraps and adjacent
+    line breaks never merge words (pypdf default extraction can join them)."""
+    words: list[str] = []
+    for page in PdfReader(io_bytes(data)).pages:
+        runs: list[tuple[float, float, str]] = []
+
+        def _visit(text, cm, tm, font, size):
+            if text.strip():
+                runs.append((tm[5], tm[4], text.strip()))
+
+        page.extract_text(visitor_text=_visit)
+        runs.sort(key=lambda run: (run[0], run[1]))
+        words.extend(run[2] for run in runs)
+    return " ".join(words)
 
 
 def _docx_text(data: bytes) -> str:
@@ -186,8 +199,8 @@ class TestServiceDispatch:
             def __init__(self):
                 self.trees = []
 
-            def render(self, tree, *, theme=None):
-                recorded.append((tree, theme))
+            def render(self, tree, *, theme=None, density=None):
+                recorded.append((tree, theme, density))
                 return b"fake"
 
         from app.rendering import export_service
@@ -198,13 +211,27 @@ class TestServiceDispatch:
 
         service = ExportService()
         resume = _resume()
+        # Test default behavior (no auto_balance) - density=None
         for fmt in (ExportFormat.HTML, ExportFormat.PDF, ExportFormat.DOCX):
             result = service.export(resume, layout_id="sidebar", theme_id="blue", output_format=fmt)
             assert result.content == b"fake"
         assert len(recorded) == 3
-        # All three renderers received the same RenderTree (same serialization).
-        trees = [tree.model_dump_json() for tree, _ in recorded]
+        trees = [tree.model_dump_json() for tree, _, _ in recorded]
         assert trees[0] == trees[1] == trees[2]
+        densities = [density for _, _, density in recorded]
+        assert all(d is None for d in densities)  # default: no density
+
+        recorded.clear()
+        # Test auto_balance=True - density="normal" from balanced config
+        for fmt in (ExportFormat.HTML, ExportFormat.PDF, ExportFormat.DOCX):
+            result = service.export(
+                resume, layout_id="sidebar", theme_id="blue", output_format=fmt, auto_balance=True
+            )
+            assert result.content == b"fake"
+        densities = [density for _, _, density in recorded]
+        assert densities[0] == "normal"  # HTML
+        assert densities[1] == "normal"  # PDF
+        assert densities[2] is None  # DOCX (no density passed)
 
 
 # ── theme separation via API ──────────────────────────────────────────────────

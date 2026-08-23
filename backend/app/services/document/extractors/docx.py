@@ -2,8 +2,8 @@ from pathlib import Path
 
 from docx import Document as DocxDocument
 
-from app.services.document.extractors.base import BaseExtractor
 from app.models.document import ExtractionResult
+from app.services.document.extractors.base import BaseExtractor
 
 
 class DOCXExtractor(BaseExtractor):

@@ -1,0 +1,163 @@
+name: RSAI Release Validation
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  PYTHON_VERSION: "3.12"
+  BACKEND_DIR: backend
+  DATABASE_URL: postgresql://rsai:rsai@localhost:5432/rsai
+
+jobs:
+  # ─────────────── Pre-Release Checks ───────────────
+  pre-release:
+    name: Pre-Release Validation
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ env.BACKEND_DIR }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: "${{ env.BACKEND_DIR }}/requirements.txt"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Verify repository is clean
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "❌ Repository has uncommitted changes"
+            git status
+            exit 1
+          fi
+          echo "✅ Repository clean"
+
+      - name: Run tests (JSON backend)
+        run: python -m pytest tests/ -v --junitxml=results-json.xml
+        env:
+          STORAGE_BACKEND: json
+
+      - name: Verify deployment scripts exist
+        run: |
+          for script in scripts/deployment/deploy.sh scripts/deployment/rollback.sh \
+                        scripts/deployment/backup.sh scripts/deployment/smoke_test.py \
+                        scripts/migrate_data.py; do
+            if [ ! -f "$script" ]; then
+              echo "❌ Missing: $script"
+              exit 1
+            fi
+          done
+          echo "✅ All deployment scripts present"
+
+      - name: Verify documentation exists
+        run: |
+          for doc in docs/postgresql/Architecture.md docs/postgresql/MigrationPlan.md \
+                     docs/postgresql/Setup.md docs/postgresql/ProductionDeployment.md \
+                     docs/postgresql/ContinuousIntegration.md; do
+            if [ ! -f "$doc" ]; then
+              echo "⚠️  Missing: $doc (non-critical)"
+            fi
+          done
+          echo "✅ Documentation checked"
+
+      - name: Verify rollback script syntax
+        run: bash -n scripts/deployment/rollback.sh && echo "✅ Rollback script valid"
+
+      - name: Verify deploy script syntax
+        run: bash -n scripts/deployment/deploy.sh && echo "✅ Deploy script valid"
+
+  # ─────────────── Full PostgreSQL Validation ───────────────
+  postgres-validation:
+    name: PostgreSQL Release Validation
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ env.BACKEND_DIR }}
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: rsai
+          POSTGRES_PASSWORD: rsai
+          POSTGRES_DB: rsai
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U rsai -d rsai"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: "${{ env.BACKEND_DIR }}/requirements.txt"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run migrations
+        run: alembic upgrade head
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+
+      - name: Run tests (PostgreSQL)
+        run: python -m pytest tests/ -v --junitxml=results-pg.xml
+        env:
+          STORAGE_BACKEND: postgres
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+
+      - name: Run smoke tests
+        run: python -m scripts.deployment.smoke_test
+        env:
+          STORAGE_BACKEND: postgres
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-validation-results
+          path: |
+            ${{ env.BACKEND_DIR }}/results-json.xml
+            ${{ env.BACKEND_DIR }}/results-pg.xml
+
+  # ─────────────── Create Release ───────────────
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [pre-release, postgres-validation]
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate release notes
+        run: |
+          echo "# RSAI Release ${{ github.ref_name }}" > release-notes.md
+          echo "" >> release-notes.md
+          echo "## Changes" >> release-notes.md
+          git log $(git describe --tags --abbrev=0 2>/dev/null || git rev-list --max-parents=0 HEAD)..HEAD \
+            --pretty=format:"- %s" --reverse >> release-notes.md 2>/dev/null || true
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: release-notes.md
+          draft: false
+          prerelease: false
+          generate_release_notes: false

@@ -3,6 +3,20 @@ import API_URL from '../config';
 
 export type ExportFormat = 'pdf' | 'docx' | 'html';
 
+export type SectionPlacement = {
+  region?: 'main' | 'sidebar';
+  order?: number;
+};
+
+export type LayoutConfigPayload = {
+  mode?: 'single' | 'two_column';
+  sidebar?: 'left' | 'right';
+  ratio?: '30/70' | '32/68' | '35/65' | '40/60';
+  gap?: 'none' | 'compact' | 'balanced' | 'wide';
+  density?: 'compact' | 'normal' | 'spacious';
+  sections?: Record<string, SectionPlacement>;
+};
+
 export class ExportError extends Error {
   status?: number;
 
@@ -39,17 +53,28 @@ export function friendlyExportError(status: number | undefined, fallback: string
 /**
  * Export a resume through the unified export API and trigger a browser
  * download using the filename from Content-Disposition when available.
+ *
+ * ``layoutConfig`` is optional; when omitted the API applies any persisted
+ * layout customization (explicit request > persisted > engine default).
  */
 export async function downloadResumeExport(
   resumeId: string,
   layoutId: string,
   themeId: string,
   format: ExportFormat,
+  layoutConfig?: LayoutConfigPayload,
+  autoBalance?: boolean,
 ): Promise<string> {
+  const payload: Record<string, unknown> = { layout_id: layoutId, theme_id: themeId, format };
+  if (layoutConfig) payload.layout_config = layoutConfig;
+  // Auto-balance is a request-time transformation; omit when disabled so the
+  // server falls back to the persisted/manual configuration.
+  if (autoBalance) payload.auto_balance = true;
+
   const response = await authFetch(`${API_URL}/resume/${resumeId}/export`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ layout_id: layoutId, theme_id: themeId, format }),
+    body: JSON.stringify(payload),
   });
 
   if (!response.ok) {

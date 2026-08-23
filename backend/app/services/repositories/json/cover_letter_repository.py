@@ -1,6 +1,6 @@
 from app.models.cover_letter import CoverLetter
-from app.services.repositories.interfaces import CoverLetterRepository
 from app.services import storage_service as store
+from app.services.repositories.interfaces import CoverLetterRepository
 
 
 class JsonCoverLetterRepository(CoverLetterRepository):

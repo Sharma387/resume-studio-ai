@@ -1,13 +1,19 @@
 import json
 from pathlib import Path
 
-from app.models.resume import Resume
+from app.models.application import Application, TimelineEvent
+from app.models.cover_letter import CoverLetter
+from app.models.interview import (
+    InterviewAnswer,
+    InterviewQuestion,
+    InterviewSession,
+    ReadinessAssessment,
+    SessionSummary,
+)
 from app.models.match import MatchResult
+from app.models.resume import Resume
 from app.models.version import ResumeVersion
 from app.models.writer import ResumeSuggestion
-from app.models.cover_letter import CoverLetter
-from app.models.application import Application, TimelineEvent
-from app.models.interview import InterviewSession, InterviewQuestion, InterviewAnswer, ReadinessAssessment, SessionSummary
 
 RESUMES_DIR = Path("storage") / "resumes"
 RESUMES_DIR.mkdir(parents=True, exist_ok=True)
@@ -66,6 +72,7 @@ def load_resume(resume_id: str, user_id: str | None = None) -> Resume | None:
     if user_id and resume.user_id != user_id:
         return None
     return resume
+
 
 # ── Match result storage (new) ──────────────────────────────────
 
@@ -158,7 +165,9 @@ def load_writer_suggestion(resume_id: str, suggestion_id: str, user_id: str | No
     return sug
 
 
-def list_writer_suggestions(resume_id: str, status: str | None = None, user_id: str | None = None) -> list[ResumeSuggestion]:
+def list_writer_suggestions(
+    resume_id: str, status: str | None = None, user_id: str | None = None
+) -> list[ResumeSuggestion]:
     dir_path = WRITER_DIR / resume_id
     if not dir_path.exists():
         return []
@@ -174,7 +183,9 @@ def list_writer_suggestions(resume_id: str, status: str | None = None, user_id: 
     return results
 
 
-def update_writer_suggestion(resume_id: str, suggestion_id: str, user_id: str | None = None, **updates) -> ResumeSuggestion | None:
+def update_writer_suggestion(
+    resume_id: str, suggestion_id: str, user_id: str | None = None, **updates
+) -> ResumeSuggestion | None:
     suggestion = load_writer_suggestion(resume_id, suggestion_id, user_id)
     if suggestion is None:
         return None
@@ -411,4 +422,3 @@ def load_session_summary(session_id: str) -> SessionSummary | None:
         return None
     data = json.loads(path.read_text(encoding="utf-8"))
     return SessionSummary(**data)
-

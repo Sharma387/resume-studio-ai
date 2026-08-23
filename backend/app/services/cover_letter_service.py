@@ -3,13 +3,12 @@ import json
 import uuid
 from datetime import datetime, timezone
 
-from app.models.resume import Resume
-from app.models.cover_letter import CoverLetter, CoverLetterRequest, CoverLetterTone
-from app.services.prompt_service import PromptService
-from app.services.ai_core import extract_json, call_with_retry, AIServiceUnavailable
-from app.services.repositories.factory import get_resume_repository, get_cover_letter_repository
-
 from app.core.logging import get_logger
+from app.models.cover_letter import CoverLetter, CoverLetterRequest, CoverLetterTone
+from app.services.ai_core import AIServiceUnavailable, call_with_retry, extract_json
+from app.services.prompt_service import PromptService
+from app.services.repositories.factory import get_cover_letter_repository, get_resume_repository
+
 logger = get_logger(__name__)
 
 

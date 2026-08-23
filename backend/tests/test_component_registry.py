@@ -261,6 +261,19 @@ class TestReferenceComponents:
         assert text is not None
         assert text.text == "Professional engineer."
 
+    def test_skills_without_category_fall_back_to_plain_bullets(self):
+        node = SkillsComponent().build_render_nodes(
+            {"skills": [{"skills": ("Python", "Go")}]}, region="main", order=0
+        )
+        bullets = [
+            leaf
+            for block in node.children[0].children
+            for leaf in block.children
+            if leaf.kind is NodeKind.BULLET
+        ]
+        assert [leaf.data.text for leaf in bullets] == ["Python", "Go"]
+        assert all(not getattr(leaf.data, "runs", None) for leaf in bullets)
+
 
 # ── Thread safety ─────────────────────────────────────────────────────────────
 

@@ -3,6 +3,7 @@
 
 class AppError(Exception):
     """Base for all application exceptions."""
+
     code: str = "INTERNAL_ERROR"
     status_code: int = 500
 

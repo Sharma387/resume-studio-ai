@@ -16,6 +16,7 @@ from pathlib import Path
 import pytest
 
 from app.models.resume import Resume
+from app.rendering.builder import TreeBuilder
 from app.rendering.content import ContentView, Profile
 from app.rendering.content.models import (
     AwardEntry,
@@ -26,16 +27,17 @@ from app.rendering.content.models import (
     ProjectEntry,
     SkillGroup,
 )
+from app.rendering.context import RenderContext, RenderState
 from app.rendering.layout.reference_layouts import (
     classic_layout,
     executive_layout,
     modern_layout,
     sidebar_layout,
 )
-from app.rendering.layout_html import render_layout_html, render_resume_layout_html
+from app.rendering.layout_html import default_component_registry, render_layout_html, render_resume_layout_html
 from app.rendering.renderers.tree_html_renderer import RenderTreeHTMLRenderer
 from app.rendering.theme.reference_themes import blue_theme, gold_theme
-from app.rendering.tree import A4, NodeKind, PageMargins, RenderNode, TextData
+from app.rendering.tree import A4, NodeKind, PageMargins, RenderNode, TextData, TreeValidator
 from app.rendering.tree.validator import TreeValidationError
 
 
@@ -114,7 +116,7 @@ class TestValidAndDeterministic:
         html = render_layout_html(_cvm(), executive_layout(), blue_theme())
         assert html.startswith("<!DOCTYPE html>")
         assert "<html" in html and "</html>" in html
-        assert 'class="resume"' in html
+        assert 'class="resume' in html
         assert 'data-region="main"' in html
 
     def test_deterministic(self):
@@ -149,11 +151,11 @@ class TestSameCVMDifferentLayouts:
         assert exec_map["skills"] == "main"
         assert side_map["skills"] == "sidebar"
         assert modern_map["skills"] == "secondary"
-        assert classic_map["skills"] == "main"
-        # Profile lives in the full-width header region (executive/sidebar/modern),
-        # inline in main for the headerless classic layout.
+        assert classic_map["skills"] == "secondary"
+        # Profile lives in the full-width header region (executive/modern) or on the
+        # sidebar rail (sidebar) / inline in main for the headerless classic layout.
         assert exec_map["profile"] == "header"
-        assert side_map["profile"] == "header"
+        assert side_map["profile"] == "sidebar"
         assert modern_map["profile"] == "header"
         assert classic_map["profile"] == "main"
         # Summary and experience stay in main everywhere (content constant).
@@ -341,12 +343,175 @@ class TestStructuredComponents:
         assert "Python" in body and "Go" in body
         assert '<ul class="resume-list">' in html
 
+    def test_grouped_skill_is_single_li_with_bold_category(self):
+        html = render_layout_html(_structured_cvm(), sidebar_layout(), blue_theme())
+        section = re.search(
+            r'<section class="resume-section resume-section-skills".*?</section>', html, re.S
+        ).group(0)
+        lis = re.findall(r"<li>.*?</li>", section, re.S)
+        assert len(lis) == 1
+        assert lis[0] == "<li><strong>Languages:</strong> Python, Go</li>"
+        assert "<ul class=\"resume-list\">" in section
+
+    def test_grouped_skills_no_middot_no_duplicated_category(self):
+        html = render_layout_html(_structured_cvm(), sidebar_layout(), blue_theme())
+        section = re.search(
+            r'<section class="resume-section resume-section-skills".*?</section>', html, re.S
+        ).group(0)
+        assert "\u00b7" not in section
+        assert section.count("Languages") == 1
+
+    def test_multiple_skill_groups_each_render_single_li(self):
+        cvm = ContentView(
+            stable_id="resume.multi-skills",
+            profile=Profile(full_name="Jane Doe", professional_title="Engineer"),
+            skills=(
+                SkillGroup(category="Languages", skills=("Python", "Go")),
+                SkillGroup(category="Cloud", skills=("AWS", "Azure")),
+            ),
+        )
+        html = render_layout_html(cvm, sidebar_layout(), blue_theme())
+        section = re.search(
+            r'<section class="resume-section resume-section-skills".*?</section>', html, re.S
+        ).group(0)
+        lis = re.findall(r"<li>.*?</li>", section, re.S)
+        assert lis == [
+            "<li><strong>Languages:</strong> Python, Go</li>",
+            "<li><strong>Cloud:</strong> AWS, Azure</li>",
+        ]
+
+    def test_skills_ats_single_logical_unit(self):
+        context = RenderContext(layout=sidebar_layout(), theme=blue_theme(), state=RenderState())
+        tree = TreeBuilder(default_component_registry()).build(_structured_cvm(), context)
+        spans = TreeValidator().extract_text(tree)
+        skill_texts = [span.text for span in spans if span.content_ref == "skills"]
+        assert skill_texts == ["Languages: Python, Go"]
+
     def test_certifications_are_structured(self):
         html = render_layout_html(_structured_cvm(), sidebar_layout(), blue_theme())
         body = _body_text(html)
         assert "AWS Certified" in body
         assert "Amazon" in body
         assert "2022" in body
+
+    def test_grouped_certification_is_single_li_with_bold_category(self):
+        cvm = ContentView(
+            stable_id="resume.grouped-certs",
+            profile=Profile(full_name="Jane Doe", professional_title="Engineer"),
+            certifications=(
+                CertificationEntry(
+                    category="Professional Credentials",
+                    values=("PRINCE2 Practitioner", "Certified Scrum Master (CSM)", "ITIL Foundation Certificate"),
+                ),
+            ),
+        )
+        html = render_layout_html(cvm, sidebar_layout(), blue_theme())
+        section = re.search(
+            r'<section class="resume-section resume-section-certifications".*?</section>', html, re.S
+        ).group(0)
+        lis = re.findall(r"<li>.*?</li>", section, re.S)
+        assert lis == [
+            "<li><strong>Professional Credentials:</strong> "
+            "PRINCE2 Practitioner | Certified Scrum Master (CSM) | ITIL Foundation Certificate</li>"
+        ]
+        assert "|" in lis[0]
+
+    def test_grouped_certification_no_duplication(self):
+        cvm = ContentView(
+            stable_id="resume.grouped-certs-dup",
+            profile=Profile(full_name="Jane Doe", professional_title="Engineer"),
+            certifications=(
+                CertificationEntry(category="AI & Emerging Technologies", values=("GitHub Copilot", "Claude")),
+            ),
+        )
+        html = render_layout_html(cvm, sidebar_layout(), blue_theme())
+        section = re.search(
+            r'<section class="resume-section resume-section-certifications".*?</section>', html, re.S
+        ).group(0)
+        assert section.count("AI &amp; Emerging Technologies") == 1
+        assert section.count("GitHub Copilot") == 1
+
+    def test_multiple_grouped_certifications_each_single_li(self):
+        cvm = ContentView(
+            stable_id="resume.multi-grouped-certs",
+            profile=Profile(full_name="Jane Doe", professional_title="Engineer"),
+            certifications=(
+                CertificationEntry(category="Professional Credentials", values=("PRINCE2 Practitioner",)),
+                CertificationEntry(category="AI & Emerging Technologies", values=("Claude", "RAG")),
+                CertificationEntry(category="Enterprise Platforms & DevOps", values=("ServiceNow", "Azure DevOps")),
+            ),
+        )
+        html = render_layout_html(cvm, sidebar_layout(), blue_theme())
+        section = re.search(
+            r'<section class="resume-section resume-section-certifications".*?</section>', html, re.S
+        ).group(0)
+        lis = re.findall(r"<li>.*?</li>", section, re.S)
+        assert lis == [
+            "<li><strong>Professional Credentials:</strong> PRINCE2 Practitioner</li>",
+            "<li><strong>AI &amp; Emerging Technologies:</strong> Claude | RAG</li>",
+            "<li><strong>Enterprise Platforms &amp; DevOps:</strong> ServiceNow | Azure DevOps</li>",
+        ]
+
+    def test_individual_certification_card_preserved(self):
+        cvm = ContentView(
+            stable_id="resume.individual-cert",
+            profile=Profile(full_name="Jane Doe", professional_title="Engineer"),
+            certifications=(CertificationEntry(name="PMP", issuer="Project Management Institute", date="2025"),),
+        )
+        html = render_layout_html(cvm, sidebar_layout(), blue_theme())
+        section = re.search(
+            r'<section class="resume-section resume-section-certifications".*?</section>', html, re.S
+        ).group(0)
+        assert '<div class="resume-block">' in section
+        assert '<p class="resume-text resume-strong">PMP</p>' in section
+        assert '<p class="resume-text resume-muted">Project Management Institute · 2025</p>' in section
+        assert "<li>" not in section
+
+    def test_mixed_certifications_use_correct_renderer(self):
+        cvm = ContentView(
+            stable_id="resume.mixed-certs",
+            profile=Profile(full_name="Jane Doe", professional_title="Engineer"),
+            certifications=(
+                CertificationEntry(category="Professional Credentials", values=("PRINCE2 Practitioner",)),
+                CertificationEntry(name="PMP", issuer="PMI", date="2025"),
+                CertificationEntry(category="AI & Emerging Technologies", values=("Claude",)),
+                CertificationEntry(name="AWS Certified", issuer="Amazon", date="2022"),
+            ),
+        )
+        html = render_layout_html(cvm, sidebar_layout(), blue_theme())
+        section = re.search(
+            r'<section class="resume-section resume-section-certifications".*?</section>', html, re.S
+        ).group(0)
+        lis = re.findall(r"<li>.*?</li>", section, re.S)
+        assert lis == [
+            "<li><strong>Professional Credentials:</strong> PRINCE2 Practitioner</li>",
+            "<li><strong>AI &amp; Emerging Technologies:</strong> Claude</li>",
+        ]
+        assert '<p class="resume-text resume-strong">PMP</p>' in section
+        assert '<p class="resume-text resume-muted">PMI · 2025</p>' in section
+        assert '<p class="resume-text resume-strong">AWS Certified</p>' in section
+        assert '<p class="resume-text resume-muted">Amazon · 2022</p>' in section
+        assert section.index("Professional Credentials") < section.index("PMP")
+        assert section.index("PMP") < section.index("AI &amp; Emerging Technologies")
+
+    def test_grouped_certification_ats_single_logical_unit(self):
+        cvm = ContentView(
+            stable_id="resume.grouped-certs-ats",
+            profile=Profile(full_name="Jane Doe", professional_title="Engineer"),
+            certifications=(
+                CertificationEntry(
+                    category="Professional Credentials",
+                    values=("PRINCE2 Practitioner", "Certified Scrum Master (CSM)", "ITIL Foundation Certificate"),
+                ),
+            ),
+        )
+        context = RenderContext(layout=sidebar_layout(), theme=blue_theme(), state=RenderState())
+        tree = TreeBuilder(default_component_registry()).build(cvm, context)
+        spans = TreeValidator().extract_text(tree)
+        cert_texts = [span.text for span in spans if span.content_ref == "certifications"]
+        assert cert_texts == [
+            "Professional Credentials: PRINCE2 Practitioner | Certified Scrum Master (CSM) | ITIL Foundation Certificate"
+        ]
 
 
 # ── Long-content robustness ───────────────────────────────────────────────────

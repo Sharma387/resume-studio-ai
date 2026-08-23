@@ -1,14 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.models.user import (
-    LoginRequest,
-    RegisterRequest,
-    RefreshRequest,
     ChangePasswordRequest,
+    LoginRequest,
+    RefreshRequest,
+    RegisterRequest,
     User,
 )
+from app.services.auth_deps import require_user
 from app.services.auth_service import AuthenticationService
-from app.services.auth_deps import require_user, get_current_user
 
 router = APIRouter()
 auth_service = AuthenticationService()

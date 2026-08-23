@@ -10,6 +10,9 @@ venv/
 backend/uploads/
 backend/storage/
 
+# Generated previews
+storage/previews/
+
 # Node
 node_modules/
 dist/
@@ -23,6 +26,12 @@ dist/
 # Environment
 .env
 !.env.example
+
+# CI / Test artifacts
+*.xml
+*.log
+htmlcov/
+.coverage
 
 # OS
 .DS_Store

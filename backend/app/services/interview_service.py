@@ -2,34 +2,31 @@ import json
 import uuid
 from datetime import datetime, timezone
 
+from app.core.logging import get_logger
+from app.models.application import TimelineEvent, TimelineEventType
 from app.models.interview import (
-    InterviewSession,
-    InterviewQuestion,
     InterviewAnswer,
+    InterviewQuestion,
+    InterviewSession,
     ReadinessAssessment,
     SessionSummary,
-    STARAttempt,
-    QuestionType,
-    Difficulty,
-    AnswerType,
     SessionType,
+    STARAttempt,
 )
-from app.models.application import TimelineEvent, TimelineEventType
-from app.services.repositories.factory import (
-    get_resume_repository,
-    get_application_repository,
-    get_interview_session_repository,
-    get_timeline_event_repository,
-    get_match_repository,
-    get_interview_question_repository,
-    get_interview_answer_repository,
-    get_readiness_assessment_repository,
-    get_session_summary_repository,
-)
+from app.services.ai_core import AIServiceUnavailable, call_with_retry, extract_json
 from app.services.prompt_service import PromptService
-from app.services.ai_core import call_with_retry, extract_json, AIServiceUnavailable
+from app.services.repositories.factory import (
+    get_application_repository,
+    get_interview_answer_repository,
+    get_interview_question_repository,
+    get_interview_session_repository,
+    get_match_repository,
+    get_readiness_assessment_repository,
+    get_resume_repository,
+    get_session_summary_repository,
+    get_timeline_event_repository,
+)
 
-from app.core.logging import get_logger
 logger = get_logger(__name__)
 
 
@@ -42,10 +39,14 @@ def _add_timeline(app_id: str, etype: TimelineEventType, title: str, desc: str =
     get_timeline_event_repository().save(event)
 
 
-def create_session(application_id: str, title: str, user_id: str, session_type: SessionType = SessionType.MOCK) -> InterviewSession:
-    session = InterviewSession(id=uuid.uuid4().hex, user_id=user_id, application_id=application_id, title=title, session_type=session_type)
+def create_session(
+    application_id: str, title: str, user_id: str, session_type: SessionType = SessionType.MOCK
+) -> InterviewSession:
+    session = InterviewSession(
+        id=uuid.uuid4().hex, user_id=user_id, application_id=application_id, title=title, session_type=session_type
+    )
     get_interview_session_repository().save(session)
-    _add_timeline(application_id, TimelineEventType.CREATED, f"Interview session created", title)
+    _add_timeline(application_id, TimelineEventType.CREATED, "Interview session created", title)
     return session
 
 
@@ -57,7 +58,9 @@ def list_sessions(application_id: str, user_id: str | None = None) -> list[Inter
     return get_interview_session_repository().list_by_application(application_id, user_id)
 
 
-def update_session(application_id: str, session_id: str, user_id: str | None = None, **kwargs) -> InterviewSession | None:
+def update_session(
+    application_id: str, session_id: str, user_id: str | None = None, **kwargs
+) -> InterviewSession | None:
     session = get_interview_session_repository().get_by_id(application_id, session_id, user_id)
     if session is None:
         return None
@@ -76,7 +79,9 @@ def delete_session(application_id: str, session_id: str, user_id: str | None = N
 def complete_session(application_id: str, session_id: str) -> InterviewSession | None:
     session = update_session(application_id, session_id, completed=True)
     if session:
-        _add_timeline(application_id, TimelineEventType.MOCK_INTERVIEW_COMPLETED, "Mock interview completed", session.title)
+        _add_timeline(
+            application_id, TimelineEventType.MOCK_INTERVIEW_COMPLETED, "Mock interview completed", session.title
+        )
     return session
 
 
@@ -95,7 +100,10 @@ async def generate_questions(application_id: str, session_id: str, count: int = 
 
     async def build():
         return prompt_service.build_interview_questions_prompt(
-            resume_json=resume_json, job_context=job_context, ats_gaps=ats_gaps, count=count,
+            resume_json=resume_json,
+            job_context=job_context,
+            ats_gaps=ats_gaps,
+            count=count,
         )
 
     def parse(raw: str) -> list[InterviewQuestion]:
@@ -108,11 +116,15 @@ async def generate_questions(application_id: str, session_id: str, count: int = 
             q = InterviewQuestion(
                 id=uuid.uuid4().hex,
                 session_id=session_id,
-                **{k: v for k, v in item.items() if k in InterviewQuestion.model_fields and k not in ("id", "session_id")},
+                **{
+                    k: v
+                    for k, v in item.items()
+                    if k in InterviewQuestion.model_fields and k not in ("id", "session_id")
+                },
             )
             get_interview_question_repository().save(q)
             questions.append(q)
-        session = load_interview_session(application_id, session_id)
+        session = get_interview_session_repository().get_by_id(application_id, session_id)
         if session:
             session.question_count = len(questions)
             session.updated_at = _now()
@@ -210,7 +222,7 @@ async def generate_summary(session_id: str) -> SessionSummary:
     questions = get_interview_question_repository().list_by_session(session_id)
     qa_pairs = []
     for q in questions:
-        answer = _store.load_interview_answer(q.id)
+        answer = get_interview_answer_repository().get_by_question(q.id)
         qa_pairs.append(f"Q: {q.question_text}\nA: {answer.user_answer if answer else '(unanswered)'}")
 
     prompt_service = PromptService()
@@ -226,7 +238,7 @@ async def generate_summary(session_id: str) -> SessionSummary:
             session_id=session_id,
             application_id=app_id,
             total_questions=len(questions),
-            answered_questions=sum(1 for _ in questions if _store.load_interview_answer(_.id)),
+            answered_questions=sum(1 for _ in questions if get_interview_answer_repository().get_by_question(_.id)),
             strengths=data.get("strengths", []),
             areas_to_improve=data.get("areas_to_improve", []),
             recommendations=data.get("recommendations", []),

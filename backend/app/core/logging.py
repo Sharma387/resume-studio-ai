@@ -10,7 +10,6 @@ import json
 import logging
 import sys
 import uuid
-from collections.abc import Callable
 from contextvars import ContextVar
 from datetime import datetime, timezone
 

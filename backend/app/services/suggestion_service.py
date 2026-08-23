@@ -2,14 +2,13 @@ import json
 
 from pydantic import ValidationError
 
-from app.core.config import settings
-from app.models.resume import Resume
-from app.models.match import Recommendation
-from app.services.ai_core import extract_json
-from app.services.prompt_service import PromptService
-from app.services.omniroute_service import OmniRouteService, OmniRouteError
-
 from app.core.logging import get_logger
+from app.models.match import Recommendation
+from app.models.resume import Resume
+from app.services.ai_core import extract_json
+from app.services.omniroute_service import OmniRouteError, OmniRouteService
+from app.services.prompt_service import PromptService
+
 logger = get_logger(__name__)
 
 

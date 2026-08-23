@@ -3,14 +3,14 @@ from datetime import datetime, timezone
 
 import bcrypt
 
-from app.models.user import User, AccountStatus
+from app.models.user import AccountStatus, User, UserRole
+from app.services.repositories.factory import get_user_repository
 from app.services.repositories.interfaces import UserRepository
-from app.services.repositories.json_user_repo import JsonUserRepository
 
 
 class UserService:
     def __init__(self, repo: UserRepository | None = None):
-        self.repo = repo or JsonUserRepository()
+        self.repo = repo or get_user_repository()
 
     def hash_password(self, password: str) -> str:
         return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
@@ -57,5 +57,76 @@ class UserService:
         if not self.verify_password(current_password, user.password_hash):
             return False
         user.password_hash = self.hash_password(new_password)
+        user.must_change_password = False
+        user.last_password_change = datetime.now(timezone.utc).isoformat()
         self.repo.save(user)
         return True
+
+    def list_all(self) -> list[User]:
+        return self.repo.list_all()
+
+    def disable_user(self, user_id: str) -> User | None:
+        user = self.repo.get_by_id(user_id)
+        if user is None:
+            return None
+        user.disabled = True
+        user.status = AccountStatus.DISABLED
+        self.repo.save(user)
+        return user
+
+    def enable_user(self, user_id: str) -> User | None:
+        user = self.repo.get_by_id(user_id)
+        if user is None:
+            return None
+        user.disabled = False
+        user.status = AccountStatus.ACTIVE
+        self.repo.save(user)
+        return user
+
+    def promote_to_admin(self, user_id: str) -> User | None:
+        user = self.repo.get_by_id(user_id)
+        if user is None:
+            return None
+        user.role = UserRole.ADMIN
+        self.repo.save(user)
+        return user
+
+    def demote_to_user(self, user_id: str, requester_id: str) -> User | None:
+        if user_id == requester_id:
+            raise ValueError("Cannot demote yourself")
+        user = self.repo.get_by_id(user_id)
+        if user is None:
+            return None
+        admin_count = sum(1 for u in self.list_all() if u.role == UserRole.ADMIN)
+        if admin_count <= 1:
+            raise ValueError("Cannot demote the last administrator")
+        user.role = UserRole.USER
+        self.repo.save(user)
+        return user
+
+    def reset_password(self, user_id: str, custom_password: str | None = None) -> tuple[User, str]:
+        user = self.repo.get_by_id(user_id)
+        if user is None:
+            raise ValueError("User not found")
+        if custom_password:
+            from app.services.password_policy import validate as validate_pwd
+
+            validate_pwd(custom_password)
+            new_password = custom_password
+        else:
+            from app.services.password_policy import generate_temporary
+
+            new_password = generate_temporary()
+        user.password_hash = self.hash_password(new_password)
+        user.must_change_password = True
+        user.last_password_change = datetime.now(timezone.utc).isoformat()
+        self.repo.save(user)
+        return user, new_password
+
+    def update_profile(self, user_id: str, full_name: str) -> User | None:
+        user = self.repo.get_by_id(user_id)
+        if user is None:
+            return None
+        user.full_name = full_name
+        self.repo.save(user)
+        return user

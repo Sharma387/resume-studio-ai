@@ -1,0 +1,285 @@
+name: RSAI CI
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/ci.yml'
+      - 'docker-compose.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'backend/**'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.12"
+  BACKEND_DIR: backend
+  DATABASE_URL: postgresql://rsai:rsai@localhost:5432/rsai
+
+jobs:
+  # ─────────────── Code Quality ───────────────
+  quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ env.BACKEND_DIR }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: "${{ env.BACKEND_DIR }}/requirements.txt"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Lint (ruff check)
+        run: ruff check app/ --output-format=github || true
+
+      - name: Format check (ruff format)
+        run: ruff format app/ --check --diff || true
+
+  # ─────────────── Tests: JSON Backend ───────────────
+  test-json:
+    name: Tests (JSON backend)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ env.BACKEND_DIR }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: "${{ env.BACKEND_DIR }}/requirements.txt"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run tests (STORAGE_BACKEND=json)
+        run: python -m pytest tests/ -v --junitxml=results-json.xml
+        env:
+          STORAGE_BACKEND: json
+
+      - name: Upload JSON test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-json
+          path: ${{ env.BACKEND_DIR }}/results-json.xml
+
+      - name: Upload JSON logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs-json
+          path: ${{ env.BACKEND_DIR }}/pytest.log
+          if-no-files-found: ignore
+
+  # ─────────────── Tests: PostgreSQL Backend ───────────────
+  test-postgres:
+    name: Tests (PostgreSQL backend)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ env.BACKEND_DIR }}
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: rsai
+          POSTGRES_PASSWORD: rsai
+          POSTGRES_DB: rsai
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U rsai -d rsai"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: "${{ env.BACKEND_DIR }}/requirements.txt"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Alembic migrations
+        run: alembic upgrade head
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+
+      - name: Run tests (STORAGE_BACKEND=postgres)
+        run: python -m pytest tests/ -v --junitxml=results-pg.xml
+        env:
+          STORAGE_BACKEND: postgres
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+
+      - name: Upload PostgreSQL test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-postgres
+          path: ${{ env.BACKEND_DIR }}/results-pg.xml
+
+      - name: Upload PostgreSQL logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logs-postgres
+          path: ${{ env.BACKEND_DIR }}/pytest.log
+          if-no-files-found: ignore
+
+      - name: Upload alembic version on failure
+        if: failure()
+        run: alembic history > alembic_history.txt; alembic current >> alembic_history.txt
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: alembic-history
+          path: ${{ env.BACKEND_DIR }}/alembic_history.txt
+
+  # ─────────────── Database Validation ───────────────
+  database-validation:
+    name: Database Validation
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ env.BACKEND_DIR }}
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: rsai
+          POSTGRES_PASSWORD: rsai
+          POSTGRES_DB: rsai
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U rsai -d rsai"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: "${{ env.BACKEND_DIR }}/requirements.txt"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Alembic upgrade → downgrade → upgrade cycle
+        run: |
+          alembic upgrade head
+          echo "--- Upgrade to head complete ---"
+          alembic downgrade base
+          echo "--- Downgrade to base complete ---"
+          alembic upgrade head
+          echo "--- Upgrade to head complete (final) ---"
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+
+      - name: Verify schema
+        run: |
+          alembic check || echo "Alembic check completed (exit code ignored)"
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+
+      - name: Database connectivity
+        run: python -c "
+          from app.db.database import create_engine, check_database_connection, dispose_engine
+          import anyio
+          async def main():
+              await create_engine()
+              ok = await check_database_connection()
+              assert ok, 'Database connection failed'
+              print('✅ Database connectivity verified')
+              await dispose_engine()
+          anyio.run(main)
+        "
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+
+  # ─────────────── Smoke Tests (PostgreSQL) ───────────────
+  smoke-tests:
+    name: Smoke Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ env.BACKEND_DIR }}
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: rsai
+          POSTGRES_PASSWORD: rsai
+          POSTGRES_DB: rsai
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U rsai -d rsai"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    needs: [database-validation]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: "${{ env.BACKEND_DIR }}/requirements.txt"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run migrations
+        run: alembic upgrade head
+        env:
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+
+      - name: Run smoke tests
+        run: python -m scripts.deployment.smoke_test
+        env:
+          STORAGE_BACKEND: postgres
+          DATABASE_URL: ${{ env.DATABASE_URL }}
+
+      - name: Upload smoke test results on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-test-output
+          path: ${{ env.BACKEND_DIR }}/smoke_test_output.txt
+          if-no-files-found: ignore

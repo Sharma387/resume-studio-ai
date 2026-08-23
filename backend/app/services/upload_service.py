@@ -1,7 +1,7 @@
 import uuid
 from pathlib import Path
 
-from fastapi import UploadFile, HTTPException
+from fastapi import HTTPException, UploadFile
 
 UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)

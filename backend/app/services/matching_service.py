@@ -3,12 +3,12 @@ import uuid
 from datetime import datetime, timezone
 
 from app.core.config import settings
+from app.core.logging import get_logger
 from app.models.match import MatchResult
 from app.models.resume import Resume
+from app.services.ai_core import AIServiceUnavailable, call_with_retry, extract_json
 from app.services.prompt_service import PromptService
-from app.services.ai_core import extract_json, call_with_retry, AIServiceUnavailable
 
-from app.core.logging import get_logger
 logger = get_logger(__name__)
 
 
@@ -27,7 +27,9 @@ def _mock_match(resume_id: str, job_title: str | None, resume: Resume) -> MatchR
     )
 
 
-async def analyze_match(resume_id: str, job_title: str | None, job_description: str, resume: Resume, user_id: str) -> MatchResult:
+async def analyze_match(
+    resume_id: str, job_title: str | None, job_description: str, resume: Resume, user_id: str
+) -> MatchResult:
     if "localhost" not in settings.omniroute_api_url and not settings.omniroute_api_key:
         if settings.allow_mock_ai_data:
             logger.info("Mock AI data enabled; returning mock match")

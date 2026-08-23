@@ -30,10 +30,14 @@ class RenderTreePDFRenderer:
 
     # ── Public API ────────────────────────────────────────────────────────────
 
-    def render(self, tree: RenderNode, *, theme: ThemePalette | None = None) -> bytes:
-        """Render ``tree`` (with optional ``theme``) into PDF bytes."""
+    def render(self, tree: RenderNode, *, theme: ThemePalette | None = None, density: str | None = None) -> bytes:
+        """Render ``tree`` (with optional ``theme``) into PDF bytes.
+
+        ``density`` is forwarded to the shared HTML renderer so the PDF
+        inherits the same density-driven spacing values (via WeasyPrint).
+        """
         self._validator.assert_valid(tree)
-        html = self._html_renderer.render(tree, theme=theme)
+        html = self._html_renderer.render(tree, theme=theme, density=density)
         html = self._inject_page_geometry(html, tree)
         return _weasyprint_pdf(html)
 

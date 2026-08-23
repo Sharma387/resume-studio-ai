@@ -5,7 +5,7 @@ import time
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 
-from app.core.logging import generate_request_id, set_request_id, get_logger
+from app.core.logging import generate_request_id, get_logger, set_request_id
 
 logger = get_logger(__name__)
 
@@ -27,5 +27,11 @@ class TimingMiddleware(BaseHTTPMiddleware):
         elapsed_ms = (time.perf_counter() - start) * 1000
 
         response.headers["X-Response-Time-Ms"] = str(int(elapsed_ms))
-        logger.info("Request completed", path=str(request.url.path), method=request.method, status=response.status_code, duration_ms=f"{elapsed_ms:.0f}")
+        logger.info(
+            "Request completed",
+            path=str(request.url.path),
+            method=request.method,
+            status=response.status_code,
+            duration_ms=f"{elapsed_ms:.0f}",
+        )
         return response

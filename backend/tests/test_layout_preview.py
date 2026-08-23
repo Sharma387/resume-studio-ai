@@ -139,7 +139,7 @@ class TestLayoutChangesStructure:
         assert _section_regions(results["executive"])["skills"] == "main"
         assert _section_regions(results["sidebar"])["skills"] == "sidebar"
         assert _section_regions(results["modern"])["skills"] == "secondary"
-        assert _section_regions(results["classic"])["skills"] == "main"
+        assert _section_regions(results["classic"])["skills"] == "secondary"
 
         # Content identical across layouts.
         counters = [_tokens(results[layout]) for layout in LAYOUTS]

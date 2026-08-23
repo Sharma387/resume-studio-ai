@@ -1,7 +1,7 @@
 """Prompt template loader with caching and validation."""
 
-from pathlib import Path
 from functools import lru_cache
+from pathlib import Path
 
 from app.core.exceptions import AppError
 
@@ -47,10 +47,16 @@ class PromptService:
     def build_match_prompt(self, resume_json: str, job_description: str, match_schema: str) -> tuple[str, str]:
         system = self._load("resume_matcher_system.md")
         user_template = self._load("resume_matcher_user.md")
-        user = user_template.replace("{resume_json}", resume_json).replace("{job_description}", job_description).replace("{match_schema}", match_schema)
+        user = (
+            user_template.replace("{resume_json}", resume_json)
+            .replace("{job_description}", job_description)
+            .replace("{match_schema}", match_schema)
+        )
         return system, user
 
-    def build_writer_prompt(self, resume_json: str, user_prompt: str, focus_section: str | None = None) -> tuple[str, str]:
+    def build_writer_prompt(
+        self, resume_json: str, user_prompt: str, focus_section: str | None = None
+    ) -> tuple[str, str]:
         system = self._load("resume_writer_system.md")
         user_template = self._load("resume_writer_user.md")
         user = user_template.replace("{resume_json}", resume_json).replace("{user_prompt}", user_prompt)

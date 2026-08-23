@@ -17,7 +17,7 @@ from app.rendering.components.base import (
     SectionComponent,
     SectionContent,
 )
-from app.rendering.tree import BulletData, LinkData, NodeKind, ParagraphData, RenderNode, TextData, TimeData
+from app.rendering.tree import BulletData, InlineRun, LinkData, NodeKind, ParagraphData, RenderNode, TextData, TimeData
 
 
 def _get(value: object, key: str) -> object:
@@ -296,28 +296,30 @@ class SkillsComponent(_PlaceholderComponent):
     def build_render_nodes(self, content: SectionContent, *, region: str | None = None, order: int = 0) -> RenderNode:
         ref = self._section_type
         groups = _entries(content, ref) or [content]
-        children: list[RenderNode] = []
+        bullets: list[RenderNode] = []
         for index, group in enumerate(groups):
-            children.extend(self._group_nodes(index, group, region, ref))
-        return _section(f"section-{ref}", region, order, tuple(children))
+            bullets.extend(self._group_bullets(index, group, region, ref))
+        if not bullets:
+            return _section(f"section-{ref}", region, order, ())
+        return _section(f"section-{ref}", region, order, (_list(f"{ref}-list", region, ref, tuple(bullets)),))
 
-    def _group_nodes(self, index: int, group: object, region: str | None, ref: str) -> list[RenderNode]:
+    def _group_bullets(self, index: int, group: object, region: str | None, ref: str) -> list[RenderNode]:
         prefix = f"{ref}-{index}"
-        block_children: list[RenderNode] = []
         category = _text_str(_get(group, "category"))
-        if category:
-            block_children.append(_text_unit(f"{prefix}-category", region, ref, category, classes=("resume-strong",)))
-        block = _node(f"{prefix}-block", NodeKind.BLOCK, region, ref, children=tuple(block_children))
-        nodes: list[RenderNode] = [block]
         skills = _get(group, "skills")
-        bullets = tuple(
-            _bullet(f"{prefix}-s{i}", region, ref, _text_str(item))
-            for i, item in enumerate(skills or [])
-            if _text_str(item)
-        )
-        if bullets:
-            nodes.append(_list(f"{prefix}-list", region, ref, bullets))
-        return nodes
+        if skills:
+            skills = tuple(item for item in skills if _text_str(item))
+        if not category and not skills:
+            return []
+        if category and skills:
+            join = ", ".join(skills)
+            data = BulletData(
+                type="bullet",
+                text=f"{category}: {join}",
+                runs=(InlineRun(text=f"{category}:", bold=True), InlineRun(text=f" {join}")),
+            )
+            return [_node(f"{prefix}-item", NodeKind.BULLET, region, ref, data=data)]
+        return [_bullet(f"{prefix}-s{i}", region, ref, skill) for i, skill in enumerate(skills)]
 
 
 class CertificationsComponent(_PlaceholderComponent):
@@ -329,8 +331,30 @@ class CertificationsComponent(_PlaceholderComponent):
     def build_render_nodes(self, content: SectionContent, *, region: str | None = None, order: int = 0) -> RenderNode:
         ref = self._section_type
         certs = _entries(content, ref) or [content]
-        blocks = tuple(self._cert_block(index, cert, region, ref) for index, cert in enumerate(certs))
-        return _section(f"section-{ref}", region, order, blocks)
+        children: list[RenderNode] = []
+        bullets: list[RenderNode] = []
+        for index, cert in enumerate(certs):
+            if _text_str(_get(cert, "category")):
+                bullets.append(self._group_bullet(index, cert, region, ref))
+            else:
+                if bullets:
+                    children.append(_list(f"{ref}-grouped-{len(children)}", region, ref, tuple(bullets)))
+                    bullets = []
+                children.append(self._cert_block(index, cert, region, ref))
+        if bullets:
+            children.append(_list(f"{ref}-grouped-{len(children)}", region, ref, tuple(bullets)))
+        return _section(f"section-{ref}", region, order, tuple(children))
+
+    def _group_bullet(self, index: int, cert: object, region: str | None, ref: str) -> RenderNode:
+        category = _text_str(_get(cert, "category"))
+        values = tuple(item for item in (_get(cert, "values") or ()) if _text_str(item))
+        join = " | ".join(values)
+        data = BulletData(
+            type="bullet",
+            text=f"{category}: {join}",
+            runs=(InlineRun(text=f"{category}:", bold=True), InlineRun(text=f" {join}")),
+        )
+        return _node(f"{ref}-{index}-grouped", NodeKind.BULLET, region, ref, data=data)
 
     def _cert_block(self, index: int, cert: object, region: str | None, ref: str) -> RenderNode:
         prefix = f"{ref}-{index}"
@@ -338,12 +362,13 @@ class CertificationsComponent(_PlaceholderComponent):
         name = _text_str(_get(cert, "name"))
         if name:
             children.append(_text_unit(f"{prefix}-name", region, ref, name, classes=("resume-strong",)))
-        issuer = _text_str(_get(cert, "issuer"))
-        if issuer:
-            children.append(_text_unit(f"{prefix}-issuer", region, ref, issuer, classes=("resume-muted",)))
-        date = _text_str(_get(cert, "date"))
-        if date:
-            children.append(_time_unit(f"{prefix}-date", region, ref, date, date, None, False))
+        meta = " · ".join(
+            part
+            for part in (_text_str(_get(cert, "issuer")), _text_str(_get(cert, "date")))
+            if part
+        )
+        if meta:
+            children.append(_text_unit(f"{prefix}-meta", region, ref, meta, classes=("resume-muted",)))
         return _node(f"{prefix}-block", NodeKind.BLOCK, region, ref, children=tuple(children))
 
 
@@ -383,14 +408,20 @@ class ProjectsComponent(_PlaceholderComponent):
                 paragraph = _paragraph(f"{prefix}-desc", region, ref, lines[0])
                 nodes.append(_node(f"{prefix}-desc-block", NodeKind.BLOCK, region, ref, children=(paragraph,)))
 
-        technologies = _get(project, "technologies")
-        tech_bullets = tuple(
-            _bullet(f"{prefix}-t{i}", region, ref, _text_str(tech))
-            for i, tech in enumerate(technologies or [])
-            if _text_str(tech)
+        technologies = tuple(
+            _text_str(tech) for tech in (_get(project, "technologies") or []) if _text_str(tech)
         )
-        if tech_bullets:
-            nodes.append(_list(f"{prefix}-tech", region, ref, tech_bullets))
+        if technologies:
+            tech_line = "Technologies: " + " · ".join(technologies)
+            nodes.append(
+                _node(
+                    f"{prefix}-tech-block",
+                    NodeKind.BLOCK,
+                    region,
+                    ref,
+                    children=(_text_unit(f"{prefix}-tech", region, ref, tech_line, classes=("resume-muted",)),),
+                )
+            )
         return nodes
 
 
