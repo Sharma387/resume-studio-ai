@@ -88,8 +88,23 @@ def resolve_effective_layout(
             result = (base_layout, None)
     else:
         # No explicit config, no auto-balance: persisted config (if any) applies.
+        # A persisted config that no longer resolves against the base (e.g. a
+        # two_column config saved for one template, then the layout was switched
+        # to a rail-less template) falls back to the base layout safely. This is
+        # stale persisted state, not explicit request intent — mirror the
+        # auto-balance safety net instead of surfacing a resolver error.
         if base_config is not None:
-            layout = LayoutResolver().resolve(base_layout, base_config)
+            try:
+                layout = LayoutResolver().resolve(base_layout, base_config)
+            except LayoutResolverError:
+                logger.warning(
+                    "Persisted layout_config cannot be resolved against the "
+                    "current layout; falling back to base layout",
+                    layout_id=base_layout.layout_id,
+                    exc_info=True,
+                )
+                layout = base_layout
+                base_config = None
             result = (layout, base_config)
         else:
             result = (base_layout, None)

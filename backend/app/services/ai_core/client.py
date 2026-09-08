@@ -6,6 +6,7 @@ from typing import TypeVar
 
 from pydantic import ValidationError
 
+from app.core.config import settings
 from app.core.logging import get_logger
 from app.services.ai_core.exceptions import AIServiceUnavailable
 from app.services.omniroute_service import OmniRouteError, OmniRouteService

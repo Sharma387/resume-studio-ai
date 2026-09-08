@@ -43,6 +43,19 @@ const DENSITIES = ['compact', 'normal', 'spacious'];
 
 const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
+const selectSx = {
+  bgcolor: 'background.paper',
+  color: 'text.primary',
+  '& .MuiOutlinedInput-notchedOutline': { borderColor: 'divider' },
+  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'text.secondary' },
+  '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: 'primary.main' },
+  '& .MuiSelect-select': { color: 'text.primary', bgcolor: 'background.paper' },
+};
+
+const menuProps = {
+  slotProps: { paper: { sx: { bgcolor: 'background.paper', '& .MuiMenuItem-root': { color: 'text.primary' } } } },
+};
+
 export default function TemplateDesignerPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -76,7 +89,11 @@ export default function TemplateDesignerPage() {
   const [sectionOrder, setSectionOrder] = useState<string[]>(SECTION_IDS);
   const [sectionRegion, setSectionRegion] = useState<Record<string, 'auto' | 'main' | 'sidebar'>>({});
 
-  const twoColumn = mode === 'two_column';
+  // Mode is capped to single on layouts that ship without a supporting rail
+  // (executive/timeline/minimal), so a stray persisted two_column preference
+  // never reaches the API for a rail-less template.
+  const effectiveMode = mode === 'two_column' && TWO_COLUMN_LAYOUTS.has(layout) ? 'two_column' : 'single';
+  const twoColumn = effectiveMode === 'two_column';
 
   useEffect(() => {
     const load = async () => {
@@ -121,7 +138,10 @@ export default function TemplateDesignerPage() {
           ? (body.data?.layout_config as LayoutConfigPayload | undefined)
           : undefined;
         const fallbackMode: 'single' | 'two_column' = TWO_COLUMN_LAYOUTS.has(layout) ? 'two_column' : 'single';
-        setMode(saved?.mode === 'two_column' || saved?.mode === 'single' ? saved.mode : fallbackMode);
+        const savedMode: 'single' | 'two_column' = saved?.mode === 'two_column' || saved?.mode === 'single' ? saved.mode : fallbackMode;
+        // A saved two_column preference on a rail-less layout is not supported;
+        // reconcile the UI to single so it matches the backend fallback.
+        setMode(savedMode === 'two_column' && TWO_COLUMN_LAYOUTS.has(layout) ? 'two_column' : 'single');
         setSidebar(saved?.sidebar === 'right' ? 'right' : 'left');
         if (saved?.ratio && RATIOS.includes(saved.ratio)) setRatio(saved.ratio);
         if (saved?.gap && GAPS.includes(saved.gap)) setGap(saved.gap as typeof gap);
@@ -165,10 +185,12 @@ export default function TemplateDesignerPage() {
     order?: string[];
     region?: Record<string, 'auto' | 'main' | 'sidebar'>;
   }): LayoutConfigPayload => {
-    const m = next.mode ?? mode;
+    const requestedMode = next.mode ?? mode;
     const g = next.gap ?? gap;
     // "Normal" matches the engine default; sending it keeps the config
     // explicit-but-stable while density persists across refreshes.
+    // Never persist two_column for a rail-less layout (executive/timeline/minimal).
+    const m = requestedMode === 'two_column' && TWO_COLUMN_LAYOUTS.has(layout) ? 'two_column' : 'single';
     const config: LayoutConfigPayload = { mode: m, gap: g, density: next.density ?? density };
     if (m === 'two_column') {
       config.sidebar = next.sidebar ?? sidebar;
@@ -240,6 +262,8 @@ export default function TemplateDesignerPage() {
   };
 
   const handleModeChange = (value: 'single' | 'two_column') => {
+    // Two-column is not supported on layouts without a supporting rail.
+    if (value === 'two_column' && !TWO_COLUMN_LAYOUTS.has(layout)) return;
     setMode(value);
     if (value === 'single') {
       // Single-column has no rail; drop any sidebar placement overrides.
@@ -391,7 +415,7 @@ export default function TemplateDesignerPage() {
         {/* Layout */}
         <Typography variant="subtitle2" sx={{ mt: 1, mb: 1 }}>Layout</Typography>
         <FormControl size="small" fullWidth>
-          <Select value={layout} onChange={(e) => updateSelection({ layout: String(e.target.value) })}>
+          <Select value={layout} onChange={(e) => updateSelection({ layout: String(e.target.value) })} sx={selectSx} MenuProps={menuProps}>
             {layoutOptions.map((id) => (
               <MenuItem key={id} value={id}>{titleCase(id)}</MenuItem>
             ))}
@@ -401,7 +425,7 @@ export default function TemplateDesignerPage() {
         {/* Theme */}
         <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>Theme</Typography>
         <FormControl size="small" fullWidth>
-          <Select value={theme} onChange={(e) => updateSelection({ theme: String(e.target.value) })}>
+          <Select value={theme} onChange={(e) => updateSelection({ theme: String(e.target.value) })} sx={selectSx} MenuProps={menuProps}>
             {themeOptions.map((id) => (
               <MenuItem key={id} value={id}>{titleCase(id)}</MenuItem>
             ))}
@@ -452,7 +476,7 @@ export default function TemplateDesignerPage() {
 
         <Typography variant="caption" color="text.secondary">Mode</Typography>
         <FormControl size="small" fullWidth sx={{ mb: 1.5 }}>
-          <Select value={mode} onChange={(e) => handleModeChange(String(e.target.value) as 'single' | 'two_column')}>
+          <Select value={mode} onChange={(e) => handleModeChange(String(e.target.value) as 'single' | 'two_column')} sx={selectSx} MenuProps={menuProps}>
             <MenuItem value="single">Single Column</MenuItem>
             <MenuItem value="two_column">Two Column</MenuItem>
           </Select>
@@ -460,7 +484,7 @@ export default function TemplateDesignerPage() {
 
         <Typography variant="caption" color="text.secondary">Sidebar Side</Typography>
         <FormControl size="small" fullWidth sx={{ mb: 1.5 }} disabled={!twoColumn}>
-          <Select value={sidebar} onChange={(e) => handleSidebarChange(e.target.value as 'left' | 'right')}>
+          <Select value={sidebar} onChange={(e) => handleSidebarChange(e.target.value as 'left' | 'right')} sx={selectSx} MenuProps={menuProps}>
             <MenuItem value="left">Left</MenuItem>
             <MenuItem value="right">Right</MenuItem>
           </Select>
@@ -468,21 +492,21 @@ export default function TemplateDesignerPage() {
 
         <Typography variant="caption" color="text.secondary">Column Ratio</Typography>
         <FormControl size="small" fullWidth sx={{ mb: 1.5 }} disabled={!twoColumn}>
-          <Select value={ratio} onChange={(e) => handleRatioChange(String(e.target.value))}>
+          <Select value={ratio} onChange={(e) => handleRatioChange(String(e.target.value))} sx={selectSx} MenuProps={menuProps}>
             {RATIOS.map((r) => <MenuItem key={r} value={r}>{r}</MenuItem>)}
           </Select>
         </FormControl>
 
         <Typography variant="caption" color="text.secondary">Density</Typography>
         <FormControl size="small" fullWidth sx={{ mb: 1.5 }}>
-          <Select value={density} onChange={(e) => handleDensityChange(e.target.value as typeof density)}>
+          <Select value={density} onChange={(e) => handleDensityChange(e.target.value as typeof density)} sx={selectSx} MenuProps={menuProps}>
             {DENSITIES.map((d) => <MenuItem key={d} value={d}>{titleCase(d)}</MenuItem>)}
           </Select>
         </FormControl>
 
         <Typography variant="caption" color="text.secondary">Gap</Typography>
         <FormControl size="small" fullWidth sx={{ mb: 1.5 }}>
-          <Select value={gap} onChange={(e) => handleGapChange(e.target.value as typeof gap)}>
+          <Select value={gap} onChange={(e) => handleGapChange(e.target.value as typeof gap)} sx={selectSx} MenuProps={menuProps}>
             {GAPS.map((g) => <MenuItem key={g} value={g}>{titleCase(g)}</MenuItem>)}
           </Select>
         </FormControl>

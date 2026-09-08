@@ -306,37 +306,49 @@ class RenderTreeHTMLRenderer:
         density_block = RenderTreeHTMLRenderer._density_css(density)
         return f"""{root_block}
 * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-body {{ font-family: var(--font-family, 'Inter', sans-serif); font-size: var(--font-size-base, 10pt);
-       line-height: var(--line-height, 1.5); color: var(--text, #1e293b); background: var(--background, #ffffff); }}
-.resume {{ max-width: 820px; margin: 0 auto; padding: 28px 24px; }}
+body {{ font-family: var(--font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif);
+       font-size: var(--font-size-base, 10pt); line-height: var(--line-height, 1.55);
+       color: var(--text, #1a1a2e); background: var(--background, #ffffff);
+       -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+       text-rendering: optimizeLegibility; }}
+.resume {{ max-width: 820px; margin: 0 auto; padding: 32px 28px; }}
 .resume-page {{ display: grid; grid-template-columns: {columns};
        column-gap: {gap}; row-gap: var(--inline-spacing, 12px); }}
 .resume-region {{ min-width: 0; }}
-.resume-region-header {{ padding-bottom: 12px; margin-bottom: var(--section-spacing, 14px);
+.resume-region-header {{ padding-bottom: 14px; margin-bottom: var(--section-spacing, 16px);
        border-bottom: 2px solid var(--primary, #2563eb); }}
-.resume-section {{ margin-bottom: var(--section-spacing, 14px); }}
+.resume-section {{ margin-bottom: var(--section-spacing, 16px); }}
 .resume-section-title {{ font-family: var(--heading-font-family, inherit); color: var(--primary, #2563eb);
-       text-transform: uppercase; letter-spacing: 1px; font-size: 0.78em; font-weight: 700;
-       border-bottom: 1px solid var(--border, #e2e8f0); padding-bottom: 3px; margin-bottom: 8px;
+       text-transform: uppercase; letter-spacing: 1.2px; font-size: 0.75em; font-weight: 700;
+       border-bottom: 1px solid var(--border, #e2e8f0); padding-bottom: 4px; margin-bottom: 10px;
        break-after: avoid; }}
 .resume-block {{ margin-bottom: var(--block-spacing, 6px); break-inside: avoid; }}
 .resume-block:last-child {{ margin-bottom: 0; }}
-.resume-text {{ margin-bottom: 2px; line-height: var(--line-height, 1.5); }}
-.resume-name {{ font-size: 1.7em; font-weight: 700; color: var(--primary, #2563eb); letter-spacing: 0.5px; }}
-.resume-strong {{ font-weight: 700; }}
-.resume-muted {{ color: var(--muted, #64748b); }}
-.resume-time {{ color: var(--muted, #64748b); font-size: 0.88em; display: block; margin-bottom: 2px; }}
-.resume-list {{ margin: 2px 0 0 18px; padding: 0; break-inside: auto; }}
-.resume-list li {{ margin-bottom: 1px; }}
+.resume-text {{ margin-bottom: 3px; line-height: var(--line-height, 1.55); }}
+.resume-name {{ font-size: 1.8em; font-weight: 700; color: var(--primary, #2563eb);
+       letter-spacing: -0.3px; line-height: 1.15; }}
+.resume-strong {{ font-weight: 600; }}
+.resume-muted {{ color: var(--muted, #64748b); font-size: 0.92em; }}
+.resume-time {{ color: var(--muted, #64748b); font-size: 0.85em; display: block; margin-bottom: 2px;
+       font-variant-numeric: tabular-nums; }}
+.resume-list {{ margin: 3px 0 0 0; padding-left: 16px; break-inside: auto; list-style: none; }}
+.resume-list li {{ margin-bottom: 3px; position: relative; padding-left: 4px; line-height: 1.5; }}
+.resume-list li::before {{ content: ""; position: absolute; left: -12px; top: 7px;
+       width: 4px; aspect-ratio: 1 / 1; border-radius: 50%; background: var(--primary, #2563eb); }}
 .resume-badge {{ display: inline-block; border: var(--border-width, 0.5px) solid var(--border, #e2e8f0);
-       border-radius: var(--radius, 0); padding: 1px 6px; margin-right: 4px; }}
-a {{ color: var(--accent, #1e40af); word-break: break-all; }}
+       border-radius: var(--radius, 3px); padding: 2px 8px; margin-right: 4px;
+       font-size: 0.88em; background: var(--badge-bg, #f8fafc); }}
+a {{ color: var(--accent, #1e40af); text-decoration: none; word-break: break-all; }}
+a:hover {{ text-decoration: underline; }}
+.resume-divider {{ border: none; border-top: 1px solid var(--border, #e2e8f0); margin: 12px 0; }}
 {RenderTreeHTMLRenderer._layout_css(layout_key)}
 {density_block}@media (max-width: 640px) {{
   .resume-page {{ grid-template-columns: 1fr; }}
   .resume-region {{ grid-column: auto !important; }}
+  .resume {{ padding: 20px 16px; }}
 }}
-@media print {{ body {{ background: #fff; padding: 0; }} .resume {{ box-shadow: none; max-width: none; padding: 0; }} }}
+@media print {{ body {{ background: #fff; padding: 0; }} .resume {{ box-shadow: none; max-width: none; padding: 0; }}
+  .resume-section {{ break-inside: avoid; }} .resume-block {{ break-inside: avoid; }} }}
 """
 
     @staticmethod
@@ -399,125 +411,135 @@ a {{ color: var(--accent, #1e40af); word-break: break-all; }}
 """,
         # ── Modern Two-Column: light-tint sidebar rail ──
         "sidebar": """
-.layout-sidebar { --font-family: 'Inter', 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+.layout-sidebar { --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
                   --section-spacing: 6mm; --block-spacing: 3.5mm; }
 .layout-sidebar .resume-region-sidebar { background: var(--sidebar-bg, #f6f7f9);
-       padding: 14px 16px 14px 28px; font-size: 0.9em; }
-.layout-sidebar .resume-region-sidebar .resume-section-title { font-size: 0.7em; font-weight: 600;
-       border-bottom: none; padding-bottom: 2px; letter-spacing: 0; }
+       padding: 18px 20px 18px 28px; font-size: 0.9em; border-radius: 2px; }
+.layout-sidebar .resume-region-sidebar .resume-section-title { font-size: 0.68em; font-weight: 700;
+       border-bottom: none; padding-bottom: 3px; letter-spacing: 0.5px; text-transform: uppercase;
+       color: var(--primary); }
 .layout-sidebar .resume-region-sidebar .resume-section { margin-bottom: 14px; }
 .layout-sidebar .resume-region-sidebar .resume-section-profile .resume-section-title { display: none; }
-.layout-sidebar .resume-region-sidebar .resume-name { font-size: 1.35em; font-weight: 700;
-       color: var(--text); letter-spacing: 0; line-height: 1.15; }
-.layout-sidebar .resume-region-sidebar .resume-muted { font-size: 0.95em; }
-.layout-sidebar .resume-region-sidebar .resume-list { list-style: none; padding-left: 0; margin: 2px 0 0; }
-.layout-sidebar .resume-region-sidebar .resume-list li { margin-bottom: 3px; padding-bottom: 3px;
-       border-bottom: 1px solid var(--border); }
+.layout-sidebar .resume-region-sidebar .resume-name { font-size: 1.4em; font-weight: 700;
+       color: var(--text); letter-spacing: -0.2px; line-height: 1.15; }
+.layout-sidebar .resume-region-sidebar .resume-muted { font-size: 0.92em; line-height: 1.4; }
+.layout-sidebar .resume-region-sidebar .resume-list { list-style: none; padding-left: 0; margin: 3px 0 0; }
+.layout-sidebar .resume-region-sidebar .resume-list li { margin-bottom: 4px; padding-bottom: 4px;
+       border-bottom: 1px solid var(--border); line-height: 1.45; }
+.layout-sidebar .resume-region-sidebar .resume-list li::before { display: none; }
 .layout-sidebar .resume-region-sidebar .resume-list li:last-child { border-bottom: none; }
 .layout-sidebar .resume-region-sidebar .resume-strong { font-weight: 600; }
 .layout-sidebar .resume-region-sidebar a { word-break: normal; }
-.layout-sidebar .resume-region-main .resume-section-title { font-size: 0.74em; letter-spacing: 0;
-       border-bottom: none; padding-bottom: 5px; color: var(--text); }
-.layout-sidebar .resume-region-main .resume-section-title::after { content: ""; display: block; width: 34px;
-       border-top: 2px solid var(--primary); margin-top: 5px; }
+.layout-sidebar .resume-region-main .resume-section-title { font-size: 0.72em; letter-spacing: 0.5px;
+       border-bottom: none; padding-bottom: 6px; color: var(--text); text-transform: uppercase; }
+.layout-sidebar .resume-region-main .resume-section-title::after { content: ""; display: block; width: 28px;
+       border-top: 2px solid var(--primary); margin-top: 6px; }
 .layout-sidebar .resume-block { overflow: hidden; }
 .layout-sidebar .resume-block:has(.resume-time) { display: flex; flex-wrap: wrap;
        justify-content: space-between; align-items: baseline; column-gap: 12px; }
 .layout-sidebar .resume-block:has(.resume-time) .resume-strong { order: 0; }
 .layout-sidebar .resume-block:has(.resume-time) .resume-time { order: 1; }
 .layout-sidebar .resume-block:has(.resume-time) .resume-muted { order: 2; flex-basis: 100%; }
-.layout-sidebar .resume-time { font-size: 0.85em; }
+.layout-sidebar .resume-time { font-size: 0.83em; font-variant-numeric: tabular-nums; }
 .layout-sidebar .resume-strong { font-weight: 600; }
+.layout-sidebar .resume-list li::before { width: 3px; aspect-ratio: 1 / 1; top: 8px; }
 """,
         # ── Nordic Minimal: typography + whitespace ──
         "minimal": """
-.layout-minimal { --font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; }
-.layout-minimal .resume { max-width: 690px; padding: 40px 30px; }
+.layout-minimal { --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+.layout-minimal .resume { max-width: 680px; padding: 48px 32px; }
 .layout-minimal .resume-section-profile .resume-section-title { display: none; }
-.layout-minimal .resume-name { font-size: 1.95em; font-weight: 500; letter-spacing: 0.5px;
-       color: var(--text); text-transform: none; }
-.layout-minimal .resume-section-profile .resume-muted { font-size: 1em; }
-.layout-minimal .resume-section { margin-bottom: 26px; }
+.layout-minimal .resume-name { font-size: 2em; font-weight: 500; letter-spacing: -0.5px;
+       color: var(--text); text-transform: none; line-height: 1.1; }
+.layout-minimal .resume-section-profile .resume-muted { font-size: 1em; line-height: 1.5; }
+.layout-minimal .resume-section { margin-bottom: 28px; }
 .layout-minimal .resume-section:first-child { margin-top: 0; }
-.layout-minimal .resume-section-title { font-weight: 500; letter-spacing: 0; font-size: 0.72em;
+.layout-minimal .resume-section-title { font-weight: 600; letter-spacing: 0.5px; font-size: 0.7em;
        text-transform: uppercase; color: var(--muted); border-bottom: none; padding-bottom: 0;
-       margin-bottom: 12px; }
-.layout-minimal .resume-strong { font-weight: 500; }
+       margin-bottom: 14px; }
+.layout-minimal .resume-strong { font-weight: 600; }
 .layout-minimal .resume-muted { color: var(--muted); }
-.layout-minimal .resume-list { list-style: none; padding-left: 0; margin-top: 3px; }
-.layout-minimal .resume-list li { padding-left: 1em; position: relative; margin-bottom: 2px; }
-.layout-minimal .resume-list li::before { content: "·"; position: absolute; left: 0.1em; color: var(--primary); }
-.layout-minimal .resume-time { font-size: 0.85em; }
+.layout-minimal .resume-list { list-style: none; padding-left: 0; margin-top: 4px; }
+.layout-minimal .resume-list li { padding-left: 1.2em; position: relative; margin-bottom: 3px; line-height: 1.55; }
+.layout-minimal .resume-list li::before { content: "\u00B7"; position: absolute; left: 0.15em; color: var(--primary);
+       font-size: 1.2em; line-height: 1.2; background: none; width: auto; height: auto; border-radius: 0; top: 0; }
+.layout-minimal .resume-time { font-size: 0.83em; font-variant-numeric: tabular-nums; }
 """,
         # ── Editorial: asymmetric magazine grid, serif display + kickers ──
         "modern": """
-.layout-modern { --font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+.layout-modern { --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
                   --heading-font-family: Georgia, 'Times New Roman', Times, serif; }
-.layout-modern .resume-region-header { border-bottom: none; padding-bottom: 10px; margin-bottom: 14px; }
+.layout-modern .resume-region-header { border-bottom: none; padding-bottom: 12px; margin-bottom: 16px; }
 .layout-modern .resume-region-main { --block-spacing: 3.5mm; }
 .layout-modern .resume-region-header .resume-section-title { display: none; }
 .layout-modern .resume-region-header .resume-name { font-family: var(--heading-font-family);
-       font-weight: 400; font-size: 2.5em; letter-spacing: 0; color: var(--text); text-transform: none; }
+       font-weight: 400; font-size: 2.6em; letter-spacing: -0.5px; color: var(--text); text-transform: none;
+       line-height: 1.08; }
 .layout-modern .resume-region-header .resume-muted { font-family: var(--heading-font-family);
-       font-style: italic; font-size: 1.05em; color: var(--muted); }
-.layout-modern .resume-region-header::after { content: ""; display: block; border-bottom: 6px solid var(--primary);
-       width: 100%; margin-top: 14px; }
+       font-style: italic; font-size: 1.05em; color: var(--muted); line-height: 1.4; }
+.layout-modern .resume-region-header::after { content: ""; display: block; border-bottom: 4px solid var(--primary);
+       width: 100%; margin-top: 16px; }
 .layout-modern .resume-region-main .resume-section-title { font-family: var(--heading-font-family);
        font-weight: 400; font-size: 1.05em; text-transform: none; letter-spacing: 0;
-       color: var(--text); border-bottom: none; margin-bottom: 10px; }
-.layout-modern .resume-region-main .resume-section-title::before { content: ""; display: block; width: 30px;
-       border-top: 2px solid var(--primary); margin-bottom: 5px; }
-.layout-modern .resume-region-secondary { padding: 4px 0 0 28px; border-left: 1px solid var(--border); }
-.layout-modern .resume-region-secondary .resume-section-title { font-size: 0.68em; letter-spacing: 0;
-       text-transform: uppercase; font-weight: 600; color: var(--primary); border-bottom: none;
+       color: var(--text); border-bottom: none; margin-bottom: 12px; }
+.layout-modern .resume-region-main .resume-section-title::before { content: ""; display: block; width: 24px;
+       border-top: 2px solid var(--primary); margin-bottom: 6px; }
+.layout-modern .resume-region-secondary { padding: 4px 0 0 24px; border-left: 1px solid var(--border); }
+.layout-modern .resume-region-secondary .resume-section-title { font-size: 0.66em; letter-spacing: 0.5px;
+       text-transform: uppercase; font-weight: 700; color: var(--primary); border-bottom: none;
        padding-bottom: 0; padding-top: 8px; }
 .layout-modern .resume-region-secondary .resume-section:first-child .resume-section-title { padding-top: 0; }
-.layout-modern .resume-region-secondary .resume-muted { font-size: 0.92em; }
+.layout-modern .resume-region-secondary .resume-muted { font-size: 0.9em; }
 .layout-modern .resume-block { overflow: hidden; }
 .layout-modern .resume-block:has(.resume-time) { display: flex; flex-wrap: wrap;
        justify-content: space-between; align-items: baseline; column-gap: 12px; }
 .layout-modern .resume-block:has(.resume-time) .resume-strong { order: 0; }
 .layout-modern .resume-block:has(.resume-time) .resume-time { order: 1; }
 .layout-modern .resume-block:has(.resume-time) .resume-muted { order: 2; flex-basis: 100%; }
-.layout-modern .resume-time { font-size: 0.85em; font-style: italic; }
+.layout-modern .resume-time { font-size: 0.83em; font-style: italic; font-variant-numeric: tabular-nums; }
 .layout-modern .resume-strong { font-weight: 600; }
+.layout-modern .resume-list li::before { width: 3px; aspect-ratio: 1 / 1; top: 8px; }
 """,
         # ── Career Timeline: chronological rail with node indicators ──
         "timeline": """
-.layout-timeline { --font-family: 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+.layout-timeline { --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
 .layout-timeline .resume-section-profile .resume-section-title { display: none; }
-.layout-timeline .resume-name { font-size: 1.85em; font-weight: 700; letter-spacing: 0.5px; color: var(--text); }
-.layout-timeline .resume-section-profile .resume-muted { color: var(--muted); }
-.layout-timeline .resume-section-title { text-transform: uppercase; letter-spacing: 0; font-size: 0.72em;
+.layout-timeline .resume-name { font-size: 1.9em; font-weight: 700; letter-spacing: -0.3px; color: var(--text);
+       line-height: 1.1; }
+.layout-timeline .resume-section-profile .resume-muted { color: var(--muted); font-size: 0.92em; }
+.layout-timeline .resume-section-title { text-transform: uppercase; letter-spacing: 0.5px; font-size: 0.7em;
        font-weight: 700; color: var(--text); border-bottom: none; padding-bottom: 0; }
-.layout-timeline .resume-section-experience { position: relative; padding-left: 26px; }
+.layout-timeline .resume-section-experience { position: relative; padding-left: 28px; }
 .layout-timeline .resume-section:first-child { margin-top: 0; }
 .layout-timeline .resume-section-experience::before { content: ""; position: absolute; left: 6px; top: 10px;
        bottom: 10px; width: 2px; background: var(--border); }
 .layout-timeline .resume-section-experience .resume-block { position: relative; }
 .layout-timeline .resume-section-experience .resume-block::before { content: ""; position: absolute;
-       left: 1px; top: 6px; width: 12px; height: 12px; border-radius: 50%; background: var(--background);
-       border: 2px solid var(--primary); }
-.layout-timeline .resume-time { font-size: 0.85em; margin-bottom: 1px; color: var(--muted); }
-.layout-timeline .resume-section-experience .resume-list li { margin-bottom: 2px; }
+       left: 0; top: 5px; width: 10px; aspect-ratio: 1 / 1; border-radius: 50%; background: var(--background);
+       border: 2px solid var(--primary); box-shadow: 0 0 0 3px var(--background); }
+.layout-timeline .resume-time { font-size: 0.83em; margin-bottom: 2px; color: var(--muted);
+       font-variant-numeric: tabular-nums; }
+.layout-timeline .resume-section-experience .resume-list li { margin-bottom: 3px; }
+.layout-timeline .resume-list li::before { width: 3px; aspect-ratio: 1 / 1; top: 8px; }
 """,
         # ── Creative Professional: symmetric two-column, oversize name ──
         "classic": """
-.layout-classic { --font-family: 'Inter', 'Segoe UI', 'Helvetica Neue', Helvetica, Arial, sans-serif;
-                  --section-spacing: 15px; --block-spacing: 3.5mm; }
-.layout-classic .resume-region-main, .layout-classic .resume-region-secondary { padding: 0 6px; }
-.layout-classic .resume-region-secondary { padding: 0 6px 0 18px; }
+.layout-classic { --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+                  --section-spacing: 16px; --block-spacing: 3.5mm; }
+.layout-classic .resume-region-main, .layout-classic .resume-region-secondary { padding: 0 8px; }
+.layout-classic .resume-region-secondary { padding: 0 8px 0 20px; }
 .layout-classic .resume-section-profile .resume-section-title { display: none; }
-.layout-classic .resume-section-profile { padding-bottom: 10px; margin-bottom: 14px;
-       border-bottom: 4px solid var(--primary); }
-.layout-classic .resume-name { font-size: 2.3em; font-weight: 800; letter-spacing: 0;
+.layout-classic .resume-section-profile { padding-bottom: 12px; margin-bottom: 16px;
+       border-bottom: 3px solid var(--primary); }
+.layout-classic .resume-name { font-size: 2.4em; font-weight: 800; letter-spacing: -0.5px;
        line-height: 1.05; color: var(--text); text-transform: none; }
-.layout-classic .resume-section-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0;
-       font-size: 0.72em; color: var(--text); border-bottom: none; border-left: 4px solid var(--primary);
-       padding-left: 9px; padding-bottom: 0; }
+.layout-classic .resume-section-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+       font-size: 0.7em; color: var(--text); border-bottom: none; border-left: 3px solid var(--primary);
+       padding-left: 10px; padding-bottom: 0; }
 .layout-classic .resume-strong { font-weight: 600; }
-.layout-classic .resume-time { color: var(--muted); font-size: 0.85em; }
-.layout-classic .resume-list li { margin-bottom: 2px; }
+.layout-classic .resume-time { color: var(--muted); font-size: 0.83em; font-variant-numeric: tabular-nums; }
+.layout-classic .resume-list li { margin-bottom: 3px; }
+.layout-classic .resume-list li::before { width: 3px; aspect-ratio: 1 / 1; top: 8px; }
 .layout-classic .resume-muted { color: var(--muted); }
 """,
     }

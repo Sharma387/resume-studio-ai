@@ -2,8 +2,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box, Grid, Card, CardContent, Typography, Button,
-  CircularProgress, Alert,
+  CircularProgress, Alert, IconButton,
 } from '@mui/material';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { authFetch } from '../services/authFetch';
 import API_URL from '../config';
 
@@ -57,7 +58,10 @@ export default function TemplateGalleryPage() {
 
   return (
     <Box sx={{ maxWidth: 1200, mx: 'auto', py: 4, px: 2 }}>
-      <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>Choose Your Layout</Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+        <IconButton onClick={() => navigate(-1)} size="small"><ArrowBackIcon /></IconButton>
+        <Typography variant="h4" sx={{ fontWeight: 700 }}>Choose Your Layout</Typography>
+      </Box>
       <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
         Select a layout — the same resume content is composed into each structure.
       </Typography>

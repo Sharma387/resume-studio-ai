@@ -194,7 +194,13 @@ class TestLayoutConfigPreview:
         )
         assert response.status_code == 422
 
-    async def test_two_column_config_against_single_layout_400(self, client):
+    async def test_two_column_config_against_single_layout_falls_back(self, client):
+        """A persisted two-column config on a rail-less layout resolves to base.
+
+        Regression: a two-column config saved while on a rail-capable template
+        then applied to executive/timeline/minimal must not 400 — the persisted
+        config falls back to the single-column base layout.
+        """
         rid = _save_resume()
         await client.put(
             f"/api/v1/resume/{rid}/layout-config",
@@ -203,7 +209,7 @@ class TestLayoutConfigPreview:
         response = await client.get(
             f"/api/v1/resume/{rid}/preview", params={"layout_id": "minimal"}
         )
-        assert response.status_code == 400
+        assert response.status_code == 200
 
 
 # ── Export wiring ─────────────────────────────────────────────────────────────

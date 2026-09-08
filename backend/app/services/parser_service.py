@@ -18,6 +18,18 @@ class ParseError(AppError):
     status_code = 422
 
 
+def _coerce_model_dict(data: dict) -> dict:
+    """Normalise LLM-produced fields that the backend overrides.
+
+    ``user_id`` is an internal identifier the backend always sets (see
+    ``parse``), so a model emitting ``None`` (it has no knowledge of the
+    user's internal ID) must not fail schema validation.
+    """
+    if not isinstance(data.get("user_id"), str) or not data["user_id"]:
+        data["user_id"] = ""
+    return data
+
+
 def _mock_resume() -> Resume:
     return Resume(
         user_id="mock",
@@ -142,7 +154,7 @@ async def parse_resume(text: str) -> Resume:
                         try:
                             cleaned = extract_json(d.get("choices", [{}])[0].get("message", {}).get("content", ""))
                             data = json.loads(cleaned)
-                            parsed_resume = Resume(**data)
+                            parsed_resume = Resume(**_coerce_model_dict(data))
                         except Exception:
                             ollama_success = True  # completion succeeded, just not a valid Resume schema
                     else:
@@ -166,7 +178,7 @@ async def parse_resume(text: str) -> Resume:
         def parse(raw: str) -> Resume:
             cleaned = extract_json(raw)
             data = json.loads(cleaned)
-            return Resume(**data)
+            return Resume(**_coerce_model_dict(data))
 
         try:
             return await call_with_retry(build, parse, service_name="Parser")
@@ -194,7 +206,7 @@ async def parse_resume(text: str) -> Resume:
         def parse(raw: str) -> Resume:
             cleaned = extract_json(raw)
             data = json.loads(cleaned)
-            return Resume(**data)
+            return Resume(**_coerce_model_dict(data))
 
         try:
             return await call_with_retry(build, parse, service_name="Parser")

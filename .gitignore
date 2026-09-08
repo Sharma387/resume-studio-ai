@@ -25,6 +25,8 @@ dist/
 
 # Environment
 .env
+.env.new
+.env.local
 !.env.example
 
 # CI / Test artifacts

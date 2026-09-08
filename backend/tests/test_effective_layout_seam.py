@@ -123,6 +123,29 @@ class TestEffectiveLayoutErrorHandling:
         assert recs[0].extra_fields.get("error") == "boom"
         assert recs[0].exc_info is not None
 
+    def test_persisted_two_column_on_rail_less_base_falls_back(self):
+        """A persisted two_column config on a rail-less template falls back to base.
+
+        Regression: saving a balanced two-column layout on a rail-capable
+        template, then switching to executive/timeline/minimal must not raise —
+        the stale persisted config resolves to the base layout with no config.
+        """
+        base = executive_layout()  # no sidebar/secondary rail
+        cvm = cvm_from_resume(_long_resume())
+        persisted = LayoutConfig(mode="two_column", ratio="35/65", sidebar="left")
+        layout, cfg = resolve_effective_layout(base, cvm, auto_balance=False, base_config=persisted)
+        assert layout is base
+        assert cfg is None
+
+    def test_persisted_valid_config_still_applies(self):
+        """A persisted config that resolves is applied normally (not fallen back)."""
+        base = sidebar_layout()
+        cvm = cvm_from_resume(_long_resume())
+        persisted = LayoutConfig(mode="two_column", ratio="40/60", sidebar="right")
+        layout, cfg = resolve_effective_layout(base, cvm, auto_balance=False, base_config=persisted)
+        assert cfg is persisted
+        assert layout.grid.column_ratios == (40, 60)
+
 
 class TestEffectiveLayoutParity:
     def test_balanced_result_is_deterministic(self):

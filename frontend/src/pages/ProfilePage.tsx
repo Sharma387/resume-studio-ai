@@ -1,13 +1,17 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box, Card, CardContent, Typography, TextField, Button, Alert, Tabs, Tab, CircularProgress,
+  IconButton,
 } from '@mui/material';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useAuth } from '../contexts/AuthContext';
 import { authFetch } from '../services/authFetch';
 import API_URL from '../config';
 
 export default function ProfilePage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [tab, setTab] = useState(0);
 
   // Change password
@@ -47,7 +51,10 @@ export default function ProfilePage() {
 
   return (
     <Box sx={{ maxWidth: 600, mx: 'auto', py: 4, px: 2 }}>
-      <Typography variant="h4" sx={{ fontWeight: 700, mb: 3 }}>Profile</Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
+        <IconButton onClick={() => navigate(-1)} size="small"><ArrowBackIcon /></IconButton>
+        <Typography variant="h4" sx={{ fontWeight: 700 }}>Profile</Typography>
+      </Box>
 
       <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 3 }}>
         <Tab label="My Profile" />

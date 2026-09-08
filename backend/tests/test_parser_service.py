@@ -64,6 +64,28 @@ async def test_parse_success(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_parse_tolerates_null_user_id(monkeypatch):
+    """A model response with ``user_id: null`` must parse without a retry.
+
+    ``user_id`` is internal and the backend always overwrites it (the parser
+    route sets it from the authenticated user), so the LLM emitting ``null``
+    must not fail schema validation and force useless retries.
+    """
+    data = json.loads(_valid_json())
+    data["user_id"] = None
+    _mock_call_with_retry([json.dumps(data)], monkeypatch)
+    result = await parse_resume("text")
+    assert result.full_name == "John Doe"
+    assert result.user_id == ""  # defaulted; overwritten by the API route
+
+    missing = json.loads(_valid_json())
+    del missing["user_id"]
+    _mock_call_with_retry([json.dumps(missing)], monkeypatch)
+    result = await parse_resume("text")
+    assert result.user_id == ""
+
+
+@pytest.mark.asyncio
 async def test_parse_retry_on_invalid_json(monkeypatch):
     _mock_call_with_retry(["invalid json", _valid_json()], monkeypatch)
     result = await parse_resume("text")
