@@ -1,6 +1,5 @@
 """Tests for security headers middleware and CSP frame-ancestors handling."""
 
-import pytest
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
 from fastapi.testclient import TestClient
@@ -33,7 +32,9 @@ class TestFrameAncestorsParsing:
         assert settings.frame_ancestors_list == ["'self'", "http://localhost:5173", "http://127.0.0.1:5173"]
 
     def test_mixed_separators_normalized(self, monkeypatch):
-        monkeypatch.setattr(settings, "frame_ancestors", "'self', http://a.example.com http://b.example.com,https://c.example.com")
+        monkeypatch.setattr(
+            settings, "frame_ancestors", "'self', http://a.example.com http://b.example.com,https://c.example.com"
+        )
         assert settings.frame_ancestors_list == [
             "'self'",
             "http://a.example.com",

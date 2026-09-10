@@ -26,7 +26,6 @@ async def require_user(current_user: User | None = Depends(get_current_user)) ->
     """Require a valid authenticated user. In debug mode, returns a mock user."""
     if current_user is None:
         if settings.debug:
-
             from app.models.user import User as MockUser
             from app.services.repositories.json_user_repo import JsonUserRepository
 

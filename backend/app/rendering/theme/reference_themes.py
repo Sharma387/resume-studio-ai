@@ -91,11 +91,15 @@ def blue_theme() -> ThemePalette:
 
 
 def slate_theme() -> ThemePalette:
-    return _build("slate", display_name="Slate", description="Neutral analytical slate.", colors=REFERENCE_COLORS["slate"])
+    return _build(
+        "slate", display_name="Slate", description="Neutral analytical slate.", colors=REFERENCE_COLORS["slate"]
+    )
 
 
 def forest_theme() -> ThemePalette:
-    return _build("forest", display_name="Forest", description="Grounded green palette.", colors=REFERENCE_COLORS["forest"])
+    return _build(
+        "forest", display_name="Forest", description="Grounded green palette.", colors=REFERENCE_COLORS["forest"]
+    )
 
 
 def gold_theme() -> ThemePalette:
@@ -103,7 +107,9 @@ def gold_theme() -> ThemePalette:
 
 
 def minimal_theme() -> ThemePalette:
-    return _build("minimal", display_name="Minimal", description="Monochrome minimal palette.", colors=REFERENCE_COLORS["minimal"])
+    return _build(
+        "minimal", display_name="Minimal", description="Monochrome minimal palette.", colors=REFERENCE_COLORS["minimal"]
+    )
 
 
 REFERENCE_THEMES: tuple[ThemePalette, ...] = (

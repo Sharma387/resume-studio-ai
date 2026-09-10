@@ -10,10 +10,9 @@ from app.rendering.layout import (
     LayoutDefinition,
     LayoutResolver,
     LayoutResolverError,
-    RegionType,
     SectionLayoutConfig,
 )
-from app.rendering.layout.layout_regions import RegionType as RT
+from app.rendering.layout.layout_regions import RegionType
 
 RESOLVER = LayoutResolver()
 
@@ -23,10 +22,7 @@ def _layout(layout_id: str) -> LayoutDefinition:
 
 
 def _region_order(result: LayoutDefinition) -> list[str]:
-    return [
-        region.identifier
-        for region in sorted(result.regions, key=lambda r: (r.ordering, r.identifier))
-    ]
+    return [region.identifier for region in sorted(result.regions, key=lambda r: (r.ordering, r.identifier))]
 
 
 def _rule(result: LayoutDefinition, section: str):
@@ -36,8 +32,8 @@ def _rule(result: LayoutDefinition, section: str):
 class TestSingleColumn:
     def test_single_column_drops_sidebar(self):
         result = RESOLVER.resolve(_layout("sidebar"), LayoutConfig(mode="single"))
-        assert not any(r.region_type is RT.SIDEBAR for r in result.regions)
-        mains = [r for r in result.regions if r.region_type is RT.MAIN]
+        assert not any(r.region_type is RegionType.SIDEBAR for r in result.regions)
+        mains = [r for r in result.regions if r.region_type is RegionType.MAIN]
         assert len(mains) == 1
         assert mains[0].column_span == result.grid.columns
         assert result.capabilities.sidebar is False
@@ -45,16 +41,16 @@ class TestSingleColumn:
 
     def test_single_column_drops_secondary(self):
         result = RESOLVER.resolve(_layout("modern"), LayoutConfig(mode="single"))
-        assert not any(r.region_type is RT.CUSTOM for r in result.regions)
-        mains = [r for r in result.regions if r.region_type is RT.MAIN]
+        assert not any(r.region_type is RegionType.CUSTOM for r in result.regions)
+        mains = [r for r in result.regions if r.region_type is RegionType.MAIN]
         assert len(mains) == 1
         assert mains[0].column_span == 12
 
     def test_single_column_preserves_header(self):
         result = RESOLVER.resolve(_layout("executive"), LayoutConfig())
         types = [r.region_type for r in result.regions]
-        assert RT.HEADER in types
-        assert RT.MAIN in types
+        assert RegionType.HEADER in types
+        assert RegionType.MAIN in types
 
     def test_single_column_repoints_rules_to_main(self):
         result = RESOLVER.resolve(_layout("modern"), LayoutConfig(mode="single"))
@@ -72,14 +68,14 @@ class TestTwoColumn:
     def test_two_column_keeps_sidebar(self):
         result = RESOLVER.resolve(_layout("sidebar"), LayoutConfig(mode="two_column"))
         types = {r.region_type for r in result.regions}
-        assert RT.MAIN in types
-        assert RT.SIDEBAR in types
+        assert RegionType.MAIN in types
+        assert RegionType.SIDEBAR in types
 
     def test_two_column_with_secondary_rail(self):
         result = RESOLVER.resolve(_layout("modern"), LayoutConfig(mode="two_column"))
         types = {r.region_type for r in result.regions}
-        assert RT.MAIN in types
-        assert RT.CUSTOM in types
+        assert RegionType.MAIN in types
+        assert RegionType.CUSTOM in types
 
     @pytest.mark.parametrize("layout_id", ["executive", "timeline", "minimal"])
     def test_two_column_incompatible_layout_rejected(self, layout_id):
@@ -89,27 +85,19 @@ class TestTwoColumn:
 
 class TestSidebarSide:
     def test_sidebar_left(self):
-        result = RESOLVER.resolve(
-            _layout("sidebar"), LayoutConfig(mode="two_column", sidebar="left")
-        )
+        result = RESOLVER.resolve(_layout("sidebar"), LayoutConfig(mode="two_column", sidebar="left"))
         assert _region_order(result) == ["sidebar", "main"]
 
     def test_sidebar_right(self):
-        result = RESOLVER.resolve(
-            _layout("sidebar"), LayoutConfig(mode="two_column", sidebar="right")
-        )
+        result = RESOLVER.resolve(_layout("sidebar"), LayoutConfig(mode="two_column", sidebar="right"))
         assert _region_order(result) == ["main", "sidebar"]
 
     def test_sidebar_left_header_first(self):
-        result = RESOLVER.resolve(
-            _layout("modern"), LayoutConfig(mode="two_column", sidebar="left")
-        )
+        result = RESOLVER.resolve(_layout("modern"), LayoutConfig(mode="two_column", sidebar="left"))
         assert _region_order(result) == ["header", "secondary", "main"]
 
     def test_sidebar_right_header_first(self):
-        result = RESOLVER.resolve(
-            _layout("modern"), LayoutConfig(mode="two_column", sidebar="right")
-        )
+        result = RESOLVER.resolve(_layout("modern"), LayoutConfig(mode="two_column", sidebar="right"))
         assert _region_order(result) == ["header", "main", "secondary"]
 
     def test_header_position_single_column(self):
@@ -131,15 +119,11 @@ class TestRatio:
         ],
     )
     def test_every_ratio_exact(self, ratio, expected):
-        result = RESOLVER.resolve(
-            _layout("sidebar"), LayoutConfig(mode="two_column", ratio=ratio)
-        )
+        result = RESOLVER.resolve(_layout("sidebar"), LayoutConfig(mode="two_column", ratio=ratio))
         assert result.grid.column_ratios == expected
 
     def test_ratio_not_approximated(self):
-        result = RESOLVER.resolve(
-            _layout("sidebar"), LayoutConfig(mode="two_column", ratio="35/65")
-        )
+        result = RESOLVER.resolve(_layout("sidebar"), LayoutConfig(mode="two_column", ratio="35/65"))
         assert result.grid.column_ratios == (35, 65)
 
 
@@ -219,18 +203,12 @@ class TestGapDensityVisibility:
         [("none", 0.0), ("compact", 4.0), ("balanced", 8.0), ("wide", 16.0)],
     )
     def test_gap_mapping(self, gap, expected_mm):
-        result = RESOLVER.resolve(
-            _layout("sidebar"), LayoutConfig(mode="two_column", gap=gap)
-        )
+        result = RESOLVER.resolve(_layout("sidebar"), LayoutConfig(mode="two_column", gap=gap))
         assert result.grid.gap_mm == expected_mm
 
     def test_density_does_not_change_resolution(self):
-        a = RESOLVER.resolve(
-            _layout("sidebar"), LayoutConfig(mode="two_column", density="compact")
-        )
-        b = RESOLVER.resolve(
-            _layout("sidebar"), LayoutConfig(mode="two_column", density="spacious")
-        )
+        a = RESOLVER.resolve(_layout("sidebar"), LayoutConfig(mode="two_column", density="compact"))
+        b = RESOLVER.resolve(_layout("sidebar"), LayoutConfig(mode="two_column", density="spacious"))
         assert a == b
 
     def test_visibility_is_noop(self):
@@ -271,9 +249,7 @@ class TestImmutabilityAndIndependence:
 
     @pytest.mark.parametrize("layout_id", ["sidebar", "modern", "classic"])
     def test_resolved_two_column_remains_valid(self, layout_id):
-        result = RESOLVER.resolve(
-            _layout(layout_id), LayoutConfig(mode="two_column", sidebar="right")
-        )
+        result = RESOLVER.resolve(_layout(layout_id), LayoutConfig(mode="two_column", sidebar="right"))
         assert LayoutDefinition.model_validate(result.model_dump()) == result
 
 

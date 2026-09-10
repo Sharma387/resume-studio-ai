@@ -8,14 +8,27 @@ from app.services.version_history import autosave, get_autosave, list_versions, 
 
 def _make_resume(**overrides) -> Resume:
     data = dict(
-        user_id="test", full_name="Test User", email="test@test.com",
-        summary="Experienced software engineer with 5+ years.", phone="+1 555-0000",
-        location="NYC", linkedin="https://linkedin.com/in/test",
-        experience=[{"company":"Acme","title":"Engineer","start_date":"2020-01","end_date":"2023-12","current":False,"description":["Built microservices","Reduced latency by 40%"]}],
-        education=[{"institution":"MIT","degree":"BS","field":"CS","gpa":3.8,"achievements":[]}],
-        skills=[{"category":"Languages","skills":["Python","Go"]},{"category":"Frontend","skills":["React"]}],
-        projects=[{"name":"Project X","description":"A project","technologies":["Go"]}],
-        certifications=[{"name":"AWS Certified"}],
+        user_id="test",
+        full_name="Test User",
+        email="test@test.com",
+        summary="Experienced software engineer with 5+ years.",
+        phone="+1 555-0000",
+        location="NYC",
+        linkedin="https://linkedin.com/in/test",
+        experience=[
+            {
+                "company": "Acme",
+                "title": "Engineer",
+                "start_date": "2020-01",
+                "end_date": "2023-12",
+                "current": False,
+                "description": ["Built microservices", "Reduced latency by 40%"],
+            }
+        ],
+        education=[{"institution": "MIT", "degree": "BS", "field": "CS", "gpa": 3.8, "achievements": []}],
+        skills=[{"category": "Languages", "skills": ["Python", "Go"]}, {"category": "Frontend", "skills": ["React"]}],
+        projects=[{"name": "Project X", "description": "A project", "technologies": ["Go"]}],
+        certifications=[{"name": "AWS Certified"}],
     )
     data.update(overrides)
     return Resume(**data)

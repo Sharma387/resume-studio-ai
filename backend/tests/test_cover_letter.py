@@ -1,11 +1,11 @@
 import pytest
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
 from pydantic import ValidationError
 
 from app.main import app
 from app.models.cover_letter import CoverLetter, CoverLetterRequest, CoverLetterTone
 from app.models.resume import Resume
-from app.services.storage_service import save_resume, save_cover_letter, load_cover_letter, list_cover_letters
+from app.services.storage_service import list_cover_letters, load_cover_letter, save_cover_letter, save_resume
 
 
 @pytest.fixture
@@ -23,7 +23,9 @@ def resume_id():
 
 class TestCoverLetterModel:
     def test_valid_request(self):
-        r = CoverLetterRequest(job_description="We need a senior engineer with Python experience for a full-time position.")
+        r = CoverLetterRequest(
+            job_description="We need a senior engineer with Python experience for a full-time position."
+        )
         assert r.tone == CoverLetterTone.PROFESSIONAL
 
     def test_short_jd_rejected(self):
@@ -60,6 +62,7 @@ class TestCoverLetterStorage:
     def test_delete(self, resume_id):
         save_cover_letter(CoverLetter(user_id="test", id="cld1", resume_id=resume_id, content="B"))
         from app.services.storage_service import delete_cover_letter
+
         assert delete_cover_letter(resume_id, "cld1") is True
         assert delete_cover_letter(resume_id, "nonexistent") is False
 
@@ -67,7 +70,10 @@ class TestCoverLetterStorage:
 @pytest.mark.asyncio
 async def test_endpoint_generate_resume_not_found(client):
     async with client as ac:
-        resp = await ac.post("/api/v1/resume/nonexistent/cover-letter", json={"job_description": "A valid job description for testing purposes with enough text."})
+        resp = await ac.post(
+            "/api/v1/resume/nonexistent/cover-letter",
+            json={"job_description": "A valid job description for testing purposes with enough text."},
+        )
     assert resp.status_code == 404
 
 
@@ -103,7 +109,12 @@ async def test_endpoint_update(client, resume_id):
     async with client as ac:
         resp = await ac.put(
             f"/api/v1/resume/{resume_id}/cover-letter/clupd1",
-            json={"id": "clupd1", "user_id": "test", "resume_id": resume_id, "content": "New content here for testing."},
+            json={
+                "id": "clupd1",
+                "user_id": "test",
+                "resume_id": resume_id,
+                "content": "New content here for testing.",
+            },
         )
     assert resp.status_code == 200
     assert resp.json()["data"]["content"] == "New content here for testing."
@@ -129,7 +140,13 @@ async def test_endpoint_pdf_success_get_method(client, resume_id):
     """PDF export must respond to GET (frontend uses <a href download>)."""
     from app.models.cover_letter import CoverLetter
     from app.services.storage_service import save_cover_letter
-    letter = CoverLetter(user_id="test", id="pdf-get-test", resume_id=resume_id, content="Dear Hiring Manager, I am excited to apply...\n\nSincerely, Test")
+
+    letter = CoverLetter(
+        user_id="test",
+        id="pdf-get-test",
+        resume_id=resume_id,
+        content="Dear Hiring Manager, I am excited to apply...\n\nSincerely, Test",
+    )
     save_cover_letter(letter)
 
     async with client as ac:
@@ -154,7 +171,12 @@ def test_cover_letter_pdf_signature_not_alone():
 
     body = "Dear Hiring Manager,\n\n"
     for i in range(4):
-        body += f"P{i+1}. " + "Lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. " * 8 + "\n\n"
+        body += (
+            f"P{i + 1}. "
+            + "Lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. "
+            * 8
+            + "\n\n"
+        )
     body += "Sincerely"
 
     resume = Resume(user_id="test", full_name="Test User", email="test@example.com")
@@ -162,12 +184,13 @@ def test_cover_letter_pdf_signature_not_alone():
     path = generate_cover_letter_pdf("test", "layout-regression", letter, resume)
 
     import fitz
+
     doc = fitz.open(str(path))
     for i, page in enumerate(doc):
         text = page.get_text("text")
         has_signature = "Test User" in text
-        has_body = any(f"P{j+1}." in text for j in range(4))
+        has_body = any(f"P{j + 1}." in text for j in range(4))
         # If this page has the signature but no body paragraph, it's a layout bug
         if has_signature and not has_body:
-            assert False, f"Signature found alone on page {i+1} without body content"
+            assert False, f"Signature found alone on page {i + 1} without body content"
     doc.close()

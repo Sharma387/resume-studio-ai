@@ -66,9 +66,19 @@ def _cvm() -> ContentView:
         profile=Profile(full_name="Jane Doe", professional_title="Principal Engineer"),
         summary="Full-stack engineer with 8 years building platforms.",
         experience=(
-            ExperienceEntry(company="Acme", title="Senior Engineer", start_date="2016", current=True, description=("Led platform",)),
-            ExperienceEntry(company="Beta Inc", title="Engineer", start_date="2014", end_date="2016", description=("Built APIs",)),
-            ExperienceEntry(company="Gamma", title="Junior Engineer", start_date="2012", end_date="2014", description=("Shipped features",)),
+            ExperienceEntry(
+                company="Acme", title="Senior Engineer", start_date="2016", current=True, description=("Led platform",)
+            ),
+            ExperienceEntry(
+                company="Beta Inc", title="Engineer", start_date="2014", end_date="2016", description=("Built APIs",)
+            ),
+            ExperienceEntry(
+                company="Gamma",
+                title="Junior Engineer",
+                start_date="2012",
+                end_date="2014",
+                description=("Shipped features",),
+            ),
         ),
         education=(EducationEntry(institution="MIT", degree="B.Sc.", field="Computer Science", gpa=3.8),),
         skills=(SkillGroup(category="Languages", skills=("Python", "Go")),),
@@ -90,9 +100,7 @@ def _region_sections(root: RenderNode) -> dict[str, list[str]]:
         for region in page.children:
             if region.kind is NodeKind.REGION:
                 result[region.region] = [
-                    section.content_ref
-                    for section in region.children
-                    if section.kind is NodeKind.SECTION
+                    section.content_ref for section in region.children if section.kind is NodeKind.SECTION
                 ]
     return result
 

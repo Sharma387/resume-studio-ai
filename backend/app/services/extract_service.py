@@ -1,4 +1,3 @@
-
 from app.services.document.detector import get_extractor_for_filename
 from app.services.document.metadata import MetadataExtractor
 from app.services.document.normalizer import TextNormalizer

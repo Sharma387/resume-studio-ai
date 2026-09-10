@@ -53,10 +53,16 @@ def _save_resume_long(user_id="test") -> str:
         experience=experiences,
         education=[Education(institution="MIT", degree="BS", field="CS", start_date="2016", end_date="2020")],
         skills=[Skill(category="Languages", skills=["Python", "Go", "Rust"])],
-        projects=[Project(name=f"Project {i}", description="Desc", url="https://example.com", technologies=["Python"]) for i in range(5)],
+        projects=[
+            Project(name=f"Project {i}", description="Desc", url="https://example.com", technologies=["Python"])
+            for i in range(5)
+        ],
         certifications=[Certification(name=f"Cert {i}", issuer="Org", date="2022") for i in range(3)],
         awards=[Award(name=f"Award {i}", issuer="Org", date="2022") for i in range(2)],
-        languages=[Language(name="English", proficiency="Native"), Language(name="Spanish", proficiency="Professional")],
+        languages=[
+            Language(name="English", proficiency="Native"),
+            Language(name="Spanish", proficiency="Professional"),
+        ],
     )
     save_resume(resume_id, resume)
     return resume_id
@@ -74,7 +80,9 @@ async def _preview(client: AsyncClient, rid: str, **params) -> tuple[dict, str]:
 class TestAutoBalancePreview:
     async def test_auto_balanced_preview_succeeds(self, client):
         rid = _save_resume_long()
-        resp = await client.get(f"/api/v1/resume/{rid}/preview", params={"layout_id": "sidebar", "auto_balance": "true"})
+        resp = await client.get(
+            f"/api/v1/resume/{rid}/preview", params={"layout_id": "sidebar", "auto_balance": "true"}
+        )
         assert resp.status_code == 200
         assert resp.json()["data"]["preview_url"]
 
@@ -87,7 +95,9 @@ class TestAutoBalancePreview:
     async def test_auto_balanced_preview_seeds_persisted_density(self, client):
         # Persist a spacious config; auto_balance seeds it (density survives).
         rid = _save_resume_long()
-        await client.put(f"/api/v1/resume/{rid}/layout-config", json={"config": {"mode": "single", "density": "spacious"}})
+        await client.put(
+            f"/api/v1/resume/{rid}/layout-config", json={"config": {"mode": "single", "density": "spacious"}}
+        )
         _, html = await _preview(client, rid, layout_id="sidebar", auto_balance="true")
         assert "density-spacious" in html  # persisted density seeded into balanced layout
 
@@ -100,7 +110,9 @@ class TestAutoBalancePreview:
     async def test_explicit_config_bypasses_balancing(self, client):
         rid = _save_resume_long()
         _, html = await _preview(
-            client, rid, layout_id="sidebar",
+            client,
+            rid,
+            layout_id="sidebar",
             layout_config='{"mode":"single","density":"normal"}',
         )
         # Explicit single-column config wins over balancing for long content.

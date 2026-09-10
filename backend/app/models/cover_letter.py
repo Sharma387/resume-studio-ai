@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 
 from pydantic import BaseModel, Field
@@ -32,5 +32,5 @@ class CoverLetter(BaseModel):
     subject: str | None = Field(None, description="Email subject line suggestion")
     ai_model: str | None = Field(None, description="Model used for generation")
     job_description_hash: str | None = Field(None, description="SHA256 of original job description for dedup")
-    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
-    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())

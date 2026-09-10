@@ -170,7 +170,7 @@ class _Writer:
     def heading(self, text: str) -> None:
         self.paragraph(
             text.upper(),
-            bold=not self._layout_id in ("executive", "modern"),
+            bold=self._layout_id not in ("executive", "modern"),
             size=11,
             color=self._color("muted") if self._layout_id in ("executive", "minimal") else self._color("primary"),
             space_before=10,
@@ -209,7 +209,7 @@ class _Writer:
         hyperlink.set(qn("r:id"), r_id)
         run_el = OxmlElement("w:r")
         r_pr = OxmlElement("w:rPr")
-        accent = (self._theme.tokens.colors.accent.lstrip("#") if self._theme is not None else "1E40AF")
+        accent = self._theme.tokens.colors.accent.lstrip("#") if self._theme is not None else "1E40AF"
         color_el = OxmlElement("w:color")
         color_el.set(qn("w:val"), accent)
         r_pr.append(color_el)

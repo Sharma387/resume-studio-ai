@@ -46,10 +46,16 @@ def _long_resume() -> Resume:
         experience=experiences,
         education=[Education(institution="MIT", degree="BS", field="CS", start_date="2016", end_date="2020")],
         skills=[Skill(category="Languages", skills=["Python", "Go", "Rust"])],
-        projects=[Project(name=f"Project {i}", description="Desc", url="https://example.com", technologies=["Python"]) for i in range(5)],
+        projects=[
+            Project(name=f"Project {i}", description="Desc", url="https://example.com", technologies=["Python"])
+            for i in range(5)
+        ],
         certifications=[Certification(name=f"Cert {i}", issuer="Org", date="2022") for i in range(3)],
         awards=[Award(name=f"Award {i}", issuer="Org", date="2022") for i in range(2)],
-        languages=[Language(name="English", proficiency="Native"), Language(name="Spanish", proficiency="Professional")],
+        languages=[
+            Language(name="English", proficiency="Native"),
+            Language(name="Spanish", proficiency="Professional"),
+        ],
     )
 
 

@@ -102,9 +102,7 @@ class TestLayoutConfigPersistence:
     async def test_unknown_resume_404(self, client):
         get = await client.get("/api/v1/resume/nope/layout-config")
         assert get.status_code == 404
-        put = await client.put(
-            "/api/v1/resume/nope/layout-config", json={"config": {"mode": "single"}}
-        )
+        put = await client.put("/api/v1/resume/nope/layout-config", json={"config": {"mode": "single"}})
         assert put.status_code == 404
 
     async def test_invalid_section_422(self, client):
@@ -125,12 +123,8 @@ class TestLayoutConfigPersistence:
 
     async def test_preview_ignores_invalid_persisted_config(self, client):
         rid = _save_resume()
-        get_variant_repository().set_customization(
-            rid, "test", {"layout_config": {"mode": "not-a-mode"}}
-        )
-        response = await client.get(
-            f"/api/v1/resume/{rid}/preview", params={"layout_id": "sidebar"}
-        )
+        get_variant_repository().set_customization(rid, "test", {"layout_config": {"mode": "not-a-mode"}})
+        response = await client.get(f"/api/v1/resume/{rid}/preview", params={"layout_id": "sidebar"})
         assert response.status_code == 200
 
 
@@ -149,9 +143,7 @@ class TestLayoutConfigPreview:
             f"/api/v1/resume/{rid}/layout-config",
             json={"config": _TWO_COLUMN_CONFIG},
         )
-        configured = await client.get(
-            f"/api/v1/resume/{rid}/preview", params={"layout_id": "sidebar"}
-        )
+        configured = await client.get(f"/api/v1/resume/{rid}/preview", params={"layout_id": "sidebar"})
         assert configured.status_code == 200
 
     async def test_preview_resolved_layout_differs_from_base(self, client):
@@ -161,9 +153,7 @@ class TestLayoutConfigPreview:
             f"/api/v1/resume/{rid}/layout-config",
             json={"config": _TWO_COLUMN_CONFIG},
         )
-        resolved = await client.get(
-            f"/api/v1/resume/{rid}/preview", params={"layout_id": "sidebar"}
-        )
+        resolved = await client.get(f"/api/v1/resume/{rid}/preview", params={"layout_id": "sidebar"})
         # A resolved two-column variant changes the grid, so the cached preview
         # file must differ from the base (proves the config is actually applied).
         assert resolved.json()["data"]["preview_url"] != base.json()["data"]["preview_url"]
@@ -206,9 +196,7 @@ class TestLayoutConfigPreview:
             f"/api/v1/resume/{rid}/layout-config",
             json={"config": _TWO_COLUMN_CONFIG},
         )
-        response = await client.get(
-            f"/api/v1/resume/{rid}/preview", params={"layout_id": "minimal"}
-        )
+        response = await client.get(f"/api/v1/resume/{rid}/preview", params={"layout_id": "minimal"})
         assert response.status_code == 200
 
 
@@ -234,9 +222,7 @@ class TestLayoutConfigExport:
             f"/api/v1/resume/{rid}/layout-config",
             json={"config": _TWO_COLUMN_CONFIG},
         )
-        response = await client.post(
-            f"/api/v1/resume/{rid}/export", json=_DEFAULT_EXPORT_BODY
-        )
+        response = await client.post(f"/api/v1/resume/{rid}/export", json=_DEFAULT_EXPORT_BODY)
         assert response.status_code == 200
 
     async def test_export_explicit_overrides_persisted(self, client):

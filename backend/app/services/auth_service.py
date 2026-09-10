@@ -1,6 +1,6 @@
 import hashlib
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from jose import JWTError, jwt
 
@@ -27,7 +27,7 @@ class AuthenticationService:
 
     def _create_access_token(self, user: User) -> tuple[str, str]:
         jti = uuid.uuid4().hex
-        expire = datetime.now(timezone.utc) + timedelta(minutes=settings.jwt_access_expire_minutes)
+        expire = datetime.now(UTC) + timedelta(minutes=settings.jwt_access_expire_minutes)
         payload = {
             "sub": user.id,
             "jti": jti,
@@ -40,7 +40,7 @@ class AuthenticationService:
 
     def _create_refresh_token(self, user: User) -> tuple[str, str]:
         jti = uuid.uuid4().hex
-        expire = datetime.now(timezone.utc) + timedelta(days=settings.jwt_refresh_expire_days)
+        expire = datetime.now(UTC) + timedelta(days=settings.jwt_refresh_expire_days)
         payload = {
             "sub": user.id,
             "jti": jti,

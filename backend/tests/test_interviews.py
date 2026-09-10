@@ -1,16 +1,23 @@
 import pytest
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
 from pydantic import ValidationError
 
 from app.main import app
+from app.models.application import Application, TimelineEventType
 from app.models.interview import (
-    InterviewSession, InterviewQuestion, InterviewAnswer, ReadinessAssessment,
-    SessionSummary, STARAttempt, QuestionType, Difficulty, AnswerType, SessionType,
+    AnswerType,
+    Difficulty,
+    InterviewAnswer,
+    InterviewQuestion,
+    InterviewSession,
+    QuestionType,
+    ReadinessAssessment,
+    SessionSummary,
+    SessionType,
+    STARAttempt,
 )
-from app.models.application import TimelineEventType
 from app.services import interview_service as svc
-from app.services.storage_service import save_application, save_timeline_event
-from app.models.application import Application
+from app.services.storage_service import save_application
 
 
 @pytest.fixture
@@ -105,6 +112,7 @@ class TestInterviewService:
 
     def test_submit_answer(self):
         import asyncio
+
         answer = asyncio.run(svc.submit_answer("q-test-1", "I led a team..."))
         assert answer.user_answer == "I led a team..."
         assert answer.answer_type == AnswerType.TEXT
@@ -114,7 +122,10 @@ class TestEndpoints:
     @pytest.mark.asyncio
     async def test_create_session(self, client, app_id):
         async with client as ac:
-            resp = await ac.post(f"/api/v1/applications/{app_id}/interview/sessions", json={"id": "es1", "user_id": "test", "application_id": app_id, "title": "Prep"})
+            resp = await ac.post(
+                f"/api/v1/applications/{app_id}/interview/sessions",
+                json={"id": "es1", "user_id": "test", "application_id": app_id, "title": "Prep"},
+            )
         assert resp.status_code == 200
         assert resp.json()["data"]["title"] == "Prep"
 

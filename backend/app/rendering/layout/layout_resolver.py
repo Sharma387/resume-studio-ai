@@ -121,32 +121,20 @@ class LayoutResolver:
             None,
         )
         if main is None:
-            raise LayoutResolverError(
-                f"layout '{base_layout.layout_id}' has no MAIN region to resolve single-column"
-            )
-        kept = tuple(
-            region
-            for region in base_layout.regions
-            if region.region_type in _STRUCTURAL_TYPES
-        )
+            raise LayoutResolverError(f"layout '{base_layout.layout_id}' has no MAIN region to resolve single-column")
+        kept = tuple(region for region in base_layout.regions if region.region_type in _STRUCTURAL_TYPES)
         regions = tuple(
             region.model_copy(
                 update={
                     "ordering": self._ordering_for(region),
-                    **(
-                        {"column_span": grid.columns}
-                        if region.region_type is RegionType.MAIN
-                        else {}
-                    ),
+                    **({"column_span": grid.columns} if region.region_type is RegionType.MAIN else {}),
                 }
             )
             for region in kept
         )
         declared = {region.identifier for region in regions}
         rules = tuple(self._sanitize_rule(rule, declared, main.identifier) for rule in base_layout.placement_rules)
-        resolved_grid = grid.model_copy(
-            update={"gap_mm": _GAP_MM[config.gap], "column_ratios": None}
-        )
+        resolved_grid = grid.model_copy(update={"gap_mm": _GAP_MM[config.gap], "column_ratios": None})
         return regions, rules, resolved_grid
 
     def _two_column(
@@ -164,8 +152,7 @@ class LayoutResolver:
         )
         if main is None or rail is None:
             raise LayoutResolverError(
-                f"layout '{base_layout.layout_id}' has no main + sidebar/secondary "
-                "pair and cannot resolve two_column"
+                f"layout '{base_layout.layout_id}' has no main + sidebar/secondary pair and cannot resolve two_column"
             )
         ordering: dict[str, int] = {}
         for region in base_layout.regions:
@@ -179,8 +166,7 @@ class LayoutResolver:
             ordering[main.identifier] = 1
             ordering[rail.identifier] = 2
         regions = tuple(
-            region.model_copy(update={"ordering": ordering[region.identifier]})
-            for region in base_layout.regions
+            region.model_copy(update={"ordering": ordering[region.identifier]}) for region in base_layout.regions
         )
         rail_pct, main_pct = _RATIO_SPLIT[config.ratio]
         resolved_grid = base_layout.grid.model_copy(

@@ -52,9 +52,7 @@ class RenderTreePDFRenderer:
         margins = page.margins
         if margins is None:
             return html
-        margin = (
-            f"{margins.top_mm}mm {margins.right_mm}mm {margins.bottom_mm}mm {margins.left_mm}mm"
-        )
+        margin = f"{margins.top_mm}mm {margins.right_mm}mm {margins.bottom_mm}mm {margins.left_mm}mm"
         style = f"<style>@page {{ size: {size}; margin: {margin}; }}</style>"
         return html.replace("</head>", f"{style}</head>", 1)
 

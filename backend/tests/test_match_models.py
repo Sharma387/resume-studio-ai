@@ -2,10 +2,10 @@ import pytest
 from pydantic import ValidationError
 
 from app.models.match import (
-    SkillMatch,
-    Recommendation,
-    MatchResult,
     JobDescription,
+    MatchResult,
+    Recommendation,
+    SkillMatch,
 )
 
 
@@ -89,7 +89,8 @@ class TestJobDescription:
 
 class TestMatchResult:
     def test_valid(self):
-        m = MatchResult(user_id="test", 
+        m = MatchResult(
+            user_id="test",
             id="match1",
             resume_id="resume1",
             overall_score=85.0,
@@ -110,7 +111,8 @@ class TestMatchResult:
         assert m.overall_score == 100.0
 
     def test_with_nested_models(self):
-        m = MatchResult(user_id="test", 
+        m = MatchResult(
+            user_id="test",
             id="m1",
             resume_id="r1",
             overall_score=72.0,

@@ -120,7 +120,9 @@ class TreeBuilder:
             children=tuple(children),
         )
 
-    def _sections_for_region(self, layout: LayoutDefinition, cvm: ContentView, region: RegionDefinition) -> list[tuple[str, int]]:
+    def _sections_for_region(
+        self, layout: LayoutDefinition, cvm: ContentView, region: RegionDefinition
+    ) -> list[tuple[str, int]]:
         content_position = {section: index for index, section in enumerate(cvm.section_order)}
         candidates: list[tuple[str, int, int]] = []
         for section_id in cvm.present_sections():
@@ -136,9 +138,7 @@ class TreeBuilder:
 
     # ── Placement resolution ──────────────────────────────────────────────────
 
-    def _two_column_grid(
-        self, layout: LayoutDefinition
-    ) -> tuple[tuple[int, int] | None, dict[str, int]]:
+    def _two_column_grid(self, layout: LayoutDefinition) -> tuple[tuple[int, int] | None, dict[str, int]]:
         """Derive a visual-order (left→right) fr column template + per-region
         track indices for an explicit two-column grid.
 
@@ -155,8 +155,7 @@ class TreeBuilder:
         if len(columns) != 2:
             return None, {}
         template: tuple[int, int] = tuple(
-            rail_pct if region.region_type is not RegionType.MAIN else main_pct
-            for region in columns
+            rail_pct if region.region_type is not RegionType.MAIN else main_pct for region in columns
         )
         placement = {region.identifier: index for index, region in enumerate(columns, start=1)}
         return template, placement

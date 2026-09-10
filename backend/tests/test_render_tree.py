@@ -78,9 +78,7 @@ class TestConstruction:
         assert doc.children[0].kind is NodeKind.PAGE
 
     def test_block_contains_text_leaf(self):
-        block = RenderNode(
-            id="b", kind=NodeKind.BLOCK, children=(_text_node("t", "x"),)
-        )
+        block = RenderNode(id="b", kind=NodeKind.BLOCK, children=(_text_node("t", "x"),))
         assert block.children[0].is_leaf is True
 
     def test_container_block_accepts_block_children(self):
@@ -96,13 +94,16 @@ class TestConstruction:
 
     def test_page_break_allowed_at_page_and_region_level(self):
         page = RenderNode(
-            id="p", kind=NodeKind.PAGE, page_size=A4, margins=PageMargins(),
+            id="p",
+            kind=NodeKind.PAGE,
+            page_size=A4,
+            margins=PageMargins(),
             children=(RenderNode(id="pb", kind=NodeKind.PAGE_BREAK, data=PageBreakData(type="page_break")),),
         )
         region = RenderNode(
-            id="r", kind=NodeKind.REGION, children=(
-                RenderNode(id="pb2", kind=NodeKind.PAGE_BREAK, data=PageBreakData(type="page_break")),
-            ),
+            id="r",
+            kind=NodeKind.REGION,
+            children=(RenderNode(id="pb2", kind=NodeKind.PAGE_BREAK, data=PageBreakData(type="page_break")),),
         )
         assert page.children[0].data is not None
         assert region.children[0].data is not None
@@ -115,7 +116,9 @@ class TestStructuralValidation:
     def test_leaf_cannot_have_children(self):
         with pytest.raises(ValidationError):
             RenderNode(
-                id="t", kind=NodeKind.TEXT, data=TextData(type="text", text="x"),
+                id="t",
+                kind=NodeKind.TEXT,
+                data=TextData(type="text", text="x"),
                 children=(_text_node("t2", "y"),),
             )
 
@@ -130,22 +133,22 @@ class TestStructuralValidation:
     def test_document_cannot_contain_section(self):
         with pytest.raises(ValidationError):
             RenderNode(
-                id="doc", kind=NodeKind.DOCUMENT,
+                id="doc",
+                kind=NodeKind.DOCUMENT,
                 children=(RenderNode(id="s", kind=NodeKind.SECTION),),
             )
 
     def test_region_cannot_contain_block(self):
         with pytest.raises(ValidationError):
             RenderNode(
-                id="r", kind=NodeKind.REGION,
+                id="r",
+                kind=NodeKind.REGION,
                 children=(RenderNode(id="b", kind=NodeKind.BLOCK),),
             )
 
     def test_section_cannot_contain_text_directly(self):
         with pytest.raises(ValidationError):
-            RenderNode(
-                id="s", kind=NodeKind.SECTION, children=(_text_node("t", "x"),)
-            )
+            RenderNode(id="s", kind=NodeKind.SECTION, children=(_text_node("t", "x"),))
 
     def test_grid_cannot_contain_text(self):
         with pytest.raises(ValidationError):
@@ -157,9 +160,7 @@ class TestStructuralValidation:
 
     def test_non_page_cannot_set_page_size(self):
         with pytest.raises(ValidationError):
-            RenderNode(
-                id="s", kind=NodeKind.SECTION, page_size=A4, margins=PageMargins()
-            )
+            RenderNode(id="s", kind=NodeKind.SECTION, page_size=A4, margins=PageMargins())
 
     def test_data_type_must_match_kind(self):
         with pytest.raises(ValidationError):
@@ -191,7 +192,8 @@ class TestSerialization:
 
     def test_serialized_structure_is_stable(self):
         node = RenderNode(
-            id="t", kind=NodeKind.TIME,
+            id="t",
+            kind=NodeKind.TIME,
             data=TimeData(type="time", text="2020 – Present", start="2020", current=True),
         )
         raw = node.model_dump_json()

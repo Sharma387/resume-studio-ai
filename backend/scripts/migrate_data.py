@@ -13,14 +13,16 @@ import argparse
 import json
 import sys
 import time
+from datetime import UTC, datetime
 from pathlib import Path
-from datetime import datetime, timezone
+
+from sqlalchemy.exc import IntegrityError
 
 STORAGE_DIR = Path("storage")
 
 
 def _now():
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 # ── Progress tracking ─────────────────────────────────────────────────────────
@@ -46,9 +48,6 @@ class Progress:
         )
         for err in self.error_details[-5:]:
             print(f"    ERROR: {err}")
-
-
-from sqlalchemy.exc import IntegrityError
 
 
 # ── Data Loaders ──────────────────────────────────────────────────────────────
@@ -151,6 +150,7 @@ def migrate_users(dry_run: bool, progress: Progress) -> int:
 
 def migrate_refresh_tokens(dry_run: bool, progress: Progress) -> int:
     from app.services.repositories.postgres.token_repository import PostgresRefreshTokenRepository
+
     repo = PostgresRefreshTokenRepository()
 
     records = _load_json_files("refresh_tokens")
@@ -529,8 +529,9 @@ ENTITY_MAP = {name: (fn, table) for name, fn, table in MIGRATION_STEPS}
 
 
 def run_migration(entity: str | None, dry_run: bool, verbose: bool):
-    from app.db.database import create_engine, dispose_engine
     import anyio
+
+    from app.db.database import create_engine, dispose_engine
 
     async def _run():
         engine = await create_engine()
@@ -582,9 +583,10 @@ def run_migration(entity: str | None, dry_run: bool, verbose: bool):
 
 def validate_migration(verbose: bool):
     """Compare JSON record count with PostgreSQL record count for all entities."""
-    from app.db.database import create_engine, dispose_engine
     import anyio
     from sqlalchemy import text
+
+    from app.db.database import create_engine, dispose_engine
 
     async def _validate():
         engine = await create_engine()
@@ -628,12 +630,21 @@ def validate_migration(verbose: bool):
             print(f"\n{'─' * 60}")
             print("  FOREIGN KEY INTEGRITY")
             fk_checks = [
-                ("refresh_tokens", "refresh_tokens.user_id → users.id",
-                 "SELECT COUNT(*) FROM refresh_tokens r WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.id = r.user_id)"),
-                ("resumes", "resumes.user_id → users.id",
-                 "SELECT COUNT(*) FROM resumes r WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.id = r.user_id)"),
-                ("applications", "applications.user_id → users.id",
-                 "SELECT COUNT(*) FROM applications a WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.id = a.user_id)"),
+                (
+                    "refresh_tokens",
+                    "refresh_tokens.user_id → users.id",
+                    "SELECT COUNT(*) FROM refresh_tokens r WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.id = r.user_id)",
+                ),
+                (
+                    "resumes",
+                    "resumes.user_id → users.id",
+                    "SELECT COUNT(*) FROM resumes r WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.id = r.user_id)",
+                ),
+                (
+                    "applications",
+                    "applications.user_id → users.id",
+                    "SELECT COUNT(*) FROM applications a WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.id = a.user_id)",
+                ),
             ]
             for table, desc, query in fk_checks:
                 result = await conn.execute(text(query))

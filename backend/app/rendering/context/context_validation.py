@@ -62,8 +62,7 @@ def validate_resolved_context(
             )
         if theme_required > engine_version:
             raise ContextValidationError(
-                f"theme '{theme.stable_id}' requires engine {theme_required} "
-                f"but the context targets {engine_version}"
+                f"theme '{theme.stable_id}' requires engine {theme_required} but the context targets {engine_version}"
             )
 
     if content_ref is not None and not content_ref.stable_id:

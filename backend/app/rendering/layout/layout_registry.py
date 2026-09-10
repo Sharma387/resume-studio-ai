@@ -49,9 +49,7 @@ class LayoutRegistry:
         allow_replacement: bool | None = None,
     ) -> None:
         if not isinstance(definition, LayoutDefinition):
-            raise LayoutRegistrationError(
-                f"definition must be a LayoutDefinition, got {type(definition).__name__}"
-            )
+            raise LayoutRegistrationError(f"definition must be a LayoutDefinition, got {type(definition).__name__}")
         if definition.metadata.engine_version > self._supported_engine_version:
             raise LayoutRegistrationError(
                 f"layout '{definition.layout_id}' requires engine "
@@ -61,13 +59,9 @@ class LayoutRegistry:
         effective = self._allow_replacement if allow_replacement is None else allow_replacement
         with self._lock:
             if definition.layout_id in self._by_layout_id and not effective:
-                raise LayoutRegistrationError(
-                    f"layout id '{definition.layout_id}' already registered"
-                )
+                raise LayoutRegistrationError(f"layout id '{definition.layout_id}' already registered")
             if definition.stable_id in self._by_stable_id and not effective:
-                raise LayoutRegistrationError(
-                    f"stable id '{definition.stable_id}' already registered"
-                )
+                raise LayoutRegistrationError(f"stable id '{definition.stable_id}' already registered")
             self._by_layout_id[definition.layout_id] = definition
             self._by_stable_id[definition.stable_id] = definition
 

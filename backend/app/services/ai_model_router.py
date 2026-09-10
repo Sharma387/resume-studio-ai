@@ -4,15 +4,12 @@ across OmniRoute and local Ollama providers, with failover and caching."""
 import asyncio
 import json
 import time
-from collections.abc import Awaitable, Callable
-from datetime import datetime, timedelta
-from typing import Any, cast
 
 import httpx
 
 from app.core.config import settings
 from app.core.logging import get_logger
-from app.services.omniroute_service import OmniRouteError, OmniRouteService
+from app.services.ai_core.exceptions import AIServiceUnavailable
 
 logger = get_logger(__name__)
 
@@ -20,6 +17,7 @@ logger = get_logger(__name__)
 # ---------------------------------------------------------------------------
 # Model candidate data class
 # ---------------------------------------------------------------------------
+
 
 class ModelCandidate:
     """A candidate AI model from a specific provider, with probe metadata."""
@@ -60,6 +58,7 @@ class ModelCandidate:
 # Provider specification
 # ---------------------------------------------------------------------------
 
+
 class ProviderSpec:
     """Specification for an AI provider (OmniRoute or Ollama)."""
 
@@ -77,13 +76,13 @@ class ProviderSpec:
 # ---------------------------------------------------------------------------
 
 _router: "AIModelRouter | None" = None
+
+
 async def get_router() -> "AIModelRouter":
     global _router
     if _router is None:
         _router = AIModelRouter()
     return _router
-
-async def verify_now() -> dict:
 
 
 # ---------------------------------------------------------------------------
@@ -113,7 +112,11 @@ class AIModelRouter:
         omni_url = settings.omniroute_api_url.rstrip("/v1")  # e.g. http://localhost:20128
         omni_models: list[str] = []
         # Always include the configured model as a concrete candidate
-        if settings.omniroute_model and settings.omniroute_model not in ("auto/best-fast", "auto/best-coding", "auto/best-reasoning"):
+        if settings.omniroute_model and settings.omniroute_model not in (
+            "auto/best-fast",
+            "auto/best-coding",
+            "auto/best-reasoning",
+        ):
             omni_models.append(settings.omniroute_model)
         # Limit to probe limit
         omni_models = omni_models[: settings.ai_probe_limit]
@@ -122,8 +125,18 @@ class AIModelRouter:
         ollama_models: list[str] = []
 
         return [
-            ProviderSpec(name="omniroute", base_url=omni_url, models=omni_models, api_key=settings.omniroute_api_key or "not-needed"),
-            ProviderSpec(name="ollama", base_url=settings.ollama_api_url.rstrip("/v1/chat/completions"), models=ollama_models, api_key=""),
+            ProviderSpec(
+                name="omniroute",
+                base_url=omni_url,
+                models=omni_models,
+                api_key=settings.omniroute_api_key or "not-needed",
+            ),
+            ProviderSpec(
+                name="ollama",
+                base_url=settings.ollama_api_url.rstrip("/v1/chat/completions"),
+                models=ollama_models,
+                api_key="",
+            ),
         ]
 
     # ── Candidate discovery ───────────────────────────────────────────────
@@ -145,16 +158,20 @@ class AIModelRouter:
                 omni_tasks.append(self._probe_omni(self.providers[0], settings.omniroute_model or "auto/best-fast"))
 
             results: list[ModelCandidate] = []
-            omni_results = await asyncio.gather(*omni_tasks, return_exceptions=True)
+            omni_results: list[ModelCandidate | BaseException] = await asyncio.gather(
+                *omni_tasks, return_exceptions=True
+            )
             for r in omni_results:
-                if isinstance(r, Exception):
+                if isinstance(r, BaseException):
                     logger.warning("OmniRoute probe error", error=str(r))
                 else:
                     results.append(r)
 
-            ollama_results = await asyncio.gather(*ollama_tasks, return_exceptions=True)
+            ollama_results: list[ModelCandidate | BaseException] = await asyncio.gather(
+                *ollama_tasks, return_exceptions=True
+            )
             for r in ollama_results:
-                if isinstance(r, Exception):
+                if isinstance(r, BaseException):
                     logger.warning("Ollama probe error", error=str(r))
                 else:
                     results.append(r)
@@ -314,25 +331,23 @@ class AIModelRouter:
                 self._failed.add((candidate.provider, candidate.model))
 
         # All candidates exhausted
-        raise AIServiceUnavailable(
-            "All AI providers failed after automatic failover"
-        )
+        raise AIServiceUnavailable("All AI providers failed after automatic failover")
 
     async def _chat_with(self, candidate: ModelCandidate, system: str, user: str) -> str:
         """Send a chat completion to the given candidate and return the raw content."""
         if candidate.provider == "omniroute":
-            return await self._call_omniroute(candidate)
+            return await self._call_omniroute(candidate, system, user)
         elif candidate.provider == "ollama":
-            return await self._call_ollama(candidate)
+            return await self._call_ollama(candidate, system, user)
         raise ValueError(f"Unknown provider: {candidate.provider}")
 
-    async def _call_omniroute(self, candidate: ModelCandidate) -> str:
+    async def _call_omniroute(self, candidate: ModelCandidate, system: str, user: str) -> str:
         """Call OmniRoute via the singleton service."""
         async with httpx.AsyncClient(timeout=settings.omniroute_timeout) as client:
             api_url = settings.omniroute_api_url.rstrip("/")  # e.g. http://localhost:20128/v1/chat/completions
             body = {
                 "model": candidate.model,
-                "messages": [{"role": "user", "content": user}],
+                "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
                 "stream": False,
                 "temperature": 0.1,
             }
@@ -347,16 +362,18 @@ class AIModelRouter:
             content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
             return content.strip() if content else ""
 
-    async def _call_ollama(self, candidate: ModelCandidate) -> str:
+    async def _call_ollama(self, candidate: ModelCandidate, system: str, user: str) -> str:
         """Call Ollama via its OpenAI-compatible endpoint."""
+        provider = next((p for p in self.providers if p.name == "ollama"), None)
+        base_url = provider.base_url if provider else settings.ollama_api_url.rstrip("/v1/chat/completions")
         async with httpx.AsyncClient(timeout=settings.omniroute_timeout) as client:
             body = {
                 "model": candidate.model,
-                "messages": [{"role": "user", "content": user}],
+                "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
                 "stream": False,
             }
             resp = await client.post(
-                f"{candidate.base_url}/v1/chat/completions",
+                f"{base_url}/v1/chat/completions",
                 json=body,
             )
             if resp.status_code != 200:
@@ -404,26 +421,19 @@ class AIModelRouter:
 
 
 # ---------------------------------------------------------------------------
-# Module-level singleton accessor
+# Module-level convenience functions
 # ---------------------------------------------------------------------------
-
-_router: "AIModelRouter | None" = None
 
 
 async def verify_now() -> dict:
     """Run a one-off discovery+probe cycle and return the status dict."""
     router = AIModelRouter()
     await router.refresh()
-    return router.status()
+    return await router.status()
 
-
-# ---------------------------------------------------------------------------
-# Module-level convenience for call_with_retry integration
-# ---------------------------------------------------------------------------
 
 async def route_complete(system: str, user: str) -> str:
     """Convenience: dispatch through the global router instance."""
     router = AIModelRouter()
-    # Refresh cache first so we have current candidates
     await router.refresh()
     return await router.complete(system, user)

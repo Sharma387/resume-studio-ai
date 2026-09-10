@@ -8,7 +8,7 @@ import io
 import uuid
 
 import pytest
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
 
 from app.main import app
 from app.services.upload_service import UPLOAD_DIR
@@ -22,6 +22,7 @@ def client():
 
 def _real_pdf_bytes(text: str = "Hello World") -> bytes:
     import fitz
+
     doc = fitz.open()
     page = doc.new_page()
     page.insert_text((50, 50), text, fontsize=11)
@@ -33,8 +34,9 @@ def _real_pdf_bytes(text: str = "Hello World") -> bytes:
 
 def _real_docx_bytes(paragraphs: list[str] | None = None) -> bytes:
     from docx import Document
+
     doc = Document()
-    for p in (paragraphs or ["Hello World"]):
+    for p in paragraphs or ["Hello World"]:
         doc.add_paragraph(p)
     buf = io.BytesIO()
     doc.save(buf)
@@ -111,7 +113,13 @@ async def test_upload_then_extract_docx(client):
     async with client as ac:
         upload_resp = await ac.post(
             "/api/v1/upload",
-            files={"file": ("resume.docx", docx_bytes, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")},
+            files={
+                "file": (
+                    "resume.docx",
+                    docx_bytes,
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                )
+            },
         )
     assert upload_resp.status_code == 200
     upload_data = upload_resp.json()

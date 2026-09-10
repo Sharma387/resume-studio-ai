@@ -1,10 +1,16 @@
 import pytest
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
 from pydantic import ValidationError
 
 from app.main import app
-from app.models.application import Application, ApplicationStatus, ApplicationPriority, TimelineEvent, TimelineEventType, ApplicationNote, DashboardSummary
-from app.services.storage_service import save_application, load_application, list_applications
+from app.models.application import (
+    Application,
+    ApplicationNote,
+    ApplicationPriority,
+    ApplicationStatus,
+    TimelineEvent,
+    TimelineEventType,
+)
 from app.services import application_service as svc
 
 
@@ -66,6 +72,7 @@ class TestApplicationService:
     def test_create_adds_timeline(self):
         a = svc.create(company="Meta", role_title="Engineer", user_id="test")
         from app.services.storage_service import list_timeline_events
+
         events = list_timeline_events(a.id)
         assert len(events) >= 1
         assert events[0].event_type == TimelineEventType.CREATED
@@ -79,6 +86,7 @@ class TestApplicationService:
         a = svc.create(company="A", role_title="B", user_id="test")
         svc.change_status(a.id, ApplicationStatus.INTERVIEWING)
         from app.services.storage_service import list_timeline_events
+
         events = list_timeline_events(a.id)
         status_events = [e for e in events if e.event_type == TimelineEventType.STATUS_CHANGED]
         assert len(status_events) >= 1
@@ -106,7 +114,10 @@ class TestEndpoints:
     @pytest.mark.asyncio
     async def test_create(self, client):
         async with client as ac:
-            resp = await ac.post("/api/v1/applications", json={"id": "e1", "user_id": "test", "company": "Google", "role_title": "Engineer"})
+            resp = await ac.post(
+                "/api/v1/applications",
+                json={"id": "e1", "user_id": "test", "company": "Google", "role_title": "Engineer"},
+            )
         assert resp.status_code == 200
         data = resp.json()["data"]
         assert data["company"] == "Google"

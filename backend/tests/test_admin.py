@@ -1,7 +1,7 @@
 """Tests for the Administration Console."""
 
 import pytest
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
 
 from app.main import app
 
@@ -33,9 +33,14 @@ async def test_admin_endpoints_require_auth(client):
     """With an invalid token, admin endpoints must return 401/403."""
     headers = {"Authorization": "Bearer invalid_token_xxx"}
     for ep in [
-        "/api/v1/admin/dashboard", "/api/v1/admin/config", "/api/v1/admin/ai",
-        "/api/v1/admin/models", "/api/v1/admin/database", "/api/v1/admin/storage",
-        "/api/v1/admin/features", "/api/v1/admin/system",
+        "/api/v1/admin/dashboard",
+        "/api/v1/admin/config",
+        "/api/v1/admin/ai",
+        "/api/v1/admin/models",
+        "/api/v1/admin/database",
+        "/api/v1/admin/storage",
+        "/api/v1/admin/features",
+        "/api/v1/admin/system",
     ]:
         resp = await client.get(ep, headers=headers)
         assert resp.status_code in (401, 403), f"{ep} returned {resp.status_code}"
@@ -141,6 +146,7 @@ async def test_storage_endpoint(client):
 
 def test_config_service():
     from app.services.admin_service import get_config
+
     cfg = get_config()
     for key in ["app_name", "storage_backend", "omniroute_model"]:
         assert key in cfg
@@ -148,6 +154,7 @@ def test_config_service():
 
 def test_get_features():
     from app.services.admin_service import get_features
+
     f = get_features()
     for key in ["debug", "allow_mock_ai_data", "storage_backend"]:
         assert key in f
@@ -155,6 +162,7 @@ def test_get_features():
 
 def test_get_storage_status():
     from app.services.admin_service import get_storage_status
+
     s = get_storage_status()
     assert "backend" in s
     assert "json_files_available_for_migration" in s
@@ -162,6 +170,7 @@ def test_get_storage_status():
 
 def test_get_uptime():
     from app.services.admin_service import get_uptime
+
     assert get_uptime() > 0
 
 
@@ -207,14 +216,14 @@ async def test_storage_migrate_endpoint(client):
 
 
 def test_configuration_service():
-    from app.services.configuration_service import get, set_storage_backend
-    cfg = get_all = __import__("app.services.configuration_service", fromlist=["get_all"]).get_all
+    cfg = __import__("app.services.configuration_service", fromlist=["get_all"]).get_all
     all_cfg = cfg()
     assert "storage_backend" in all_cfg or "app_name" in all_cfg
 
 
 def test_switch_backend_validation():
     from app.services.admin_service import run_storage_validation
+
     result = run_storage_validation()
     assert "valid" in result
     assert "checks" in result
@@ -238,6 +247,7 @@ async def test_development_endpoint(client):
 
 def test_development_features_service():
     from app.services.development_features import development_features
+
     status = development_features.get_status()
     assert "development_mode" in status
     assert "mock_authentication" in status
@@ -247,12 +257,14 @@ def test_development_features_service():
 
 def test_development_audit_production_safety():
     from app.services.development_features import development_features
+
     warnings = development_features.audit_production_safety()
     assert isinstance(warnings, list)
 
 
 def test_development_audit_detects_issues():
     from unittest.mock import patch
+
     from app.services.development_features import DevelopmentFeatures
 
     with patch.object(DevelopmentFeatures, "debug_enabled", False, create=True):
@@ -281,6 +293,7 @@ async def test_configuration_diagnostics_endpoint(client):
 
 def test_diagnostics_jwt_never_exposes_secret():
     from app.services.configuration_diagnostics_service import check_jwt
+
     result = check_jwt()
     assert "configured" in result
     assert "secure" in result
@@ -290,9 +303,12 @@ def test_diagnostics_jwt_never_exposes_secret():
 
 def test_diagnostics_jwt_detects_missing():
     from unittest.mock import patch
+
     from app.core.config import settings as app_settings
+
     with patch.object(app_settings, "jwt_secret_key", ""):
         from app.services.configuration_diagnostics_service import check_jwt
+
         result = check_jwt()
         assert result["configured"] is False
         assert result["secure"] is False
@@ -300,6 +316,7 @@ def test_diagnostics_jwt_detects_missing():
 
 def test_diagnostics_storage_backend():
     from app.services.configuration_diagnostics_service import check_storage
+
     result = check_storage()
     assert "backend" in result
     assert result["backend"] in ("json", "postgres")
@@ -307,9 +324,12 @@ def test_diagnostics_storage_backend():
 
 def test_diagnostics_valid_jwt_secure():
     from unittest.mock import patch
+
     from app.core.config import settings as app_settings
+
     with patch.object(app_settings, "jwt_secret_key", "a" * 32):
         from app.services.configuration_diagnostics_service import check_jwt
+
         result = check_jwt()
         assert result["configured"] is True
         assert result["secure"] is True
@@ -317,9 +337,12 @@ def test_diagnostics_valid_jwt_secure():
 
 def test_diagnostics_weak_jwt_insecure():
     from unittest.mock import patch
+
     from app.core.config import settings as app_settings
+
     with patch.object(app_settings, "jwt_secret_key", "short"):
         from app.services.configuration_diagnostics_service import check_jwt
+
         result = check_jwt()
         assert result["configured"] is True
         assert result["secure"] is False
@@ -327,9 +350,12 @@ def test_diagnostics_weak_jwt_insecure():
 
 def test_diagnostics_environment_has_all_sections():
     import anyio
+
     from app.services.configuration_diagnostics_service import get_all
+
     async def _test():
         result = await get_all()
         for section in ["jwt", "database", "ai", "storage", "environment"]:
             assert section in result, f"Missing section: {section}"
+
     anyio.run(_test)

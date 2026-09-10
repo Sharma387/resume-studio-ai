@@ -1,5 +1,5 @@
 import pytest
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
 
 from app.main import app
 
@@ -31,7 +31,13 @@ async def test_upload_docx_success(client):
     async with client as ac:
         response = await ac.post(
             "/api/v1/upload",
-            files={"file": ("resume.docx", b"fake docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")},
+            files={
+                "file": (
+                    "resume.docx",
+                    b"fake docx",
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                )
+            },
         )
     assert response.status_code == 200
     data = response.json()

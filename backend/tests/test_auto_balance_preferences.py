@@ -24,21 +24,33 @@ from app.rendering.layout.reference_layouts import sidebar_layout
 def _long_resume() -> Resume:
     experiences = [
         Experience(
-            company=f"Company {i}", title=f"Engineer {i}", start_date="2020",
-            end_date="2023", description=["Did work", "More work"],
+            company=f"Company {i}",
+            title=f"Engineer {i}",
+            start_date="2020",
+            end_date="2023",
+            description=["Did work", "More work"],
         )
         for i in range(10)
     ]
     return Resume(
-        user_id="test", full_name="Jane Doe", email="jane@test.com",
-        professional_title="Senior Engineer", summary="Very long summary " * 20,
+        user_id="test",
+        full_name="Jane Doe",
+        email="jane@test.com",
+        professional_title="Senior Engineer",
+        summary="Very long summary " * 20,
         experience=experiences,
         education=[Education(institution="MIT", degree="BS", field="CS", start_date="2016", end_date="2020")],
         skills=[Skill(category="Languages", skills=["Python", "Go", "Rust"])],
-        projects=[Project(name=f"Project {i}", description="Desc", url="https://example.com", technologies=["Python"]) for i in range(5)],
+        projects=[
+            Project(name=f"Project {i}", description="Desc", url="https://example.com", technologies=["Python"])
+            for i in range(5)
+        ],
         certifications=[Certification(name=f"Cert {i}", issuer="Org", date="2022") for i in range(3)],
         awards=[Award(name=f"Award {i}", issuer="Org", date="2022") for i in range(2)],
-        languages=[Language(name="English", proficiency="Native"), Language(name="Spanish", proficiency="Professional")],
+        languages=[
+            Language(name="English", proficiency="Native"),
+            Language(name="Spanish", proficiency="Professional"),
+        ],
     )
 
 
@@ -109,15 +121,11 @@ class TestAutoBalanceFallbackHasNoRationale:
         def _boom(*args, **kwargs):
             raise LayoutResolverError("forced")
 
-        monkeypatch.setattr(
-            "app.rendering.layout.effective.apply_layout_balancer_result", _boom
-        )
+        monkeypatch.setattr("app.rendering.layout.effective.apply_layout_balancer_result", _boom)
 
         base = sidebar_layout()
         cvm = cvm_from_resume(_long_resume())
-        layout, cfg, balance_result = resolve_effective_layout(
-            base, cvm, auto_balance=True, return_balance_result=True
-        )
+        layout, cfg, balance_result = resolve_effective_layout(base, cvm, auto_balance=True, return_balance_result=True)
         assert balance_result is None
         assert layout is base
         assert cfg is None
@@ -126,15 +134,11 @@ class TestAutoBalanceFallbackHasNoRationale:
         def _boom(*args, **kwargs):
             raise RuntimeError("forced")
 
-        monkeypatch.setattr(
-            "app.rendering.layout.effective.apply_layout_balancer_result", _boom
-        )
+        monkeypatch.setattr("app.rendering.layout.effective.apply_layout_balancer_result", _boom)
 
         base = sidebar_layout()
         cvm = cvm_from_resume(_long_resume())
-        layout, cfg, balance_result = resolve_effective_layout(
-            base, cvm, auto_balance=True, return_balance_result=True
-        )
+        layout, cfg, balance_result = resolve_effective_layout(base, cvm, auto_balance=True, return_balance_result=True)
         assert balance_result is None
         assert layout is base
         assert cfg is None

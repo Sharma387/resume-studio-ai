@@ -118,9 +118,7 @@ class SectionDefinition(BaseModel):
         if not isinstance(self.section_type, SectionType):
             key = self.section_type
             if key not in _CORE_VALUE_KEYS and not _EXT_VALID.match(key):
-                raise ValueError(
-                    f"invalid plugin section_type '{key}' (expected dotted namespace)"
-                )
+                raise ValueError(f"invalid plugin section_type '{key}' (expected dotted namespace)")
         if not self.stable_id.strip():
             raise ValueError("stable_id must not be empty")
         return self
@@ -295,26 +293,18 @@ class SectionRegistry:
     # Registration lifecycle
     def register(self, definition: SectionDefinition, allow_replacement: bool | None = None) -> None:
         if not isinstance(definition, SectionDefinition):
-            raise SectionRegistrationError(
-                f"definition must be a SectionDefinition, got {type(definition).__name__}"
-            )
+            raise SectionRegistrationError(f"definition must be a SectionDefinition, got {type(definition).__name__}")
         canonical = definition.canonical_id
         if not canonical or not definition.stable_id:
             raise SectionRegistrationError("section_type and stable_id must not be empty")
         if canonical in _CORE_TYPE_KEYS or definition.stable_id in _CORE_STABLE_IDS:
-            raise SectionRegistrationError(
-                f"core section '{canonical}' cannot be replaced"
-            )
+            raise SectionRegistrationError(f"core section '{canonical}' cannot be replaced")
         effective = self._allow_replacement if allow_replacement is None else allow_replacement
         with self._lock:
             if canonical in self._by_type and not effective:
-                raise SectionRegistrationError(
-                    f"section_type '{canonical}' already registered"
-                )
+                raise SectionRegistrationError(f"section_type '{canonical}' already registered")
             if definition.stable_id in self._by_stable_id and not effective:
-                raise SectionRegistrationError(
-                    f"stable_id '{definition.stable_id}' already registered"
-                )
+                raise SectionRegistrationError(f"stable_id '{definition.stable_id}' already registered")
             self._by_stable_id[definition.stable_id] = definition
             self._by_type[canonical] = definition
 

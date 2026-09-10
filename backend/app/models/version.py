@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from pydantic import BaseModel, Field
 
@@ -11,4 +11,4 @@ class ResumeVersion(BaseModel):
     resume_id: str = Field(..., min_length=1)
     label: str | None = None
     resume: Resume
-    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())

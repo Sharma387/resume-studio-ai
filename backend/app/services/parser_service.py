@@ -1,12 +1,13 @@
 import json
 
-from app.core.config import settings
+import httpx
+
+from app.core.config import settings  # noqa: F401 — referenced by test monkeypatch
 from app.core.exceptions import AppError
 from app.core.logging import get_logger
 from app.models.resume import Certification, Education, Experience, Project, Resume, Skill
 from app.services.ai_core import AIServiceUnavailable, call_with_retry, extract_json
 from app.services.prompt_service import PromptService
-import httpx
 
 logger = get_logger(__name__)
 
@@ -142,9 +143,18 @@ async def parse_resume(text: str) -> Resume:
         try:
             async with httpx.AsyncClient(timeout=5) as client:
                 body = json.dumps(
-                    {"model": ollama_model, "messages": [{"role": "user", "content": "Reply with the single word: OK"}], "stream": False}
+                    {
+                        "model": ollama_model,
+                        "messages": [{"role": "user", "content": "Reply with the single word: OK"}],
+                        "stream": False,
+                    }
                 )
-                r = await client.post("http://localhost:11434/v1/chat/completions", headers={"Content-Type": "application/json"}, data=body, timeout=5)
+                r = await client.post(
+                    "http://localhost:11434/v1/chat/completions",
+                    headers={"Content-Type": "application/json"},
+                    data=body,
+                    timeout=5,
+                )
                 if r.status_code == 200:
                     d = r.json()
                     content = d.get("choices", [{}])[0].get("message", {}).get("content", "").strip()

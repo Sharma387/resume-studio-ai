@@ -32,16 +32,40 @@ def _resume(user_id="test") -> Resume:
         professional_title="Senior Transformation & Infrastructure Leader",
         summary="Transformation leader focused on distributed systems and platform reliability.",
         experience=[
-            {"company": "Acme Corporation International", "title": "Senior Software Engineering Lead",
-             "location": "San Francisco, CA", "start_date": "2021", "current": True,
-             "description": ["Led a 12-engineer platform organization", "Designed multi-region streaming"]},
-            {"company": "Beta Inc", "title": "Transformation Programme Manager",
-             "start_date": "2018", "end_date": "2021", "description": ["Built a distributed scheduler"]},
+            {
+                "company": "Acme Corporation International",
+                "title": "Senior Software Engineering Lead",
+                "location": "San Francisco, CA",
+                "start_date": "2021",
+                "current": True,
+                "description": ["Led a 12-engineer platform organization", "Designed multi-region streaming"],
+            },
+            {
+                "company": "Beta Inc",
+                "title": "Transformation Programme Manager",
+                "start_date": "2018",
+                "end_date": "2021",
+                "description": ["Built a distributed scheduler"],
+            },
         ],
-        education=[{"institution": "Carnegie Mellon University", "degree": "Master of Science", "field": "Computer Science", "gpa": 3.9}],
+        education=[
+            {
+                "institution": "Carnegie Mellon University",
+                "degree": "Master of Science",
+                "field": "Computer Science",
+                "gpa": 3.9,
+            }
+        ],
         skills=[{"category": "Languages", "skills": ["Python", "Go", "Rust"]}],
         certifications=[{"name": "AWS Solutions Architect", "issuer": "Amazon Web Services", "date": "2022"}],
-        projects=[{"name": "Project Alpha", "description": "Distributed scheduler", "url": "https://github.com/example/alpha", "technologies": ["Go", "PostgreSQL"]}],
+        projects=[
+            {
+                "name": "Project Alpha",
+                "description": "Distributed scheduler",
+                "url": "https://github.com/example/alpha",
+                "technologies": ["Go", "PostgreSQL"],
+            }
+        ],
         awards=[{"name": "Transformation Excellence Award", "issuer": "Acme Corporation", "date": "2023-06"}],
         languages=[{"name": "English", "proficiency": "Native"}, {"name": "French", "proficiency": "Professional"}],
     )
@@ -108,7 +132,9 @@ async def _export(client: AsyncClient, resume_id: str, body: dict) -> tuple[int,
 class TestExportEndpoint:
     async def test_pdf_export(self, client):
         rid = _save_resume()
-        status, headers, content = await _export(client, rid, {"layout_id": "sidebar", "theme_id": "blue", "format": "pdf"})
+        status, headers, content = await _export(
+            client, rid, {"layout_id": "sidebar", "theme_id": "blue", "format": "pdf"}
+        )
         assert status == 200
         assert headers["content-type"] == "application/pdf"
         assert content[:5] == b"%PDF-"
@@ -117,7 +143,9 @@ class TestExportEndpoint:
 
     async def test_docx_export(self, client):
         rid = _save_resume()
-        status, headers, content = await _export(client, rid, {"layout_id": "executive", "theme_id": "blue", "format": "docx"})
+        status, headers, content = await _export(
+            client, rid, {"layout_id": "executive", "theme_id": "blue", "format": "docx"}
+        )
         assert status == 200
         assert headers["content-type"] == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         assert content[:2] == b"PK"
@@ -125,7 +153,9 @@ class TestExportEndpoint:
 
     async def test_html_export(self, client):
         rid = _save_resume()
-        status, headers, content = await _export(client, rid, {"layout_id": "classic", "theme_id": "blue", "format": "html"})
+        status, headers, content = await _export(
+            client, rid, {"layout_id": "classic", "theme_id": "blue", "format": "html"}
+        )
         assert status == 200
         assert headers["content-type"].startswith("text/html")
         assert "Sharma Rajasekar" in content.decode("utf-8")
@@ -151,7 +181,9 @@ class TestValidation:
         assert status == 422
 
     async def test_unknown_resume_returns_404(self, client):
-        status, _, _ = await _export(client, "nonexistent", {"layout_id": "sidebar", "theme_id": "blue", "format": "pdf"})
+        status, _, _ = await _export(
+            client, "nonexistent", {"layout_id": "sidebar", "theme_id": "blue", "format": "pdf"}
+        )
         assert status == 404
 
     async def test_another_users_resume_returns_404(self, client):
@@ -224,9 +256,7 @@ class TestServiceDispatch:
         recorded.clear()
         # Test auto_balance=True - density="normal" from balanced config
         for fmt in (ExportFormat.HTML, ExportFormat.PDF, ExportFormat.DOCX):
-            result = service.export(
-                resume, layout_id="sidebar", theme_id="blue", output_format=fmt, auto_balance=True
-            )
+            result = service.export(resume, layout_id="sidebar", theme_id="blue", output_format=fmt, auto_balance=True)
             assert result.content == b"fake"
         densities = [density for _, _, density in recorded]
         assert densities[0] == "normal"  # HTML

@@ -1,7 +1,7 @@
 import hashlib
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.core.logging import get_logger
 from app.models.cover_letter import CoverLetter, CoverLetterRequest, CoverLetterTone
@@ -67,7 +67,7 @@ async def update(resume_id: str, letter_id: str, content: str, subject: str | No
     letter.content = content
     if subject is not None:
         letter.subject = subject
-    letter.updated_at = datetime.now(timezone.utc).isoformat()
+    letter.updated_at = datetime.now(UTC).isoformat()
     get_cover_letter_repository().save(letter)
     return letter
 

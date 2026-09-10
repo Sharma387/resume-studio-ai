@@ -36,7 +36,10 @@ def resolve_effective_layout(
     auto_balance: bool = False,
     base_config: LayoutConfig | None = None,
     return_balance_result: bool = False,
-) -> tuple[LayoutDefinition, LayoutConfig | None] | tuple[LayoutDefinition, LayoutConfig | None, LayoutBalanceResult | None]:
+) -> (
+    tuple[LayoutDefinition, LayoutConfig | None]
+    | tuple[LayoutDefinition, LayoutConfig | None, LayoutBalanceResult | None]
+):
     """Resolve the effective layout for a request.
 
     Returns ``(LayoutDefinition, effective LayoutConfig | None)``. The effective

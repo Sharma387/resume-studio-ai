@@ -36,8 +36,7 @@ class VariantCreateRequest(BaseModel):
 
 
 @router.post("/resume/{resume_id}/variants")
-async def create_resume_variant(resume_id: str, body: VariantCreateRequest,
-                                 current_user: User = Depends(require_user)):
+async def create_resume_variant(resume_id: str, body: VariantCreateRequest, current_user: User = Depends(require_user)):
     resume = get_resume_repository().get_by_id(resume_id, current_user.id)
     if resume is None:
         raise HTTPException(status_code=404, detail="Resume not found")

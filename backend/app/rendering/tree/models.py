@@ -340,8 +340,7 @@ class RenderNode(BaseModel):
                 expected = _DATA_TYPE_BY_KIND[self.kind]
                 if self.data.type != expected:
                     raise ValueError(
-                        f"Node kind '{self.kind.value}' expects data type '{expected}', "
-                        f"got '{self.data.type}'"
+                        f"Node kind '{self.kind.value}' expects data type '{expected}', got '{self.data.type}'"
                     )
         else:
             if self.data is not None:
@@ -349,9 +348,7 @@ class RenderNode(BaseModel):
             allowed = _ALLOWED_CHILDREN.get(self.kind, set())
             for child in self.children:
                 if child.kind not in allowed:
-                    raise ValueError(
-                        f"Node kind '{self.kind.value}' cannot contain child kind '{child.kind.value}'"
-                    )
+                    raise ValueError(f"Node kind '{self.kind.value}' cannot contain child kind '{child.kind.value}'")
 
         if self.kind is NodeKind.PAGE:
             if self.page_size is None or self.margins is None:

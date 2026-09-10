@@ -1,11 +1,11 @@
 from app.services.document.detector import (
     detect_file_type,
     detect_mime_type,
-    get_extractor_for_filename,
     get_extractor,
+    get_extractor_for_filename,
 )
-from app.services.document.extractors.pdf import PDFExtractor
 from app.services.document.extractors.docx import DOCXExtractor
+from app.services.document.extractors.pdf import PDFExtractor
 from app.services.document.extractors.txt import TXTExtractor
 
 
@@ -31,7 +31,9 @@ class TestDetectMimeType:
         assert detect_mime_type("resume.pdf") == "application/pdf"
 
     def test_docx(self):
-        assert detect_mime_type("resume.docx") == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        assert (
+            detect_mime_type("resume.docx") == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
 
     def test_txt(self):
         assert detect_mime_type("resume.txt") == "text/plain"
@@ -52,6 +54,7 @@ class TestGetExtractor:
 
     def test_unknown_type(self):
         import pytest
+
         with pytest.raises(ValueError):
             get_extractor("doc")
 
@@ -68,5 +71,6 @@ class TestGetExtractorForFilename:
 
     def test_unknown(self):
         import pytest
+
         with pytest.raises(ValueError):
             get_extractor_for_filename("r.doc")

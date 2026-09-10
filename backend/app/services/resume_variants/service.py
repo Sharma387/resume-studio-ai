@@ -1,7 +1,7 @@
 """Resume Variants — multiple customised versions of the same parsed resume."""
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from app.core.logging import get_logger
@@ -13,21 +13,22 @@ logger = get_logger(__name__)
 _variants: dict[str, dict[str, Any]] = {}
 
 
-def create(original_resume: Resume, user_id: str, name: str,
-           template_id: str | None = None, theme: str | None = None) -> dict[str, Any]:
+def create(
+    original_resume: Resume, user_id: str, name: str, template_id: str | None = None, theme: str | None = None
+) -> dict[str, Any]:
     """Create a resume variant based on the original parsed resume."""
     variant_id = uuid.uuid4().hex
     variant: dict[str, Any] = {
         "id": variant_id,
         "user_id": user_id,
         "name": name,
-        "original_resume_id": original_resume.id if hasattr(original_resume, 'id') else None,
+        "original_resume_id": original_resume.id if hasattr(original_resume, "id") else None,
         "template_id": template_id or "executive-elite",
         "theme": theme or "default",
         "sections": _default_sections(original_resume),
         "customisations": {},
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "updated_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
+        "updated_at": datetime.now(UTC).isoformat(),
     }
     _variants[variant_id] = variant
     logger.info("Resume variant created", variant_id=variant_id, name=name)
@@ -49,7 +50,7 @@ def update(variant_id: str, updates: dict[str, Any]) -> dict[str, Any] | None:
     for key in ("name", "template_id", "theme", "sections", "customisations"):
         if key in updates:
             variant[key] = updates[key]
-    variant["updated_at"] = datetime.now(timezone.utc).isoformat()
+    variant["updated_at"] = datetime.now(UTC).isoformat()
     return variant
 
 

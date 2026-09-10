@@ -1,1 +1,1 @@
-import app.db.models  # noqa: ensure all ORM models are registered on Base.metadata
+import app.db.models as _models  # noqa: F401  ensure all ORM models are registered on Base.metadata

@@ -308,9 +308,7 @@ class TestThreadSafety:
 
         def worker(i: int) -> None:
             try:
-                registry.register(
-                    _palette(metadata=_meta(theme_id=f"t{i}", stable_id=f"theme.t{i}.v1"))
-                )
+                registry.register(_palette(metadata=_meta(theme_id=f"t{i}", stable_id=f"theme.t{i}.v1")))
             except ThemeRegistrationError:
                 pass
 

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 
 from pydantic import BaseModel, Field
@@ -42,8 +42,8 @@ class InterviewSession(BaseModel):
     duration_minutes: int | None = None
     notes: str | None = None
     completed: bool = False
-    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
-    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
 
 
 class STARAttempt(BaseModel):
@@ -73,7 +73,7 @@ class InterviewAnswer(BaseModel):
     feedback: str | None = None
     improved_answer: str | None = None
     score: float | None = Field(None, ge=0.0, le=100.0)
-    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
 
 
 class ReadinessAssessment(BaseModel):
@@ -85,7 +85,7 @@ class ReadinessAssessment(BaseModel):
     weaknesses: list[str] = []
     recommendations: list[str] = []
     question_count: int = 0
-    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
 
 
 class SessionSummary(BaseModel):
@@ -98,4 +98,4 @@ class SessionSummary(BaseModel):
     strengths: list[str] = []
     areas_to_improve: list[str] = []
     recommendations: list[str] = []
-    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())

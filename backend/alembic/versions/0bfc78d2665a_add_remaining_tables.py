@@ -5,17 +5,18 @@ Revises: 93b139268152
 Create Date: 2026-07-25 10:19:03.443334
 
 """
-from typing import Sequence, Union
 
-from alembic import op
+from collections.abc import Sequence
+
 import sqlalchemy as sa
 
+from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = '0bfc78d2665a'
-down_revision: Union[str, Sequence[str], None] = '93b139268152'
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+revision: str = "0bfc78d2665a"
+down_revision: str | Sequence[str] | None = "93b139268152"
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
@@ -57,7 +58,10 @@ def upgrade() -> None:
         sa.Column("last_activity", sa.String(32)),
         sa.Column("next_action", sa.Text),
         sa.Column("next_action_date", sa.String(32)),
-        sa.CheckConstraint("status IN ('draft','applied','screening','interviewing','offered','rejected','withdrawn','accepted','archived')", name="ck_applications_status"),
+        sa.CheckConstraint(
+            "status IN ('draft','applied','screening','interviewing','offered','rejected','withdrawn','accepted','archived')",
+            name="ck_applications_status",
+        ),
         sa.CheckConstraint("priority IN ('low','medium','high')", name="ck_applications_priority"),
     )
     op.create_index("ix_applications_user_id", "applications", ["user_id"])
@@ -67,7 +71,9 @@ def upgrade() -> None:
         "interview_sessions",
         sa.Column("id", sa.String(32), primary_key=True),
         sa.Column("user_id", sa.String(32), sa.ForeignKey("users.id", ondelete="CASCADE"), nullable=False),
-        sa.Column("application_id", sa.String(32), sa.ForeignKey("applications.id", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "application_id", sa.String(32), sa.ForeignKey("applications.id", ondelete="CASCADE"), nullable=False
+        ),
         sa.Column("plan_id", sa.String(32)),
         sa.Column("title", sa.String(255), nullable=False, server_default=""),
         sa.Column("session_type", sa.String(20), nullable=False, server_default="mock"),
@@ -158,7 +164,9 @@ def upgrade() -> None:
     op.create_table(
         "timeline_events",
         sa.Column("id", sa.String(32), primary_key=True),
-        sa.Column("application_id", sa.String(32), sa.ForeignKey("applications.id", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "application_id", sa.String(32), sa.ForeignKey("applications.id", ondelete="CASCADE"), nullable=False
+        ),
         sa.Column("event_type", sa.String(30), nullable=False, server_default="custom"),
         sa.Column("title", sa.String(255), nullable=False, server_default=""),
         sa.Column("description", sa.Text, nullable=False, server_default=""),
@@ -170,7 +178,9 @@ def upgrade() -> None:
     op.create_table(
         "application_notes",
         sa.Column("id", sa.String(32), primary_key=True),
-        sa.Column("application_id", sa.String(32), sa.ForeignKey("applications.id", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "application_id", sa.String(32), sa.ForeignKey("applications.id", ondelete="CASCADE"), nullable=False
+        ),
         sa.Column("content", sa.Text, nullable=False),
         sa.Column("created_at", sa.String(32), nullable=False),
     )
@@ -179,14 +189,19 @@ def upgrade() -> None:
     op.create_table(
         "interview_questions",
         sa.Column("id", sa.String(32), primary_key=True),
-        sa.Column("session_id", sa.String(32), sa.ForeignKey("interview_sessions.id", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "session_id", sa.String(32), sa.ForeignKey("interview_sessions.id", ondelete="CASCADE"), nullable=False
+        ),
         sa.Column("question_type", sa.String(20), nullable=False, server_default="behavioral"),
         sa.Column("question_text", sa.Text, nullable=False),
         sa.Column("focus_area", sa.String(255)),
         sa.Column("tips", sa.ARRAY(sa.Text()), nullable=False, server_default="{}"),
         sa.Column("tags", sa.ARRAY(sa.Text()), nullable=False, server_default="{}"),
         sa.Column("difficulty", sa.String(10), nullable=False, server_default="medium"),
-        sa.CheckConstraint("question_type IN ('behavioral','technical','situational','role_specific','culture_fit')", name="ck_interview_questions_type"),
+        sa.CheckConstraint(
+            "question_type IN ('behavioral','technical','situational','role_specific','culture_fit')",
+            name="ck_interview_questions_type",
+        ),
         sa.CheckConstraint("difficulty IN ('easy','medium','hard')", name="ck_interview_questions_difficulty"),
     )
     op.create_index("ix_interview_questions_session_id", "interview_questions", ["session_id"])
@@ -194,7 +209,13 @@ def upgrade() -> None:
     op.create_table(
         "interview_answers",
         sa.Column("id", sa.String(32), primary_key=True),
-        sa.Column("question_id", sa.String(32), sa.ForeignKey("interview_questions.id", ondelete="CASCADE"), nullable=False, unique=True),
+        sa.Column(
+            "question_id",
+            sa.String(32),
+            sa.ForeignKey("interview_questions.id", ondelete="CASCADE"),
+            nullable=False,
+            unique=True,
+        ),
         sa.Column("answer_type", sa.String(10), nullable=False, server_default="text"),
         sa.Column("user_answer", sa.Text, nullable=False, server_default=""),
         sa.Column("star_attempt", sa.JSON(), nullable=False, server_default="{}"),
@@ -208,7 +229,9 @@ def upgrade() -> None:
     op.create_table(
         "readiness_assessments",
         sa.Column("id", sa.String(32), primary_key=True),
-        sa.Column("application_id", sa.String(32), sa.ForeignKey("applications.id", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "application_id", sa.String(32), sa.ForeignKey("applications.id", ondelete="CASCADE"), nullable=False
+        ),
         sa.Column("overall_score", sa.Float(), nullable=False),
         sa.Column("category_scores", sa.JSON(), nullable=False, server_default="{}"),
         sa.Column("strengths", sa.ARRAY(sa.Text()), nullable=False, server_default="{}"),
@@ -222,8 +245,12 @@ def upgrade() -> None:
     op.create_table(
         "session_summaries",
         sa.Column("id", sa.String(32), primary_key=True),
-        sa.Column("session_id", sa.String(32), sa.ForeignKey("interview_sessions.id", ondelete="CASCADE"), nullable=False),
-        sa.Column("application_id", sa.String(32), sa.ForeignKey("applications.id", ondelete="CASCADE"), nullable=False),
+        sa.Column(
+            "session_id", sa.String(32), sa.ForeignKey("interview_sessions.id", ondelete="CASCADE"), nullable=False
+        ),
+        sa.Column(
+            "application_id", sa.String(32), sa.ForeignKey("applications.id", ondelete="CASCADE"), nullable=False
+        ),
         sa.Column("total_questions", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("answered_questions", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("average_score", sa.Float()),

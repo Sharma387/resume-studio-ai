@@ -70,10 +70,7 @@ def cvm_from_resume(resume: Resume, *, stable_id: str | None = None) -> ContentV
         for entry in resume.education
     )
 
-    skills = tuple(
-        SkillGroup(category=group.category, skills=tuple(group.skills))
-        for group in resume.skills
-    )
+    skills = tuple(SkillGroup(category=group.category, skills=tuple(group.skills)) for group in resume.skills)
 
     certifications = tuple(
         CertificationEntry(
@@ -107,8 +104,7 @@ def cvm_from_resume(resume: Resume, *, stable_id: str | None = None) -> ContentV
     )
 
     languages = tuple(
-        LanguageEntry(name=language.name, proficiency=language.proficiency)
-        for language in resume.languages
+        LanguageEntry(name=language.name, proficiency=language.proficiency) for language in resume.languages
     )
 
     return ContentView(

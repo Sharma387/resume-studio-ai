@@ -1,14 +1,12 @@
 import pytest
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
 from pydantic import ValidationError
 
-from app.main import app
-from app.models.user import User, UserRole, SubscriptionTier, AccountStatus, TokenPair, LoginRequest, RegisterRequest
-from app.services.user_service import UserService
-from app.services.auth_service import AuthenticationService
-from app.services.repositories.json_user_repo import JsonUserRepository
-from app.services.repositories.json_token_repo import JsonRefreshTokenRepository
 from app.core.config import settings
+from app.main import app
+from app.models.user import AccountStatus, SubscriptionTier, User, UserRole
+from app.services.auth_service import AuthenticationService
+from app.services.user_service import UserService
 
 
 @pytest.fixture
@@ -64,6 +62,7 @@ class TestUserService:
         svc = UserService()
         svc.create_user(email="dup@test.com", password="Pass12345", full_name="A")
         import pytest
+
         with pytest.raises(ValueError, match="already registered"):
             svc.create_user(email="dup@test.com", password="Pass12345", full_name="B")
 
@@ -111,7 +110,10 @@ class TestAuthEndpoints:
     @pytest.mark.asyncio
     async def test_register(self, client):
         async with client as ac:
-            resp = await ac.post("/api/v1/auth/register", json={"email": "new@test.com", "password": "StrongPwd1", "full_name": "New User"})
+            resp = await ac.post(
+                "/api/v1/auth/register",
+                json={"email": "new@test.com", "password": "StrongPwd1", "full_name": "New User"},
+            )
         assert resp.status_code == 200
         data = resp.json()
         assert data["data"]["user"]["email"] == "new@test.com"
@@ -119,20 +121,25 @@ class TestAuthEndpoints:
 
     @pytest.mark.asyncio
     async def test_register_duplicate(self, client):
-        transport = ASGITransport(app=app)
         async with client as ac:
-            resp = await ac.post("/api/v1/auth/register", json={"email": "dup2@test.com", "password": "StrongPwd1", "full_name": "Dup"})
+            resp = await ac.post(
+                "/api/v1/auth/register", json={"email": "dup2@test.com", "password": "StrongPwd1", "full_name": "Dup"}
+            )
         assert resp.status_code == 200
         t2 = ASGITransport(app=app)
         async with AsyncClient(transport=t2, base_url="http://test") as ac2:
-            resp2 = await ac2.post("/api/v1/auth/register", json={"email": "dup2@test.com", "password": "StrongPwd1", "full_name": "Dup2"})
+            resp2 = await ac2.post(
+                "/api/v1/auth/register", json={"email": "dup2@test.com", "password": "StrongPwd1", "full_name": "Dup2"}
+            )
         assert resp2.status_code == 409
 
     @pytest.mark.asyncio
     async def test_login_success(self, client):
         t1 = ASGITransport(app=app)
         async with AsyncClient(transport=t1, base_url="http://test") as c:
-            await c.post("/api/v1/auth/register", json={"email": "login@test.com", "password": "LoginPwd1", "full_name": "Login"})
+            await c.post(
+                "/api/v1/auth/register", json={"email": "login@test.com", "password": "LoginPwd1", "full_name": "Login"}
+            )
         t2 = ASGITransport(app=app)
         async with AsyncClient(transport=t2, base_url="http://test") as c:
             resp = await c.post("/api/v1/auth/login", json={"email": "login@test.com", "password": "LoginPwd1"})
@@ -148,7 +155,6 @@ class TestAuthEndpoints:
 
     @pytest.mark.asyncio
     async def test_me_requires_auth(self, client):
-        from app.core.config import settings
         t = ASGITransport(app=app)
         async with AsyncClient(transport=t, base_url="http://test") as c:
             resp = await c.get("/api/v1/auth/me")
@@ -159,7 +165,9 @@ class TestAuthEndpoints:
     async def test_me_with_token(self, client):
         t1 = ASGITransport(app=app)
         async with AsyncClient(transport=t1, base_url="http://test") as c:
-            reg = await c.post("/api/v1/auth/register", json={"email": "me@test.com", "password": "MePass12", "full_name": "Me"})
+            reg = await c.post(
+                "/api/v1/auth/register", json={"email": "me@test.com", "password": "MePass12", "full_name": "Me"}
+            )
         token = reg.json()["data"]["tokens"]["access_token"]
         t2 = ASGITransport(app=app)
         async with AsyncClient(transport=t2, base_url="http://test") as c:
@@ -171,7 +179,9 @@ class TestAuthEndpoints:
     async def test_refresh(self, client):
         t1 = ASGITransport(app=app)
         async with AsyncClient(transport=t1, base_url="http://test") as c:
-            reg = await c.post("/api/v1/auth/register", json={"email": "refresh@test.com", "password": "RefPass1", "full_name": "Ref"})
+            reg = await c.post(
+                "/api/v1/auth/register", json={"email": "refresh@test.com", "password": "RefPass1", "full_name": "Ref"}
+            )
         refresh = reg.json()["data"]["tokens"]["refresh_token"]
         t2 = ASGITransport(app=app)
         async with AsyncClient(transport=t2, base_url="http://test") as c:
@@ -183,11 +193,14 @@ class TestAuthEndpoints:
     async def test_logout(self, client):
         t1 = ASGITransport(app=app)
         async with AsyncClient(transport=t1, base_url="http://test") as c:
-            reg = await c.post("/api/v1/auth/register", json={"email": "logout@test.com", "password": "LogOut123", "full_name": "Log"})
+            reg = await c.post(
+                "/api/v1/auth/register", json={"email": "logout@test.com", "password": "LogOut123", "full_name": "Log"}
+            )
         refresh = reg.json()["data"]["tokens"]["refresh_token"]
         access = reg.json()["data"]["tokens"]["access_token"]
         t2 = ASGITransport(app=app)
         async with AsyncClient(transport=t2, base_url="http://test") as c:
-            resp = await c.post("/api/v1/auth/logout", json={"refresh_token": refresh},
-                                headers={"Authorization": f"Bearer {access}"})
+            resp = await c.post(
+                "/api/v1/auth/logout", json={"refresh_token": refresh}, headers={"Authorization": f"Bearer {access}"}
+            )
         assert resp.status_code == 200

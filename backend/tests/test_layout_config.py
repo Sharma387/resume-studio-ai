@@ -98,12 +98,8 @@ class TestValidation:
 
 class TestSerialization:
     def test_section_configuration_serialization(self):
-        config = LayoutConfig(
-            sections={"skills": SectionLayoutConfig(region="sidebar", order=2, visible=True)}
-        )
-        assert config.model_dump()["sections"] == {
-            "skills": {"region": "sidebar", "order": 2, "visible": True}
-        }
+        config = LayoutConfig(sections={"skills": SectionLayoutConfig(region="sidebar", order=2, visible=True)})
+        assert config.model_dump()["sections"] == {"skills": {"region": "sidebar", "order": 2, "visible": True}}
 
     def test_json_round_trip(self):
         config = LayoutConfig(
@@ -122,6 +118,5 @@ class TestSerialization:
 
     def test_empty_sections_serialize(self):
         assert LayoutConfig().model_dump_json() == (
-            '{"mode":"single","sidebar":"left","ratio":"35/65",'
-            '"gap":"balanced","density":"normal","sections":{}}'
+            '{"mode":"single","sidebar":"left","ratio":"35/65","gap":"balanced","density":"normal","sections":{}}'
         )

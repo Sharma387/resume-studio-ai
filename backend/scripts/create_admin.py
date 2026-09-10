@@ -11,7 +11,7 @@ Usage:
 import argparse
 import sys
 
-from app.models.user import User, UserRole
+from app.models.user import UserRole
 
 
 def main():
@@ -24,9 +24,12 @@ def main():
 
     # Ensure database engine is initialized for PostgreSQL backend
     import anyio
+
     from app.core.config import settings
+
     if settings.storage_backend == "postgres" and settings.database_url:
         from app.db.database import create_engine, get_sync_session
+
         anyio.run(create_engine)
         get_sync_session()  # verify sync session works
 

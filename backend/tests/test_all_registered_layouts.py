@@ -211,9 +211,7 @@ async def test_every_registered_layout_previews_and_exports(client):
             _verify_artifact(fmt, content, headers)
 
         # PDF: valid signature, >0 pages, core sections present.
-        status, _, pdf = await _export(
-            client, resume_id, {"layout_id": layout_id, "theme_id": "blue", "format": "pdf"}
-        )
+        status, _, pdf = await _export(client, resume_id, {"layout_id": layout_id, "theme_id": "blue", "format": "pdf"})
         assert status == 200
         reader = PdfReader(BytesIO(pdf))
         assert len(reader.pages) > 0
@@ -275,7 +273,5 @@ async def test_layout_structure_differs_per_registry_definition(client):
 async def test_unknown_layout_404_for_every_export_format(client):
     resume_id = _save_resume()
     for fmt in ("pdf", "docx", "html"):
-        status, _, _ = await _export(
-            client, resume_id, {"layout_id": "nope", "theme_id": "blue", "format": fmt}
-        )
+        status, _, _ = await _export(client, resume_id, {"layout_id": "nope", "theme_id": "blue", "format": fmt})
         assert status == 404, fmt

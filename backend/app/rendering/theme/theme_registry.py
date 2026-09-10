@@ -49,9 +49,7 @@ class ThemeRegistry:
         allow_replacement: bool | None = None,
     ) -> None:
         if not isinstance(palette, ThemePalette):
-            raise ThemeRegistrationError(
-                f"palette must be a ThemePalette, got {type(palette).__name__}"
-            )
+            raise ThemeRegistrationError(f"palette must be a ThemePalette, got {type(palette).__name__}")
         if palette.metadata.engine_version > self._supported_engine_version:
             raise ThemeRegistrationError(
                 f"theme '{palette.theme_id}' requires engine "
@@ -61,13 +59,9 @@ class ThemeRegistry:
         effective = self._allow_replacement if allow_replacement is None else allow_replacement
         with self._lock:
             if palette.theme_id in self._by_theme_id and not effective:
-                raise ThemeRegistrationError(
-                    f"theme id '{palette.theme_id}' already registered"
-                )
+                raise ThemeRegistrationError(f"theme id '{palette.theme_id}' already registered")
             if palette.stable_id in self._by_stable_id and not effective:
-                raise ThemeRegistrationError(
-                    f"stable id '{palette.stable_id}' already registered"
-                )
+                raise ThemeRegistrationError(f"stable id '{palette.stable_id}' already registered")
             self._by_theme_id[palette.theme_id] = palette
             self._by_stable_id[palette.stable_id] = palette
 
@@ -127,9 +121,7 @@ class ThemeRegistry:
     def metadata(self) -> Mapping[str, ThemeMetadata]:
         """Immutable theme-id → metadata mapping."""
         with self._lock:
-            return MappingProxyType(
-                {theme_id: palette.metadata for theme_id, palette in self._by_theme_id.items()}
-            )
+            return MappingProxyType({theme_id: palette.metadata for theme_id, palette in self._by_theme_id.items()})
 
     def __len__(self) -> int:
         with self._lock:

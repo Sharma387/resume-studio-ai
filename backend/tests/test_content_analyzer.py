@@ -37,8 +37,11 @@ def _item_cvm() -> ContentView:
         summary="Focused summary text.",
         experience=(
             ExperienceEntry(
-                company="Acme Corp", title="Senior Engineer", location="Boston, MA",
-                start_date="2021", end_date="2024",
+                company="Acme Corp",
+                title="Senior Engineer",
+                location="Boston, MA",
+                start_date="2021",
+                end_date="2024",
                 description=("Led the platform team", "Cut latency"),
             ),
         ),
@@ -172,7 +175,8 @@ class TestWordAndCharacterCounts:
             profile=Profile(full_name="J", professional_title="Engineer"),
             experience=(
                 ExperienceEntry(
-                    company="Acme", title="Engineer",
+                    company="Acme",
+                    title="Engineer",
                     description=("Led the platform team", "Cut latency"),
                 ),
             ),

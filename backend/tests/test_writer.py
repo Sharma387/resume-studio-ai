@@ -1,10 +1,15 @@
 import pytest
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
 
 from app.main import app
 from app.models.resume import Resume
-from app.models.writer import ResumeSuggestion, WriterRequest
-from app.services.storage_service import save_resume, save_writer_suggestion, load_writer_suggestion, list_writer_suggestions
+from app.models.writer import ResumeSuggestion
+from app.services.storage_service import (
+    list_writer_suggestions,
+    load_writer_suggestion,
+    save_resume,
+    save_writer_suggestion,
+)
 from app.services.writer_service import QUICK_ACTIONS
 
 
@@ -17,13 +22,17 @@ def client():
 @pytest.fixture
 def resume_id():
     rid = "writer-test-resume"
-    save_resume(rid, Resume(user_id="test", full_name="Test User", email="test@example.com", summary="I am a good worker."))
+    save_resume(
+        rid, Resume(user_id="test", full_name="Test User", email="test@example.com", summary="I am a good worker.")
+    )
     return rid
 
 
 class TestWriterModel:
     def test_valid_suggestion(self):
-        s = ResumeSuggestion(user_id="test", id="s1", resume_id="r1", section="summary", original_text="old", suggested_text="new")
+        s = ResumeSuggestion(
+            user_id="test", id="s1", resume_id="r1", section="summary", original_text="old", suggested_text="new"
+        )
         assert s.status == "pending"
         assert 0.0 <= s.confidence <= 1.0
         assert s.source == "ai_writer"
@@ -47,19 +56,35 @@ class TestQuickActions:
 
 class TestWriterStorage:
     def test_save_and_load(self, resume_id):
-        s = ResumeSuggestion(user_id="test", id="ws1", resume_id=resume_id, section="summary", original_text="a", suggested_text="b")
+        s = ResumeSuggestion(
+            user_id="test", id="ws1", resume_id=resume_id, section="summary", original_text="a", suggested_text="b"
+        )
         save_writer_suggestion(s)
         loaded = load_writer_suggestion(resume_id, "ws1")
         assert loaded is not None
         assert loaded.section == "summary"
 
     def test_list_suggestions(self, resume_id):
-        save_writer_suggestion(ResumeSuggestion(user_id="test", id="l1", resume_id=resume_id, section="a", original_text="x", suggested_text="y"))
+        save_writer_suggestion(
+            ResumeSuggestion(
+                user_id="test", id="l1", resume_id=resume_id, section="a", original_text="x", suggested_text="y"
+            )
+        )
         all_s = list_writer_suggestions(resume_id)
         assert len(all_s) >= 1
 
     def test_list_filter_by_status(self, resume_id):
-        save_writer_suggestion(ResumeSuggestion(user_id="test", id="st1", resume_id=resume_id, section="a", original_text="x", suggested_text="y", status="pending"))
+        save_writer_suggestion(
+            ResumeSuggestion(
+                user_id="test",
+                id="st1",
+                resume_id=resume_id,
+                section="a",
+                original_text="x",
+                suggested_text="y",
+                status="pending",
+            )
+        )
         pending = list_writer_suggestions(resume_id, status="pending")
         assert all(s.status == "pending" for s in pending)
 
@@ -100,19 +125,30 @@ async def test_endpoint_reject_not_found(client):
 class TestAcceptSuggestion:
     @pytest.mark.asyncio
     async def test_accept_updates_resume(self, resume_id):
-        s = ResumeSuggestion(user_id="test", id="accept1", resume_id=resume_id, section="summary", original_text="I am a good worker.", suggested_text="Highly accomplished professional.")
+        s = ResumeSuggestion(
+            user_id="test",
+            id="accept1",
+            resume_id=resume_id,
+            section="summary",
+            original_text="I am a good worker.",
+            suggested_text="Highly accomplished professional.",
+        )
         save_writer_suggestion(s)
 
         from app.services.writer_service import accept_suggestion
+
         resume = await accept_suggestion(resume_id, "accept1", "test")
         assert "Highly accomplished" in resume.summary
 
     @pytest.mark.asyncio
     async def test_accept_marks_as_accepted(self, resume_id):
-        s = ResumeSuggestion(user_id="test", id="accept2", resume_id=resume_id, section="summary", original_text="a", suggested_text="b")
+        s = ResumeSuggestion(
+            user_id="test", id="accept2", resume_id=resume_id, section="summary", original_text="a", suggested_text="b"
+        )
         save_writer_suggestion(s)
 
         from app.services.writer_service import accept_suggestion
+
         await accept_suggestion(resume_id, "accept2", "test")
         loaded = load_writer_suggestion(resume_id, "accept2")
         assert loaded.status == "accepted"
@@ -121,10 +157,13 @@ class TestAcceptSuggestion:
 class TestRejectSuggestion:
     @pytest.mark.asyncio
     async def test_reject_marks_as_rejected(self, resume_id):
-        s = ResumeSuggestion(user_id="test", id="rej1", resume_id=resume_id, section="summary", original_text="a", suggested_text="b")
+        s = ResumeSuggestion(
+            user_id="test", id="rej1", resume_id=resume_id, section="summary", original_text="a", suggested_text="b"
+        )
         save_writer_suggestion(s)
 
         from app.services.writer_service import reject_suggestion
+
         await reject_suggestion(resume_id, "rej1", "test")
         loaded = load_writer_suggestion(resume_id, "rej1")
         assert loaded.status == "rejected"

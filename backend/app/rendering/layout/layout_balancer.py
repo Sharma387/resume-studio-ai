@@ -191,9 +191,7 @@ class LayoutBalancer:
             candidates.append(single)
         for ratio in _SCORED_RATIOS:
             for side in (SidebarSide.LEFT, SidebarSide.RIGHT):
-                config = seed.model_copy(
-                    update={"mode": LayoutMode.TWO_COLUMN, "ratio": ratio, "sidebar": side}
-                )
+                config = seed.model_copy(update={"mode": LayoutMode.TWO_COLUMN, "ratio": ratio, "sidebar": side})
                 scored = self._candidate(
                     base_layout,
                     config,
@@ -215,9 +213,7 @@ class LayoutBalancer:
 
     # ── Measurement ───────────────────────────────────────────────────────────
 
-    def _section_totals(
-        self, analysis: ContentAnalysis, base_layout: LayoutDefinition
-    ) -> _SectionTotals:
+    def _section_totals(self, analysis: ContentAnalysis, base_layout: LayoutDefinition) -> _SectionTotals:
         """Weight each present section once, split along the base placement."""
         region_index = {region.identifier: region for region in base_layout.regions}
         rule_index = {rule.section: rule for rule in base_layout.placement_rules}
@@ -234,11 +230,7 @@ class LayoutBalancer:
             if section in _MAIN_HEAVY_SECTIONS:
                 main_heavy_units += units
             rule = rule_index.get(section)
-            region = (
-                region_index.get(rule.preferred_region)
-                if rule is not None and rule.preferred_region
-                else None
-            )
+            region = region_index.get(rule.preferred_region) if rule is not None and rule.preferred_region else None
             region_type = region.region_type if region is not None else None
             if region_type in _MAIN_TYPES:
                 main_units += units
@@ -282,9 +274,7 @@ class LayoutBalancer:
         return CandidateScore(config=config, score=score, components=components)
 
     @staticmethod
-    def _two_column_components(
-        totals: _SectionTotals, ratio: ColumnRatio, simplicity: float
-    ) -> dict[str, float]:
+    def _two_column_components(totals: _SectionTotals, ratio: ColumnRatio, simplicity: float) -> dict[str, float]:
         rail_frac, main_frac = _RATIO_FRACTIONS[ratio]
         column_units = totals.main_units + totals.rail_units
         if column_units > 0 and totals.total_units > 0:
@@ -342,15 +332,10 @@ def _rationale(config: LayoutConfig, totals: _SectionTotals) -> str:
                 "candidate set is constrained to single-column."
             )
         return "Small resume; single-column is simpler and sufficient for the estimated content."
-    main_heavy_share = (
-        totals.main_heavy_units / totals.total_units if totals.total_units > 0 else 0.0
-    )
+    main_heavy_share = totals.main_heavy_units / totals.total_units if totals.total_units > 0 else 0.0
     if main_heavy_share >= 0.4:
         return (
             f"Experience-heavy resume; {config.ratio.value} provides a wider main "
             f"column while keeping supporting sections on the {config.sidebar.value} rail."
         )
-    return (
-        f"Balanced resume; {config.ratio.value} two-column layout with the rail "
-        f"on the {config.sidebar.value}."
-    )
+    return f"Balanced resume; {config.ratio.value} two-column layout with the rail on the {config.sidebar.value}."

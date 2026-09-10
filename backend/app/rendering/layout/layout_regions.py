@@ -38,7 +38,5 @@ class RegionDefinition(BaseModel):
     def _validate_region(self) -> RegionDefinition:
         for section in self.allowed_sections:
             if not SECTION_REGISTRY.is_valid(section):
-                raise ValueError(
-                    f"region '{self.identifier}' references unknown section '{section}'"
-                )
+                raise ValueError(f"region '{self.identifier}' references unknown section '{section}'")
         return self

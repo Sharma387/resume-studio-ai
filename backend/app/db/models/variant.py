@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import ForeignKey, String
 from sqlalchemy.dialects.postgresql import JSONB
@@ -20,12 +20,8 @@ class ResumeVariantModel(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     layout: Mapped[str] = mapped_column(String(32), nullable=False, default="single-column")
     customization: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
-    created_at: Mapped[str] = mapped_column(
-        String(32), nullable=False, default=lambda: datetime.now(timezone.utc).isoformat()
-    )
-    updated_at: Mapped[str] = mapped_column(
-        String(32), nullable=False, default=lambda: datetime.now(timezone.utc).isoformat()
-    )
+    created_at: Mapped[str] = mapped_column(String(32), nullable=False, default=lambda: datetime.now(UTC).isoformat())
+    updated_at: Mapped[str] = mapped_column(String(32), nullable=False, default=lambda: datetime.now(UTC).isoformat())
 
 
 class ResumeVersionSnapshotModel(Base):
@@ -37,6 +33,4 @@ class ResumeVersionSnapshotModel(Base):
     )
     version_name: Mapped[str] = mapped_column(String(255), nullable=False)
     snapshot: Mapped[dict] = mapped_column(JSONB, nullable=False)
-    created_at: Mapped[str] = mapped_column(
-        String(32), nullable=False, default=lambda: datetime.now(timezone.utc).isoformat()
-    )
+    created_at: Mapped[str] = mapped_column(String(32), nullable=False, default=lambda: datetime.now(UTC).isoformat())

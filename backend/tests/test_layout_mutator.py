@@ -1,6 +1,5 @@
 """Tests for the P3.7 Layout mutator — applying a LayoutBalancer recommendation."""
 
-
 from app.rendering.content_analyzer import ContentAnalysis, ContentAnalyzer, SectionMetrics
 from app.rendering.layout.layout_balancer import LayoutBalancer, LayoutBalanceResult
 from app.rendering.layout.layout_config import (
@@ -24,11 +23,19 @@ def _analysis_with(*, experience_units: int = 0, summary_units: int = 0) -> Cont
     sections = {}
     if experience_units:
         sections["experience"] = SectionMetrics(
-            section_id="experience", item_count=1, word_count=experience_units, char_count=experience_units * 6, estimated_units=experience_units
+            section_id="experience",
+            item_count=1,
+            word_count=experience_units,
+            char_count=experience_units * 6,
+            estimated_units=experience_units,
         )
     if summary_units:
         sections["summary"] = SectionMetrics(
-            section_id="summary", item_count=1, word_count=summary_units, char_count=summary_units * 6, estimated_units=summary_units
+            section_id="summary",
+            item_count=1,
+            word_count=summary_units,
+            char_count=summary_units * 6,
+            estimated_units=summary_units,
         )
     total_words = sum(m.word_count for m in sections.values())
     return ContentAnalysis(sections=sections, total_word_count=total_words, total_char_count=0)

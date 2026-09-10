@@ -6,12 +6,15 @@ Usage:
     logger.info("Resume parsed", resume_id="abc", pages=3)
 """
 
+from __future__ import annotations
+
 import json
 import logging
 import sys
 import uuid
 from contextvars import ContextVar
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+from typing import Any
 
 _request_id: ContextVar[str] = ContextVar("request_id", default="")
 _correlation_id: ContextVar[str] = ContextVar("correlation_id", default="")
@@ -46,7 +49,7 @@ class StructuredFormatter(logging.Formatter):
 
     def format(self, record: logging.LogRecord) -> str:
         base = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "level": record.levelname,
             "logger": record.name,
             "message": record.getMessage(),
@@ -75,12 +78,40 @@ class StructuredFormatter(logging.Formatter):
 class StructuredLogger(logging.Logger):
     """Logger that accepts extra fields."""
 
-    def _log(self, level, msg, args, exc_info=None, extra=None, **kwargs):
+    # Override level methods so mypy recognises the **kwargs pattern
+    # used throughout the codebase (e.g. logger.info("msg", resume_id=...)).
+
+    def debug(self, msg: str, *args: Any, **kwargs: Any) -> None:  # type: ignore[override]
+        super().debug(msg, *args, **kwargs)
+
+    def info(self, msg: str, *args: Any, **kwargs: Any) -> None:  # type: ignore[override]
+        super().info(msg, *args, **kwargs)
+
+    def warning(self, msg: str, *args: Any, **kwargs: Any) -> None:  # type: ignore[override]  # noqa: N802
+        super().warning(msg, *args, **kwargs)
+
+    def error(self, msg: str, *args: Any, **kwargs: Any) -> None:  # type: ignore[override]
+        super().error(msg, *args, **kwargs)
+
+    def critical(self, msg: str, *args: Any, **kwargs: Any) -> None:  # type: ignore[override]
+        super().critical(msg, *args, **kwargs)
+
+    def _log(  # type: ignore[override]
+        self,
+        level: int,
+        msg: str,
+        args: tuple[Any, ...],
+        exc_info: Any = None,
+        extra: dict[str, Any] | None = None,
+        stack_info: bool = False,
+        stacklevel: int = 1,
+        **kwargs: Any,
+    ) -> None:
         if extra is None:
             extra = {}
         if kwargs:
             extra["extra_fields"] = kwargs
-        super()._log(level, msg, args, exc_info=exc_info, extra=extra)
+        super()._log(level, msg, args, exc_info=exc_info, extra=extra, stack_info=stack_info, stacklevel=stacklevel)
 
 
 logging.setLoggerClass(StructuredLogger)

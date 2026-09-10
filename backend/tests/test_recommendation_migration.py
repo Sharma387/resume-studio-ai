@@ -26,10 +26,10 @@ from app.services.storage_service import save_resume
 
 _BANNED = (
     "app.rendering.registry.template_registry",  # TemplateRegistry
-    "app.rendering.service",                     # ResumeRenderingService
-    "app.rendering.preview.service",             # PreviewService
-    "app.rendering.renderers.html_renderer",     # legacy Jinja HTMLRenderer
-    "app.services.pdf_templates",                # ReportLab resume PDF templates
+    "app.rendering.service",  # ResumeRenderingService
+    "app.rendering.preview.service",  # PreviewService
+    "app.rendering.renderers.html_renderer",  # legacy Jinja HTMLRenderer
+    "app.services.pdf_templates",  # ReportLab resume PDF templates
     "reportlab",
     "jinja2",
 )
@@ -48,13 +48,24 @@ def _resume(**overrides) -> Resume:
         professional_title="Senior Software Engineering Lead",
         summary="Transformation leader focused on distributed systems and platform reliability.",
         experience=[
-            {"company": "Acme Corporation", "title": "Senior Software Engineering Lead",
-             "start_date": "2021", "current": True,
-             "description": ["Led a 12-engineer platform organization", "Reduced latency by 40%"]},
-            {"company": "Beta Inc", "title": "Transformation Programme Manager",
-             "start_date": "2018", "end_date": "2021", "description": ["Built a distributed scheduler"]},
+            {
+                "company": "Acme Corporation",
+                "title": "Senior Software Engineering Lead",
+                "start_date": "2021",
+                "current": True,
+                "description": ["Led a 12-engineer platform organization", "Reduced latency by 40%"],
+            },
+            {
+                "company": "Beta Inc",
+                "title": "Transformation Programme Manager",
+                "start_date": "2018",
+                "end_date": "2021",
+                "description": ["Built a distributed scheduler"],
+            },
         ],
-        education=[{"institution": "Carnegie Mellon University", "degree": "Master of Science", "field": "Computer Science"}],
+        education=[
+            {"institution": "Carnegie Mellon University", "degree": "Master of Science", "field": "Computer Science"}
+        ],
         skills=[{"category": "Languages", "skills": ["Python", "Go", "Rust"]}],
     )
     data.update(overrides)

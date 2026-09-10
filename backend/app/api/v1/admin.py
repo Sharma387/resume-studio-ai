@@ -1,9 +1,12 @@
 """Administration Console — operational monitoring and configuration."""
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
 
 from app.models.user import User
 from app.services import admin_service as svc
+from app.services import admin_user_service as usvc
+from app.services.audit_service import query as query_audit
 from app.services.auth_deps import require_admin
 
 router = APIRouter()
@@ -83,9 +86,6 @@ async def list_models(_: User = Depends(_admin_only)):
 class ParseTestRequest:
     def __init__(self, text: str):
         self.text = text
-
-
-from pydantic import BaseModel, Field
 
 
 class ParseTestRequestModel(BaseModel):
@@ -220,14 +220,12 @@ async def get_development_status(_: User = Depends(_admin_only)):
 @router.get("/admin/configuration/diagnostics")
 async def get_configuration_diagnostics(_: User = Depends(_admin_only)):
     from app.services.configuration_diagnostics_service import get_all as get_diagnostics
+
     data = await get_diagnostics()
     return {"success": True, "data": data}
 
 
 # ── User Management ────────────────────────────────────────────────────────────
-
-from app.services import admin_user_service as usvc
-from app.services.audit_service import query as query_audit
 
 
 def _paginated(page: int = 1, page_size: int = 20) -> tuple[int, int]:

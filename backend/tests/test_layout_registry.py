@@ -251,9 +251,7 @@ class TestDefinitionValidation:
 
     def test_min_exceeds_max_occurrences(self):
         with pytest.raises(ValidationError):
-            _definition(
-                placement_rules=(PlacementRule(section="summary", min_occurrences=3, max_occurrences=1),)
-            )
+            _definition(placement_rules=(PlacementRule(section="summary", min_occurrences=3, max_occurrences=1),))
 
     def test_unknown_section_in_region_allowed(self):
         with pytest.raises(ValidationError):
@@ -394,9 +392,7 @@ class TestThreadSafety:
 
         def worker(i: int) -> None:
             try:
-                registry.register(
-                    _definition(metadata=_meta(layout_id=f"x{i}", stable_id=f"layout.x{i}.v1"))
-                )
+                registry.register(_definition(metadata=_meta(layout_id=f"x{i}", stable_id=f"layout.x{i}.v1")))
             except LayoutRegistrationError:
                 pass
 

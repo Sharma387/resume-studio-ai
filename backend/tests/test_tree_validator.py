@@ -69,7 +69,9 @@ def _valid_doc() -> RenderNode:
                                 "s-summary",
                                 "summary",
                                 region="main",
-                                blocks=(_block("b1", units=(_text("t1", "Hello", content_ref="summary")), region="main"),),
+                                blocks=(
+                                    _block("b1", units=(_text("t1", "Hello", content_ref="summary")), region="main"),
+                                ),
                             ),
                         ),
                     ),
@@ -136,9 +138,7 @@ class TestRootAndIds:
     def test_duplicate_node_ids(self, validator):
         doc = _document(
             "doc",
-            pages=(
-                _page("p1", regions=(_region("r-main", "main"), _region("r-main2", "sidebar"))),
-            ),
+            pages=(_page("p1", regions=(_region("r-main", "main"), _region("r-main2", "sidebar"))),),
         )
         assert validator.is_valid(doc)
 
@@ -245,9 +245,7 @@ class TestRegionIntegrity:
     def test_section_under_region_must_declare_region(self, validator):
         doc = _document(
             "doc",
-            pages=(
-                _page("p1", regions=(_region("r-main", "main", sections=(_section("s1", "summary"),)),)),
-            ),
+            pages=(_page("p1", regions=(_region("r-main", "main", sections=(_section("s1", "summary"),)),)),),
         )
         result = validator.validate(doc)
         assert any("must declare its region" in e for e in result.errors)
@@ -281,7 +279,9 @@ class TestRegionIntegrity:
                         _region(
                             "r-main",
                             "main",
-                            sections=(RenderNode(id="pb", kind=NodeKind.PAGE_BREAK, data=PageBreakData(type="page_break")),),
+                            sections=(
+                                RenderNode(id="pb", kind=NodeKind.PAGE_BREAK, data=PageBreakData(type="page_break")),
+                            ),
                         ),
                     ),
                 ),
@@ -301,7 +301,9 @@ class TestProvenance:
                 _page(
                     "p1",
                     regions=(
-                        _region("r-main", "main", sections=(RenderNode(id="s1", kind=NodeKind.SECTION, region="main"),)),
+                        _region(
+                            "r-main", "main", sections=(RenderNode(id="s1", kind=NodeKind.SECTION, region="main"),)
+                        ),
                     ),
                 ),
             ),
@@ -406,7 +408,10 @@ class TestSpanBudget:
                                             id="g",
                                             kind=NodeKind.GRID,
                                             region="main",
-                                            children=(_block("b1", span=6, region="main"), _block("b2", span=6, region="main")),
+                                            children=(
+                                                _block("b1", span=6, region="main"),
+                                                _block("b2", span=6, region="main"),
+                                            ),
                                         ),
                                     ),
                                 ),
@@ -438,7 +443,10 @@ class TestSpanBudget:
                                             id="g",
                                             kind=NodeKind.GRID,
                                             region="main",
-                                            children=(_block("b1", span=7, region="main"), _block("b2", span=7, region="main")),
+                                            children=(
+                                                _block("b1", span=7, region="main"),
+                                                _block("b2", span=7, region="main"),
+                                            ),
                                         ),
                                     ),
                                 ),
@@ -471,13 +479,23 @@ class TestTextExtraction:
                                     "s1",
                                     "summary",
                                     region="main",
-                                    blocks=(_block("b1", region="main", units=(_text("t1", "First", content_ref="summary"),)),),
+                                    blocks=(
+                                        _block(
+                                            "b1", region="main", units=(_text("t1", "First", content_ref="summary"),)
+                                        ),
+                                    ),
                                 ),
                                 _section(
                                     "s2",
                                     "experience",
                                     region="main",
-                                    blocks=(_block("b2", region="main", units=(_text("t2", "Second", content_ref="experience"),)),),
+                                    blocks=(
+                                        _block(
+                                            "b2",
+                                            region="main",
+                                            units=(_text("t2", "Second", content_ref="experience"),),
+                                        ),
+                                    ),
                                 ),
                             ),
                         ),

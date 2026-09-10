@@ -18,11 +18,11 @@ from pathlib import Path
 
 _LIVE_LEGACY_BOUNDARY = (
     "app.rendering.registry.template_registry",  # TemplateRegistry
-    "app.rendering.service",                     # ResumeRenderingService
-    "app.rendering.preview.service",             # PreviewService
-    "app.rendering.renderers.html_renderer",     # legacy Jinja HTMLRenderer
-    "app.rendering.legacy_template_mapping",     # retired template→layout mapping
-    "app.services.pdf_templates",                # ReportLab resume PDF templates
+    "app.rendering.service",  # ResumeRenderingService
+    "app.rendering.preview.service",  # PreviewService
+    "app.rendering.renderers.html_renderer",  # legacy Jinja HTMLRenderer
+    "app.rendering.legacy_template_mapping",  # retired template→layout mapping
+    "app.services.pdf_templates",  # ReportLab resume PDF templates
     "jinja2",
 )
 
@@ -45,9 +45,7 @@ def _run_import_probe(script_body: str, banned: tuple[str, ...] = _LIVE_LEGACY_B
     backend_dir = Path(__file__).resolve().parents[1]
     script = (
         "import sys\n"
-        "before = set(sys.modules)\n"
-        + script_body
-        + "\n"
+        "before = set(sys.modules)\n" + script_body + "\n"
         "new = set(sys.modules) - before\n"
         f"banned = {banned!r}\n"
         "loaded = sorted(m for m in new if any(m == b or m.startswith(b + '.') for b in banned))\n"
@@ -68,15 +66,15 @@ def _run_import_probe(script_body: str, banned: tuple[str, ...] = _LIVE_LEGACY_B
 class TestLegacyStackRemoved:
     def test_legacy_rendering_modules_are_removed(self):
         removed = (
-            "app.rendering.registry.template_registry",   # TemplateRegistry
-            "app.rendering.renderers.html_renderer",      # legacy Jinja HTMLRenderer
-            "app.rendering.service",                      # ResumeRenderingService
-            "app.rendering.preview.service",              # PreviewService
-            "app.rendering.engine.renderer",              # legacy renderer base
-            "app.rendering.models",                       # legacy template models
-            "app.rendering.legacy_templates",             # retired boundary
-            "app.rendering.legacy_template_mapping",      # retired URL mapping
-            "app.services.pdf_templates",                 # ReportLab resume templates
+            "app.rendering.registry.template_registry",  # TemplateRegistry
+            "app.rendering.renderers.html_renderer",  # legacy Jinja HTMLRenderer
+            "app.rendering.service",  # ResumeRenderingService
+            "app.rendering.preview.service",  # PreviewService
+            "app.rendering.engine.renderer",  # legacy renderer base
+            "app.rendering.models",  # legacy template models
+            "app.rendering.legacy_templates",  # retired boundary
+            "app.rendering.legacy_template_mapping",  # retired URL mapping
+            "app.services.pdf_templates",  # ReportLab resume templates
             "app.services.pdf_service",
             "app.services.pdf_pipeline",
             "app.services.template_admin_service",

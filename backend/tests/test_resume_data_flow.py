@@ -21,7 +21,12 @@ def _resume(**overrides) -> Resume:
         email="sharma@test.com",
         professional_title="Senior Transformation & Infrastructure Leader",
         awards=[
-            Award(name="Distinguished Engineering Award", issuer="Acme Corp", date="2023-06", description="For platform leadership"),
+            Award(
+                name="Distinguished Engineering Award",
+                issuer="Acme Corp",
+                date="2023-06",
+                description="For platform leadership",
+            ),
             Award(name="Best Platform Initiative", issuer="Industry Forum", date="2022-11"),
         ],
         languages=[
@@ -151,9 +156,9 @@ class TestEndToEndPreview:
         for layout in (executive_layout(), sidebar_layout(), modern_layout(), classic_layout()):
             html = _html_for(cvm, layout)
             assert "Senior Transformation" in html and "Infrastructure Leader" in html  # professional title
-            assert "Distinguished Engineering Award" in html                              # award name
-            assert "Acme Corp" in html                                                    # award issuer
-            assert "English — Native" in html                                             # language + proficiency
+            assert "Distinguished Engineering Award" in html  # award name
+            assert "Acme Corp" in html  # award issuer
+            assert "English — Native" in html  # language + proficiency
             assert "German — Professional" in html
             assert "Best Platform Initiative" in html
 
@@ -165,7 +170,10 @@ class TestEndToEndPreview:
             stripped = re.sub(r"<style.*?</style>", "", html, flags=re.S)
             return " ".join(re.sub(r"<[^>]+>", " ", stripped).split())
 
-        bodies = [body(_html_for(cvm, layout)) for layout in (executive_layout(), sidebar_layout(), modern_layout(), classic_layout())]
+        bodies = [
+            body(_html_for(cvm, layout))
+            for layout in (executive_layout(), sidebar_layout(), modern_layout(), classic_layout())
+        ]
         from collections import Counter
 
         counters = [Counter(b.split()) for b in bodies]

@@ -42,23 +42,40 @@ def _resume() -> Resume:
         summary="Full-stack engineer with 8 years of experience.",
         education=[
             ResumeEducation(
-                institution="MIT", degree="B.Sc.", field="Computer Science",
-                start_date="2012", end_date="2016", gpa=3.8,
+                institution="MIT",
+                degree="B.Sc.",
+                field="Computer Science",
+                start_date="2012",
+                end_date="2016",
+                gpa=3.8,
                 achievements=["Dean's List"],
             )
         ],
         experience=[
             ResumeExperience(
-                company="Acme", title="Senior Engineer", location="Boston",
-                start_date="2016", current=True, description=["Led platform team"],
+                company="Acme",
+                title="Senior Engineer",
+                location="Boston",
+                start_date="2016",
+                current=True,
+                description=["Led platform team"],
             ),
             ResumeExperience(
-                company="Beta Inc", title="Engineer", location="Remote",
-                start_date="2014", end_date="2016", description=["Built APIs"],
+                company="Beta Inc",
+                title="Engineer",
+                location="Remote",
+                start_date="2014",
+                end_date="2016",
+                description=["Built APIs"],
             ),
         ],
         projects=[
-            ResumeProject(name="OpenMetrics", description="Metrics platform", url="https://github.com/jane/om", technologies=["Go", "React"]),
+            ResumeProject(
+                name="OpenMetrics",
+                description="Metrics platform",
+                url="https://github.com/jane/om",
+                technologies=["Go", "React"],
+            ),
         ],
         skills=[
             ResumeSkill(category="Languages", skills=["Python", "Go"]),
@@ -74,9 +91,15 @@ def _rich_cvm() -> ContentView:
         profile=Profile(full_name="Jane Doe", professional_title="Principal Engineer", email="jane@test.com"),
         summary="8 years building platforms.",
         experience=(
-            ExperienceEntry(company="Acme", title="Senior Engineer", start_date="2016", current=True, description=("Led platform",)),
-            ExperienceEntry(company="Beta", title="Engineer", start_date="2014", end_date="2016", description=("Built APIs",)),
-            ExperienceEntry(company="Gamma", title="Junior", start_date="2012", end_date="2014", description=("Shipped features",)),
+            ExperienceEntry(
+                company="Acme", title="Senior Engineer", start_date="2016", current=True, description=("Led platform",)
+            ),
+            ExperienceEntry(
+                company="Beta", title="Engineer", start_date="2014", end_date="2016", description=("Built APIs",)
+            ),
+            ExperienceEntry(
+                company="Gamma", title="Junior", start_date="2012", end_date="2014", description=("Shipped features",)
+            ),
         ),
         education=(EducationEntry(institution="MIT", degree="B.Sc."),),
         skills=(SkillGroup(category="Languages", skills=("Python", "Go")),),
@@ -332,17 +355,38 @@ class TestLayoutIndependence:
 class TestNoLeakage:
     def test_cvm_fields_are_content_only(self):
         expected = {
-            "stable_id", "profile", "summary", "experience", "education", "skills",
-            "certifications", "projects", "awards", "languages", "section_order",
+            "stable_id",
+            "profile",
+            "summary",
+            "experience",
+            "education",
+            "skills",
+            "certifications",
+            "projects",
+            "awards",
+            "languages",
+            "section_order",
         }
         assert set(ContentView.model_fields) == expected
 
     def test_no_layout_or_theme_field_names(self):
         fields = set(ContentView.model_fields)
         forbidden = {
-            "columns", "regions", "placement", "sidebar", "header", "grid",
-            "page", "margins", "theme", "colors", "typography", "spacing",
-            "capabilities", "atomics", "renderer",
+            "columns",
+            "regions",
+            "placement",
+            "sidebar",
+            "header",
+            "grid",
+            "page",
+            "margins",
+            "theme",
+            "colors",
+            "typography",
+            "spacing",
+            "capabilities",
+            "atomics",
+            "renderer",
         }
         assert fields.isdisjoint(forbidden)
 

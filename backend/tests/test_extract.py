@@ -1,9 +1,8 @@
 import uuid
-from pathlib import Path
 
 import fitz
 import pytest
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
 
 from app.main import app
 from app.services.upload_service import UPLOAD_DIR
@@ -28,7 +27,7 @@ def _write_test_pdf(pages: list[str]) -> str:
 
 def _write_empty_pdf() -> str:
     doc = fitz.open()
-    page = doc.new_page()
+    doc.new_page()
     filename = f"{uuid.uuid4().hex}.pdf"
     doc.save(str(UPLOAD_DIR / filename))
     doc.close()

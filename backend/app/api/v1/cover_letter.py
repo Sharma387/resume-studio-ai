@@ -24,7 +24,7 @@ async def create_cover_letter(resume_id: str, request: CoverLetterRequest, curre
 @router.get("/resume/{resume_id}/cover-letters")
 async def list_letters(resume_id: str, current_user=Depends(require_user)):
     letters = get_cover_letter_repository().list_by_resume(resume_id, current_user.id)
-    return {"success": True, "data": [l.model_dump() for l in letters]}
+    return {"success": True, "data": [letter.model_dump() for letter in letters]}
 
 
 @router.get("/resume/{resume_id}/cover-letter/{letter_id}")

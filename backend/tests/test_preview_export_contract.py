@@ -108,33 +108,25 @@ class TestExportContract:
     async def test_all_supported_formats(self, client):
         rid = _save_resume()
         for fmt in ("pdf", "docx", "html"):
-            response = await client.post(
-                f"/api/v1/resume/{rid}/export", json={**_DEFAULT_EXPORT_BODY, "format": fmt}
-            )
+            response = await client.post(f"/api/v1/resume/{rid}/export", json={**_DEFAULT_EXPORT_BODY, "format": fmt})
             assert response.status_code == 200, fmt
             assert response.content, fmt
 
     async def test_unknown_layout_404(self, client):
         rid = _save_resume()
-        response = await client.post(
-            f"/api/v1/resume/{rid}/export", json={**_DEFAULT_EXPORT_BODY, "layout_id": "nope"}
-        )
+        response = await client.post(f"/api/v1/resume/{rid}/export", json={**_DEFAULT_EXPORT_BODY, "layout_id": "nope"})
         assert response.status_code == 404
         assert "Layout" in response.json()["detail"]
 
     async def test_unknown_theme_404(self, client):
         rid = _save_resume()
-        response = await client.post(
-            f"/api/v1/resume/{rid}/export", json={**_DEFAULT_EXPORT_BODY, "theme_id": "nope"}
-        )
+        response = await client.post(f"/api/v1/resume/{rid}/export", json={**_DEFAULT_EXPORT_BODY, "theme_id": "nope"})
         assert response.status_code == 404
         assert "Theme" in response.json()["detail"]
 
     async def test_invalid_format_422(self, client):
         rid = _save_resume()
-        response = await client.post(
-            f"/api/v1/resume/{rid}/export", json={**_DEFAULT_EXPORT_BODY, "format": "png"}
-        )
+        response = await client.post(f"/api/v1/resume/{rid}/export", json={**_DEFAULT_EXPORT_BODY, "format": "png"})
         assert response.status_code == 422
 
     async def test_missing_required_fields_422(self, client):
@@ -145,9 +137,7 @@ class TestExportContract:
             assert response.status_code == 422, missing
 
     async def test_nonexistent_resume_404(self, client):
-        response = await client.post(
-            "/api/v1/resume/does-not-exist/export", json=_DEFAULT_EXPORT_BODY
-        )
+        response = await client.post("/api/v1/resume/does-not-exist/export", json=_DEFAULT_EXPORT_BODY)
         assert response.status_code == 404
         assert "Resume not found" in response.json()["detail"]
 

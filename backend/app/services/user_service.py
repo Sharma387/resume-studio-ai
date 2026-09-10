@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import bcrypt
 
@@ -46,7 +46,7 @@ class UserService:
             return None
         if not self.verify_password(password, user.password_hash):
             return None
-        user.last_login = datetime.now(timezone.utc).isoformat()
+        user.last_login = datetime.now(UTC).isoformat()
         self.repo.save(user)
         return user
 
@@ -58,7 +58,7 @@ class UserService:
             return False
         user.password_hash = self.hash_password(new_password)
         user.must_change_password = False
-        user.last_password_change = datetime.now(timezone.utc).isoformat()
+        user.last_password_change = datetime.now(UTC).isoformat()
         self.repo.save(user)
         return True
 
@@ -119,7 +119,7 @@ class UserService:
             new_password = generate_temporary()
         user.password_hash = self.hash_password(new_password)
         user.must_change_password = True
-        user.last_password_change = datetime.now(timezone.utc).isoformat()
+        user.last_password_change = datetime.now(UTC).isoformat()
         self.repo.save(user)
         return user, new_password
 

@@ -212,17 +212,12 @@ class TreeValidator:
     ) -> None:
         if node.region is None:
             if current_region is not None and node.kind in REGION_REQUIRED_KINDS:
-                errors.append(
-                    f"node '{node.id}' under region '{current_region}' must declare its region"
-                )
+                errors.append(f"node '{node.id}' under region '{current_region}' must declare its region")
             return
         if node.region not in region_ids:
             errors.append(f"node '{node.id}' references unknown region '{node.region}'")
         elif current_region is not None and node.region != current_region:
-            errors.append(
-                f"node '{node.id}' declares region '{node.region}' "
-                f"but sits under region '{current_region}'"
-            )
+            errors.append(f"node '{node.id}' declares region '{node.region}' but sits under region '{current_region}'")
 
     def _validate_section(self, node: RenderNode, errors: list[str]) -> None:
         if not node.content_ref:
@@ -236,21 +231,13 @@ class TreeValidator:
 
     def _validate_span_budget(self, node: RenderNode, errors: list[str]) -> None:
         span_children = [
-            child
-            for child in node.children
-            if child.kind is NodeKind.REGION or child.kind is NodeKind.BLOCK
+            child for child in node.children if child.kind is NodeKind.REGION or child.kind is NodeKind.BLOCK
         ]
         # Full-width children (span == budget) occupy their own row; only the
         # remaining children must fit the column budget.
-        partial_total = sum(
-            child.span for child in span_children if child.span < self._columns
-        )
+        partial_total = sum(child.span for child in span_children if child.span < self._columns)
         for child in span_children:
             if child.span > self._columns:
-                errors.append(
-                    f"node '{child.id}' span {child.span} exceeds column budget {self._columns}"
-                )
+                errors.append(f"node '{child.id}' span {child.span} exceeds column budget {self._columns}")
         if partial_total > self._columns:
-            errors.append(
-                f"node '{node.id}' children span sum {partial_total} exceeds column budget {self._columns}"
-            )
+            errors.append(f"node '{node.id}' children span sum {partial_total} exceeds column budget {self._columns}")

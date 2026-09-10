@@ -95,12 +95,8 @@ class TestRecommendations:
 
     def test_experience_heavy_prefers_wider_main_over_narrow(self):
         result = _BALANCER.balance(_LONG, SIDEBAR)
-        wide = next(
-            c for c in result.candidate_scores if c.config.ratio is ColumnRatio.RATIO_30_70
-        )
-        narrow = next(
-            c for c in result.candidate_scores if c.config.ratio is ColumnRatio.RATIO_40_60
-        )
+        wide = next(c for c in result.candidate_scores if c.config.ratio is ColumnRatio.RATIO_30_70)
+        narrow = next(c for c in result.candidate_scores if c.config.ratio is ColumnRatio.RATIO_40_60)
         assert wide.score > narrow.score
 
     def test_rail_heavy_prefers_wider_rail(self):
@@ -110,12 +106,8 @@ class TestRecommendations:
 
     def test_rail_heavy_avoid_narrow_rail(self):
         result = _BALANCER.balance(_rail_heavy(), SIDEBAR)
-        wide_main = next(
-            c for c in result.candidate_scores if c.config.ratio is ColumnRatio.RATIO_30_70
-        )
-        wide_rail = next(
-            c for c in result.candidate_scores if c.config.ratio is ColumnRatio.RATIO_40_60
-        )
+        wide_main = next(c for c in result.candidate_scores if c.config.ratio is ColumnRatio.RATIO_30_70)
+        wide_rail = next(c for c in result.candidate_scores if c.config.ratio is ColumnRatio.RATIO_40_60)
         assert wide_rail.score > wide_main.score
 
     def test_empty_analysis_still_returns_valid_config(self):
@@ -238,9 +230,7 @@ class TestCandidateSet:
 
     def test_single_candidate_has_constant_components(self):
         result = _BALANCER.balance(_LONG, SIDEBAR)
-        single = next(
-            c for c in result.candidate_scores if c.config.mode is LayoutMode.SINGLE
-        )
+        single = next(c for c in result.candidate_scores if c.config.mode is LayoutMode.SINGLE)
         assert single.components["balance"] == 100.0
         assert single.components["main_capacity"] == 100.0
         assert single.components["sidebar_capacity"] == 100.0
@@ -250,9 +240,7 @@ class TestCandidateSet:
     def test_winner_is_highest_scoring_candidate(self):
         result = _BALANCER.balance(_LONG, SIDEBAR)
         assert result.score == max(c.score for c in result.candidate_scores)
-        assert result.config == next(
-            c.config for c in result.candidate_scores if c.score == result.score
-        )
+        assert result.config == next(c.config for c in result.candidate_scores if c.score == result.score)
 
 
 class TestContractAndPurity:
@@ -336,12 +324,8 @@ class TestContractAndPurity:
 class TestSimplicityThresholds:
     def test_simplicity_small_single_beats_two_column(self):
         result = _BALANCER.balance(_tiny(), SIDEBAR)
-        single = next(
-            c for c in result.candidate_scores if c.config.mode is LayoutMode.SINGLE
-        )
-        assert single.score > max(
-            c.score for c in result.candidate_scores if c.config.mode is LayoutMode.TWO_COLUMN
-        )
+        single = next(c for c in result.candidate_scores if c.config.mode is LayoutMode.SINGLE)
+        assert single.score > max(c.score for c in result.candidate_scores if c.config.mode is LayoutMode.TWO_COLUMN)
 
     def test_simplicity_large_two_column_beats_single(self):
         result = _BALANCER.balance(_LONG, SIDEBAR)
@@ -350,7 +334,5 @@ class TestSimplicityThresholds:
             for c in result.candidate_scores
             if c.config.mode is LayoutMode.TWO_COLUMN and c.config.ratio is result.config.ratio
         )
-        single = next(
-            c for c in result.candidate_scores if c.config.mode is LayoutMode.SINGLE
-        )
+        single = next(c for c in result.candidate_scores if c.config.mode is LayoutMode.SINGLE)
         assert two_column.score > single.score

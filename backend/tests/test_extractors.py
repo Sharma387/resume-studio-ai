@@ -1,13 +1,12 @@
 from pathlib import Path
 
-import pytest
-
-from app.services.document.detector import get_extractor_for_filename
 from app.models.document import ExtractionResult
+from app.services.document.detector import get_extractor_for_filename
 
 
 def _write_pdf(tmp_path: Path, pages: list[str]) -> Path:
     import fitz
+
     doc = fitz.open()
     for content in pages:
         page = doc.new_page()
@@ -20,6 +19,7 @@ def _write_pdf(tmp_path: Path, pages: list[str]) -> Path:
 
 def _write_docx(tmp_path: Path, paragraphs: list[str]) -> Path:
     from docx import Document
+
     doc = Document()
     for p in paragraphs:
         doc.add_paragraph(p)

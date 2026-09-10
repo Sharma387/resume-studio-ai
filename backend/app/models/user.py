@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 
 from pydantic import BaseModel, EmailStr, Field
@@ -38,7 +38,7 @@ class User(BaseModel):
     status: AccountStatus = AccountStatus.ACTIVE
     email_verified: bool = False
     is_active: bool = True
-    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
     last_login: str | None = None
     must_change_password: bool = False
     disabled: bool = False

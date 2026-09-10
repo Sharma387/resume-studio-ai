@@ -48,7 +48,5 @@ class RenderState(BaseModel):
     @model_validator(mode="after")
     def _validate_state(self) -> RenderState:
         if self.page_count is not None and self.page_number > self.page_count:
-            raise ValueError(
-                f"page_number {self.page_number} exceeds page_count {self.page_count}"
-            )
+            raise ValueError(f"page_number {self.page_number} exceeds page_count {self.page_count}")
         return self

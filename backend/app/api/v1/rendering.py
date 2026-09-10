@@ -51,6 +51,7 @@ def _load_persisted_config(resume_id: str, user_id: str | None) -> LayoutConfig 
 async def list_resume_layouts():
     """List the layout-engine layouts from the reference registry."""
     from app.rendering.layout.reference_layouts import REFERENCE_LAYOUTS
+
     return {
         "success": True,
         "data": [
@@ -68,6 +69,7 @@ async def list_resume_layouts():
 async def list_resume_themes():
     """List the layout-engine themes from the theme registry."""
     from app.rendering.layout_preview import default_theme_registry
+
     return {
         "success": True,
         "data": [
@@ -182,6 +184,7 @@ async def serve_preview(filename: str):
     traversal or directory names resolve to a 404.
     """
     from app.rendering.paths import PREVIEW_DIR
+
     base = PREVIEW_DIR.resolve()
     path = (PREVIEW_DIR / filename).resolve()
     if not path.is_relative_to(base) or not path.is_file():

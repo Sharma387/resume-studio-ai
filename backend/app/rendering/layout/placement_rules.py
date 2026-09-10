@@ -34,7 +34,5 @@ class PlacementRule(BaseModel):
         if not SECTION_REGISTRY.is_valid(self.section):
             raise ValueError(f"placement references unknown section '{self.section}'")
         if self.max_occurrences is not None and self.min_occurrences > self.max_occurrences:
-            raise ValueError(
-                f"placement for '{self.section}' min_occurrences exceeds max_occurrences"
-            )
+            raise ValueError(f"placement for '{self.section}' min_occurrences exceeds max_occurrences")
         return self

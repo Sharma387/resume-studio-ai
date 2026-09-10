@@ -43,21 +43,60 @@ def _generate_suggestions(resume: Resume, ats: dict) -> list[dict]:
             for desc in exp.description:
                 words = desc.split()
                 if len(words) > 30:
-                    suggestions.append({"type": "style", "message": f"A bullet point in '{exp.title}' is too long ({len(words)} words). Break into shorter statements."})
+                    suggestions.append(
+                        {
+                            "type": "style",
+                            "message": f"A bullet point in '{exp.title}' is too long ({len(words)} words). Break into shorter statements.",
+                        }
+                    )
                     break
     return suggestions[:8]
 
 
 def _extract_keywords(text: str) -> list[str]:
     common_skill_keywords = [
-        "python", "javascript", "typescript", "react", "node.js", "aws", "docker",
-        "kubernetes", "sql", "postgresql", "machine learning", "data science",
-        "project management", "agile", "scrum", "leadership", "strategy",
-        "communication", "team management", "stakeholder", "budget",
-        "analytics", "marketing", "sales", "operations", "finance",
-        "compliance", "risk management", "product management", "qa",
-        "devops", "ci/cd", "terraform", "gcp", "azure", "api", "rest",
-        "graphql", "mongodb", "redis", "kafka", "microservices",
+        "python",
+        "javascript",
+        "typescript",
+        "react",
+        "node.js",
+        "aws",
+        "docker",
+        "kubernetes",
+        "sql",
+        "postgresql",
+        "machine learning",
+        "data science",
+        "project management",
+        "agile",
+        "scrum",
+        "leadership",
+        "strategy",
+        "communication",
+        "team management",
+        "stakeholder",
+        "budget",
+        "analytics",
+        "marketing",
+        "sales",
+        "operations",
+        "finance",
+        "compliance",
+        "risk management",
+        "product management",
+        "qa",
+        "devops",
+        "ci/cd",
+        "terraform",
+        "gcp",
+        "azure",
+        "api",
+        "rest",
+        "graphql",
+        "mongodb",
+        "redis",
+        "kafka",
+        "microservices",
     ]
     found = set()
     for kw in common_skill_keywords:

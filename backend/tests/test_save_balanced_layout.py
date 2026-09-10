@@ -33,21 +33,33 @@ def _save_resume_long(user_id="test") -> str:
     resume_id = uuid.uuid4().hex
     experiences = [
         Experience(
-            company=f"Company {i}", title=f"Engineer {i}", start_date="2020",
-            end_date="2023", description=["Did work", "More work"],
+            company=f"Company {i}",
+            title=f"Engineer {i}",
+            start_date="2020",
+            end_date="2023",
+            description=["Did work", "More work"],
         )
         for i in range(10)
     ]
     resume = Resume(
-        user_id=user_id, full_name="Jane Doe", email="jane@test.com",
-        professional_title="Senior Engineer", summary="Very long summary " * 20,
+        user_id=user_id,
+        full_name="Jane Doe",
+        email="jane@test.com",
+        professional_title="Senior Engineer",
+        summary="Very long summary " * 20,
         experience=experiences,
         education=[Education(institution="MIT", degree="BS", field="CS", start_date="2016", end_date="2020")],
         skills=[Skill(category="Languages", skills=["Python", "Go", "Rust"])],
-        projects=[Project(name=f"Project {i}", description="Desc", url="https://example.com", technologies=["Python"]) for i in range(5)],
+        projects=[
+            Project(name=f"Project {i}", description="Desc", url="https://example.com", technologies=["Python"])
+            for i in range(5)
+        ],
         certifications=[Certification(name=f"Cert {i}", issuer="Org", date="2022") for i in range(3)],
         awards=[Award(name=f"Award {i}", issuer="Org", date="2022") for i in range(2)],
-        languages=[Language(name="English", proficiency="Native"), Language(name="Spanish", proficiency="Professional")],
+        languages=[
+            Language(name="English", proficiency="Native"),
+            Language(name="Spanish", proficiency="Professional"),
+        ],
     )
     save_resume(resume_id, resume)
     return resume_id
@@ -77,9 +89,7 @@ class TestSaveBalancedLayout:
         rid = _save_resume_long()
         data = await _preview_body(client, rid, layout_id="sidebar", auto_balance="true")
         balanced = data["balanced_config"]
-        resp = await client.put(
-            f"/api/v1/resume/{rid}/layout-config", json={"config": balanced}
-        )
+        resp = await client.put(f"/api/v1/resume/{rid}/layout-config", json={"config": balanced})
         assert resp.status_code == 200, resp.json()
         stored = resp.json()["data"]["layout_config"]
         assert stored["mode"] == balanced["mode"]
@@ -99,8 +109,14 @@ class TestSaveBalancedLayout:
         rid = _save_resume_long()
         await client.put(
             f"/api/v1/resume/{rid}/layout-config",
-            json={"config": {"mode": "single", "density": "spacious", "gap": "wide",
-                             "sections": {"summary": {"order": 5}}}},
+            json={
+                "config": {
+                    "mode": "single",
+                    "density": "spacious",
+                    "gap": "wide",
+                    "sections": {"summary": {"order": 5}},
+                }
+            },
         )
         balanced = (await _preview_body(client, rid, layout_id="sidebar", auto_balance="true"))["balanced_config"]
         assert balanced["density"] == "spacious"
@@ -136,9 +152,7 @@ class TestSaveBalancedLayout:
         rid = _save_resume_long()
         balanced = (await _preview_body(client, rid, layout_id="sidebar", auto_balance="true"))["balanced_config"]
         await client.put(f"/api/v1/resume/{rid}/layout-config", json={"config": balanced})
-        bad = await client.put(
-            f"/api/v1/resume/{rid}/layout-config", json={"config": {"mode": "bogus"}}
-        )
+        bad = await client.put(f"/api/v1/resume/{rid}/layout-config", json={"config": {"mode": "bogus"}})
         assert bad.status_code == 422
         stored = (await client.get(f"/api/v1/resume/{rid}/layout-config")).json()["data"]["layout_config"]
         assert stored["mode"] == "two_column"  # unchanged from the valid save

@@ -24,11 +24,19 @@ def _analysis_with(*, experience_units: int = 0, summary_units: int = 0) -> Cont
     sections = {}
     if experience_units:
         sections["experience"] = SectionMetrics(
-            section_id="experience", item_count=1, word_count=experience_units, char_count=experience_units * 6, estimated_units=experience_units
+            section_id="experience",
+            item_count=1,
+            word_count=experience_units,
+            char_count=experience_units * 6,
+            estimated_units=experience_units,
         )
     if summary_units:
         sections["summary"] = SectionMetrics(
-            section_id="summary", item_count=1, word_count=summary_units, char_count=summary_units * 6, estimated_units=summary_units
+            section_id="summary",
+            item_count=1,
+            word_count=summary_units,
+            char_count=summary_units * 6,
+            estimated_units=summary_units,
         )
     total_words = sum(m.word_count for m in sections.values())
     return ContentAnalysis(sections=sections, total_word_count=total_words, total_char_count=0)
@@ -79,6 +87,7 @@ class TestBalancerMutatorIntegration:
         # Force LEFT sidebar if not already
         from app.rendering.layout.layout_balancer import LayoutBalanceResult
         from app.rendering.layout.layout_config import SidebarSide
+
         if result.config.sidebar is not SidebarSide.LEFT:
             result = LayoutBalanceResult(
                 config=result.config.model_copy(update={"sidebar": SidebarSide.LEFT}),
@@ -101,6 +110,7 @@ class TestBalancerMutatorIntegration:
 
         from app.rendering.layout.layout_balancer import LayoutBalanceResult
         from app.rendering.layout.layout_config import SidebarSide
+
         result = LayoutBalanceResult(
             config=result.config.model_copy(update={"sidebar": SidebarSide.RIGHT}),
             score=result.score,
@@ -159,6 +169,7 @@ class TestBackwardCompatibility:
     def test_explicit_layout_config_bypasses_balancer(self):
         """Explicit layout_config skips auto-balancing in export service."""
         from app.rendering.export_service import ExportFormat, ExportService
+
         explicit_config = LayoutConfig(mode="single", density="compact")
 
         service = ExportService()
@@ -372,13 +383,23 @@ def _make_test_resume() -> Resume:
     import uuid
 
     from app.models.resume import Award, Certification, Education, Experience, Language, Project, Resume, Skill
+
     return Resume(
         user_id=str(uuid.uuid4()),
         full_name="Jane Doe",
         email="jane@test.com",
         professional_title="Engineer",
         summary="Test summary",
-        experience=[Experience(company="Acme", title="Engineer", location="SF", start_date="2020", end_date="2023", description=["Did work"])],
+        experience=[
+            Experience(
+                company="Acme",
+                title="Engineer",
+                location="SF",
+                start_date="2020",
+                end_date="2023",
+                description=["Did work"],
+            )
+        ],
         education=[Education(institution="MIT", degree="BS", field="CS", start_date="2016", end_date="2020")],
         skills=[Skill(category="Languages", skills=["Python"])],
         projects=[Project(name="Project", description="Desc", url="https://example.com", technologies=["Python"])],
@@ -392,9 +413,17 @@ def _make_test_resume_long() -> Resume:
     import uuid
 
     from app.models.resume import Award, Certification, Education, Experience, Language, Project, Resume, Skill
+
     # Create a resume with lots of experience to trigger two-column
     experiences = [
-        Experience(company=f"Company {i}", title=f"Engineer {i}", location="SF", start_date="2020", end_date="2023", description=["Did work", "More work"])
+        Experience(
+            company=f"Company {i}",
+            title=f"Engineer {i}",
+            location="SF",
+            start_date="2020",
+            end_date="2023",
+            description=["Did work", "More work"],
+        )
         for i in range(10)
     ]
     return Resume(
@@ -406,10 +435,16 @@ def _make_test_resume_long() -> Resume:
         experience=experiences,
         education=[Education(institution="MIT", degree="BS", field="CS", start_date="2016", end_date="2020")],
         skills=[Skill(category="Languages", skills=["Python", "Go", "Rust"])],
-        projects=[Project(name=f"Project {i}", description="Desc", url="https://example.com", technologies=["Python"]) for i in range(5)],
+        projects=[
+            Project(name=f"Project {i}", description="Desc", url="https://example.com", technologies=["Python"])
+            for i in range(5)
+        ],
         certifications=[Certification(name=f"Cert {i}", issuer="Org", date="2022") for i in range(3)],
         awards=[Award(name=f"Award {i}", issuer="Org", date="2022") for i in range(2)],
-        languages=[Language(name="English", proficiency="Native"), Language(name="Spanish", proficiency="Professional")],
+        languages=[
+            Language(name="English", proficiency="Native"),
+            Language(name="Spanish", proficiency="Professional"),
+        ],
     )
 
 
@@ -435,6 +470,7 @@ class TestIntegrationWithExistingLayouts:
     def test_timeline_minimal_always_single(self):
         """Timeline/minimal layouts stay single-column even with large content."""
         from app.rendering.layout.reference_layouts import minimal_layout, timeline_layout
+
         for layout in (timeline_layout(), minimal_layout()):
             analysis = _analysis_with(experience_units=500, summary_units=100)
             balancer = LayoutBalancer()

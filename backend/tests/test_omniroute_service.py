@@ -1,7 +1,7 @@
-import pytest
 import httpx
+import pytest
 
-from app.services.omniroute_service import OmniRouteService, OmniRouteError
+from app.services.omniroute_service import OmniRouteError, OmniRouteService
 
 
 @pytest.mark.asyncio
@@ -17,16 +17,20 @@ async def test_send_prompt_success():
     class FakeResponse:
         status_code = 200
         content = b'{"choices": [{"message": {"content": "hello"}}]}'
+
         def raise_for_status(self):
             pass
 
     class FakeClient:
         def __init__(self, *a, **kw):
             pass
+
         async def __aenter__(self):
             return self
+
         async def __aexit__(self, *a):
             pass
+
         async def post(self, *a, **kw):
             return FakeResponse()
 
@@ -46,10 +50,13 @@ async def test_retry_on_timeout():
     class FakeClient:
         def __init__(self, *a, **kw):
             pass
+
         async def __aenter__(self):
             return self
+
         async def __aexit__(self, *a):
             pass
+
         async def post(self, *a, **kw):
             nonlocal call_count
             call_count += 1

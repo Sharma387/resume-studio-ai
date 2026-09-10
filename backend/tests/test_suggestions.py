@@ -1,11 +1,10 @@
 import pytest
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
 
 from app.main import app
 from app.models.resume import Resume
-from app.models.match import Recommendation
-from app.services.storage_service import save_resume, save_version, list_versions
 from app.models.version import ResumeVersion
+from app.services.storage_service import list_versions, save_resume, save_version
 
 
 @pytest.fixture
@@ -34,7 +33,11 @@ async def test_preview_suggestion_resume_not_found(client):
 
 @pytest.mark.asyncio
 async def test_preview_suggestion_returns_both_versions(client, resume_id):
-    rec = {"section": "Summary", "priority": "high", "message": "Update the summary to highlight leadership experience."}
+    rec = {
+        "section": "Summary",
+        "priority": "high",
+        "message": "Update the summary to highlight leadership experience.",
+    }
     async with client as ac:
         response = await ac.post(
             f"/api/v1/resume/{resume_id}/preview-suggestion",
@@ -66,7 +69,13 @@ async def test_apply_suggestion_creates_version(client, resume_id):
 
 @pytest.mark.asyncio
 async def test_create_and_list_versions(client, resume_id):
-    v = ResumeVersion(id="v1", resume_id=resume_id, user_id="test", label="Snapshot", resume=Resume(user_id="test", full_name="Test", email="t@t.com"))
+    v = ResumeVersion(
+        id="v1",
+        resume_id=resume_id,
+        user_id="test",
+        label="Snapshot",
+        resume=Resume(user_id="test", full_name="Test", email="t@t.com"),
+    )
     save_version(v)
 
     async with client as ac:
@@ -78,11 +87,14 @@ async def test_create_and_list_versions(client, resume_id):
 
 @pytest.mark.asyncio
 async def test_restore_version(client, resume_id):
-    v = ResumeVersion(user_id="test", 
+    v = ResumeVersion(
+        user_id="test",
         id="restore-v1",
         resume_id=resume_id,
         label="Restored version",
-        resume=Resume(user_id="test", full_name="Restored Name", email="restored@example.com", summary="Restored summary."),
+        resume=Resume(
+            user_id="test", full_name="Restored Name", email="restored@example.com", summary="Restored summary."
+        ),
     )
     save_version(v)
 

@@ -53,8 +53,7 @@ def _sidebar(*, span: int = 4, allowed: tuple[str, ...] = ()) -> RegionDefinitio
         region_type=RegionType.SIDEBAR,
         column_span=span,
         ordering=1,
-        allowed_sections=allowed
-        or ("profile", "skills", "certifications", "awards", "languages", "interests"),
+        allowed_sections=allowed or ("profile", "skills", "certifications", "awards", "languages", "interests"),
     )
 
 

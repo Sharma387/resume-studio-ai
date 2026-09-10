@@ -53,7 +53,9 @@ def _node(
     )
 
 
-def _text_unit(node_id: str, region: str | None, content_ref: str, text: str, classes: tuple[str, ...] = ()) -> RenderNode:
+def _text_unit(
+    node_id: str, region: str | None, content_ref: str, text: str, classes: tuple[str, ...] = ()
+) -> RenderNode:
     return _node(node_id, NodeKind.TEXT, region, content_ref, classes=classes, data=TextData(type="text", text=text))
 
 
@@ -213,9 +215,7 @@ class ExperienceComponent(_PlaceholderComponent):
         if title:
             children.append(_text_unit(f"{prefix}-title", region, ref, title, classes=("resume-strong",)))
         meta = " · ".join(
-            part
-            for part in (_text_str(_get(entry, "company")), _text_str(_get(entry, "location")))
-            if part
+            part for part in (_text_str(_get(entry, "company")), _text_str(_get(entry, "location"))) if part
         )
         if meta:
             children.append(_text_unit(f"{prefix}-meta", region, ref, meta, classes=("resume-muted",)))
@@ -362,11 +362,7 @@ class CertificationsComponent(_PlaceholderComponent):
         name = _text_str(_get(cert, "name"))
         if name:
             children.append(_text_unit(f"{prefix}-name", region, ref, name, classes=("resume-strong",)))
-        meta = " · ".join(
-            part
-            for part in (_text_str(_get(cert, "issuer")), _text_str(_get(cert, "date")))
-            if part
-        )
+        meta = " · ".join(part for part in (_text_str(_get(cert, "issuer")), _text_str(_get(cert, "date"))) if part)
         if meta:
             children.append(_text_unit(f"{prefix}-meta", region, ref, meta, classes=("resume-muted",)))
         return _node(f"{prefix}-block", NodeKind.BLOCK, region, ref, children=tuple(children))
@@ -408,9 +404,7 @@ class ProjectsComponent(_PlaceholderComponent):
                 paragraph = _paragraph(f"{prefix}-desc", region, ref, lines[0])
                 nodes.append(_node(f"{prefix}-desc-block", NodeKind.BLOCK, region, ref, children=(paragraph,)))
 
-        technologies = tuple(
-            _text_str(tech) for tech in (_get(project, "technologies") or []) if _text_str(tech)
-        )
+        technologies = tuple(_text_str(tech) for tech in (_get(project, "technologies") or []) if _text_str(tech))
         if technologies:
             tech_line = "Technologies: " + " · ".join(technologies)
             nodes.append(

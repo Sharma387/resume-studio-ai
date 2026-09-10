@@ -7,13 +7,11 @@ from app.models.match import Recommendation
 from app.models.resume import Resume
 from app.services.ai_core import extract_json
 from app.services.omniroute_service import OmniRouteError, OmniRouteService
-from app.services.prompt_service import PromptService
 
 logger = get_logger(__name__)
 
 
 async def apply_suggestion(resume: Resume, recommendation: Recommendation) -> Resume:
-    prompt_service = PromptService()
     omniroute = OmniRouteService()
 
     resume_json = json.dumps(resume.model_dump(), indent=2, default=str)
@@ -41,7 +39,6 @@ async def apply_suggestion(resume: Resume, recommendation: Recommendation) -> Re
         "Return the complete updated resume as JSON."
     )
 
-    last_error: Exception | None = None
     for attempt in range(omniroute.max_retries + 1):
         try:
             raw = await omniroute.send_prompt(system, user)
@@ -50,10 +47,8 @@ async def apply_suggestion(resume: Resume, recommendation: Recommendation) -> Re
             return Resume(**data)
         except (json.JSONDecodeError, ValidationError) as e:
             logger.warning("Suggestion apply failed (attempt %d/%d): %s", attempt + 1, omniroute.max_retries + 1, e)
-            last_error = e
         except OmniRouteError as e:
             logger.warning("OmniRoute error (attempt %d/%d): %s", attempt + 1, omniroute.max_retries + 1, e)
-            last_error = e
 
     logger.warning("Suggestion apply failed after retries; returning original resume unchanged")
     return resume

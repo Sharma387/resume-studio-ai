@@ -142,10 +142,9 @@ class TestDensityScaleCss:
         for var, prop, selector, fallback in _DENSITY_CONSUMERS:
             assert var in _DENSITY_VARS
             compiled = selector.format(d="compact")
-            assert (
-                f"{compiled} {{ {prop}: calc(var({var}, {fallback}) * {_DENSITY_SCALE['compact']}); }}"
-                in html
-            ), f"missing density rule for {var}"
+            assert f"{compiled} {{ {prop}: calc(var({var}, {fallback}) * {_DENSITY_SCALE['compact']}); }}" in html, (
+                f"missing density rule for {var}"
+            )
 
     def test_spacious_uses_factor_1_2(self):
         html = _html("spacious")
@@ -185,9 +184,7 @@ class TestDensityConfig:
             assert restored.density.value == value
 
     def test_persisted_shape_validates(self):
-        restored = LayoutConfig.model_validate(
-            {"density": "spacious", "mode": "single", "sections": {}}
-        )
+        restored = LayoutConfig.model_validate({"density": "spacious", "mode": "single", "sections": {}})
         assert restored.density.value == "spacious"
 
     def test_density_defaults_normal(self):

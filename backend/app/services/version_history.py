@@ -1,7 +1,7 @@
 """Version history and autosave for resume designs."""
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from app.core.logging import get_logger
@@ -21,7 +21,7 @@ def save_version(variant_id: str, resume_data: dict, label: str | None = None) -
         "variant_id": variant_id,
         "label": label or f"Version {len(_versions[variant_id]) + 1}",
         "resume_data": resume_data,
-        "created_at": datetime.now(timezone.utc).isoformat(),
+        "created_at": datetime.now(UTC).isoformat(),
     }
     _versions[variant_id].append(version)
     logger.info("Version saved", variant_id=variant_id, label=version["label"])
@@ -42,7 +42,7 @@ def get_version(variant_id: str, version_id: str) -> dict[str, Any] | None:
 def autosave(variant_id: str, resume_data: dict) -> None:
     _autosave[variant_id] = {
         "resume_data": resume_data,
-        "saved_at": datetime.now(timezone.utc).isoformat(),
+        "saved_at": datetime.now(UTC).isoformat(),
     }
 
 

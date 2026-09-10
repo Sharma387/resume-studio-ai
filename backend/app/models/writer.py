@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from pydantic import BaseModel, Field
 
@@ -28,7 +28,7 @@ class ResumeSuggestion(BaseModel):
     ai_model: str | None = Field(default=None)
     source: str = Field(default="ai_writer")
     status: str = Field(default="pending", pattern=r"^(pending|accepted|rejected)$")
-    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
 
 
 class WriterRequest(BaseModel):

@@ -42,17 +42,36 @@ def _comprehensive_cvm() -> ContentView:
         ),
         summary="Transformation leader focused on distributed systems, streaming pipelines, and reliability.",
         experience=(
-            ExperienceEntry(company="Acme Corporation International", title="Senior Software Engineering Lead",
-                            location="San Francisco, CA", start_date="2021", current=True,
-                            description=("Led a 12-engineer platform organization", "Designed multi-region streaming")),
-            ExperienceEntry(company="Beta Inc", title="Transformation Programme Manager",
-                            start_date="2018", end_date="2021", description=("Built a distributed scheduler",)),
-            ExperienceEntry(company="Gamma Labs", title="Senior Software Engineer",
-                            start_date="2016", end_date="2018", description=("Developed observability tooling",)),
+            ExperienceEntry(
+                company="Acme Corporation International",
+                title="Senior Software Engineering Lead",
+                location="San Francisco, CA",
+                start_date="2021",
+                current=True,
+                description=("Led a 12-engineer platform organization", "Designed multi-region streaming"),
+            ),
+            ExperienceEntry(
+                company="Beta Inc",
+                title="Transformation Programme Manager",
+                start_date="2018",
+                end_date="2021",
+                description=("Built a distributed scheduler",),
+            ),
+            ExperienceEntry(
+                company="Gamma Labs",
+                title="Senior Software Engineer",
+                start_date="2016",
+                end_date="2018",
+                description=("Developed observability tooling",),
+            ),
         ),
         education=(
-            EducationEntry(institution="Carnegie Mellon University", degree="Master of Science", field="Computer Science", gpa=3.9),
-            EducationEntry(institution="University of Auckland", degree="Bachelor of Engineering", field="Software", gpa=3.6),
+            EducationEntry(
+                institution="Carnegie Mellon University", degree="Master of Science", field="Computer Science", gpa=3.9
+            ),
+            EducationEntry(
+                institution="University of Auckland", degree="Bachelor of Engineering", field="Software", gpa=3.6
+            ),
         ),
         skills=(
             SkillGroup(category="Languages", skills=("Python", "Go", "Rust")),
@@ -64,8 +83,15 @@ def _comprehensive_cvm() -> ContentView:
         ),
         projects=(
             ProjectEntry(name="Project Alpha", description="Distributed scheduler", technologies=("Go", "PostgreSQL")),
-            ProjectEntry(name="Project Beta", description="Streaming reliability platform", url="https://github.com/example/beta", technologies=("Rust", "Kafka")),
-            ProjectEntry(name="Project Gamma", description="Observability platform", technologies=("Python", "ClickHouse")),
+            ProjectEntry(
+                name="Project Beta",
+                description="Streaming reliability platform",
+                url="https://github.com/example/beta",
+                technologies=("Rust", "Kafka"),
+            ),
+            ProjectEntry(
+                name="Project Gamma", description="Observability platform", technologies=("Python", "ClickHouse")
+            ),
         ),
         awards=(
             AwardEntry(title="Transformation Excellence Award", issuer="Acme Corporation", date="2023-06"),
@@ -91,14 +117,35 @@ def _long_cvm() -> ContentView:
                 start_date=f"20{10 + i}",
                 end_date=None if i == 5 else f"20{15 + i}",
                 current=i == 5,
-                description=("Led distributed teams across regions", "Designed streaming platforms", "Reduced costs by 35%"),
+                description=(
+                    "Led distributed teams across regions",
+                    "Designed streaming platforms",
+                    "Reduced costs by 35%",
+                ),
             )
             for i in range(6)
         ),
-        education=tuple(EducationEntry(institution=f"University {i}", degree="Ph.D.", field="Computer Science") for i in range(3)),
-        skills=tuple(SkillGroup(category=f"Group {i}", skills=("Python", "Go", "Rust", "AWS", "Kubernetes", "Kafka", "Docker", "Terraform")) for i in range(2)),
-        certifications=tuple(CertificationEntry(name=f"Certification {i}", issuer="Vendor", date="2022") for i in range(4)),
-        projects=tuple(ProjectEntry(name=f"Project {i}", description="A long project description across multiple lines", technologies=("Go", "Rust")) for i in range(3)),
+        education=tuple(
+            EducationEntry(institution=f"University {i}", degree="Ph.D.", field="Computer Science") for i in range(3)
+        ),
+        skills=tuple(
+            SkillGroup(
+                category=f"Group {i}",
+                skills=("Python", "Go", "Rust", "AWS", "Kubernetes", "Kafka", "Docker", "Terraform"),
+            )
+            for i in range(2)
+        ),
+        certifications=tuple(
+            CertificationEntry(name=f"Certification {i}", issuer="Vendor", date="2022") for i in range(4)
+        ),
+        projects=tuple(
+            ProjectEntry(
+                name=f"Project {i}",
+                description="A long project description across multiple lines",
+                technologies=("Go", "Rust"),
+            )
+            for i in range(3)
+        ),
         awards=tuple(AwardEntry(title=f"Award {i}", issuer="Org", date="2023") for i in range(2)),
         languages=tuple(LanguageEntry(name=f"Language {i}", proficiency="Native") for i in range(3)),
     )
@@ -338,7 +385,7 @@ class TestErrors:
         # The literal characters survive as safe text; no markup is executed.
         assert "A & B" in text
         assert "<script>alert(1)</script>" in text  # preserved literally, not as an element
-        assert 'Engineer' in text
+        assert "Engineer" in text
         assert "Dangerous" in text
 
 

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 
 from pydantic import BaseModel, Field
@@ -38,7 +38,7 @@ class TimelineEventType(str, Enum):
 class ApplicationNote(BaseModel):
     id: str = Field(..., min_length=1)
     content: str = Field(..., min_length=1)
-    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
 
 
 class TimelineEvent(BaseModel):
@@ -48,7 +48,7 @@ class TimelineEvent(BaseModel):
     title: str = Field(default="")
     description: str = Field(default="")
     metadata: dict = {}
-    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
 
 
 class Application(BaseModel):
@@ -74,8 +74,8 @@ class Application(BaseModel):
     next_action: str | None = None
     next_action_date: str | None = None
 
-    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
-    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now(UTC).isoformat())
 
 
 class ApplicationView(BaseModel):

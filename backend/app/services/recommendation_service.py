@@ -62,14 +62,16 @@ def recommend(resume: Resume) -> list[dict]:
         if resume.summary and len(resume.summary) > 100 and m.layout_id == "executive":
             score += 5
 
-        scored.append({
-            "layout_id": m.layout_id,
-            "name": m.display_name,
-            "score": min(100, score),
-            "category": _LAYOUT_CATEGORY.get(m.layout_id, "professional"),
-            "ats_score": m.ats_score,
-            "best_for": _best_for(m.layout_id, is_executive, is_technical),
-        })
+        scored.append(
+            {
+                "layout_id": m.layout_id,
+                "name": m.display_name,
+                "score": min(100, score),
+                "category": _LAYOUT_CATEGORY.get(m.layout_id, "professional"),
+                "ats_score": m.ats_score,
+                "best_for": _best_for(m.layout_id, is_executive, is_technical),
+            }
+        )
 
     scored.sort(key=lambda x: x["score"], reverse=True)
     return scored
@@ -94,8 +96,19 @@ def _estimate_experience_years(resume: Resume) -> int:
 
 
 def _has_executive_title(resume: Resume) -> bool:
-    executive_titles = {"ceo", "cfo", "cto", "coo", "chief", "vp", "vice president",
-                        "director", "head of", "senior director", "managing director"}
+    executive_titles = {
+        "ceo",
+        "cfo",
+        "cto",
+        "coo",
+        "chief",
+        "vp",
+        "vice president",
+        "director",
+        "head of",
+        "senior director",
+        "managing director",
+    }
     for exp in resume.experience:
         title_lower = exp.title.lower()
         for et in executive_titles:
@@ -105,8 +118,21 @@ def _has_executive_title(resume: Resume) -> bool:
 
 
 def _detect_industry(resume: Resume) -> str:
-    tech_keywords = {"software", "engineer", "developer", "data", "devops", "python",
-                     "javascript", "react", "aws", "cloud", "it ", "system", "full stack"}
+    tech_keywords = {
+        "software",
+        "engineer",
+        "developer",
+        "data",
+        "devops",
+        "python",
+        "javascript",
+        "react",
+        "aws",
+        "cloud",
+        "it ",
+        "system",
+        "full stack",
+    }
     for exp in resume.experience:
         combined = (exp.title + " " + exp.company + " " + " ".join(exp.description)).lower()
         for kw in tech_keywords:

@@ -302,14 +302,18 @@ def _structured_cvm() -> ContentView:
         summary="Backend engineer focused on distributed systems.",
         experience=(
             ExperienceEntry(
-                company="Acme Corp", title="Senior Engineer", location="Boston, MA",
-                start_date="2021", end_date="2024",
+                company="Acme Corp",
+                title="Senior Engineer",
+                location="Boston, MA",
+                start_date="2021",
+                end_date="2024",
                 description=("Led the platform team", "Cut p99 latency by 40%"),
             ),
         ),
         education=(
-            EducationEntry(institution="MIT", degree="M.S.", field="Computer Science",
-                           start_date="2014", end_date="2016", gpa=3.9),
+            EducationEntry(
+                institution="MIT", degree="M.S.", field="Computer Science", start_date="2014", end_date="2016", gpa=3.9
+            ),
         ),
         skills=(SkillGroup(category="Languages", skills=("Python", "Go")),),
         certifications=(CertificationEntry(name="AWS Certified", issuer="Amazon", date="2022"),),
@@ -320,13 +324,13 @@ class TestStructuredComponents:
     def test_experience_is_structured(self):
         html = render_layout_html(_structured_cvm(), sidebar_layout(), blue_theme())
         body = _body_text(html)
-        assert "Senior Engineer" in body          # title
-        assert "Acme Corp · Boston, MA" in body   # company · location
-        assert "2021 – 2024" in body              # period
-        assert "Led the platform team" in body    # description bullet
+        assert "Senior Engineer" in body  # title
+        assert "Acme Corp · Boston, MA" in body  # company · location
+        assert "2021 – 2024" in body  # period
+        assert "Led the platform team" in body  # description bullet
         assert "Cut p99 latency by 40%" in body
         assert '<ul class="resume-list">' in html
-        assert html.count("<li>") >= 2            # two description bullets
+        assert html.count("<li>") >= 2  # two description bullets
 
     def test_education_is_structured(self):
         html = render_layout_html(_structured_cvm(), sidebar_layout(), blue_theme())
@@ -345,19 +349,15 @@ class TestStructuredComponents:
 
     def test_grouped_skill_is_single_li_with_bold_category(self):
         html = render_layout_html(_structured_cvm(), sidebar_layout(), blue_theme())
-        section = re.search(
-            r'<section class="resume-section resume-section-skills".*?</section>', html, re.S
-        ).group(0)
+        section = re.search(r'<section class="resume-section resume-section-skills".*?</section>', html, re.S).group(0)
         lis = re.findall(r"<li>.*?</li>", section, re.S)
         assert len(lis) == 1
         assert lis[0] == "<li><strong>Languages:</strong> Python, Go</li>"
-        assert "<ul class=\"resume-list\">" in section
+        assert '<ul class="resume-list">' in section
 
     def test_grouped_skills_no_middot_no_duplicated_category(self):
         html = render_layout_html(_structured_cvm(), sidebar_layout(), blue_theme())
-        section = re.search(
-            r'<section class="resume-section resume-section-skills".*?</section>', html, re.S
-        ).group(0)
+        section = re.search(r'<section class="resume-section resume-section-skills".*?</section>', html, re.S).group(0)
         assert "\u00b7" not in section
         assert section.count("Languages") == 1
 
@@ -371,9 +371,7 @@ class TestStructuredComponents:
             ),
         )
         html = render_layout_html(cvm, sidebar_layout(), blue_theme())
-        section = re.search(
-            r'<section class="resume-section resume-section-skills".*?</section>', html, re.S
-        ).group(0)
+        section = re.search(r'<section class="resume-section resume-section-skills".*?</section>', html, re.S).group(0)
         lis = re.findall(r"<li>.*?</li>", section, re.S)
         assert lis == [
             "<li><strong>Languages:</strong> Python, Go</li>",
@@ -541,17 +539,27 @@ def _long_cvm() -> ContentView:
         summary="Very long professional summary that keeps going across multiple lines of text " * 4,
         experience=jobs,
         education=tuple(
-            EducationEntry(institution=f"University {i}", degree="Ph.D.", field="Computer Science",
-                           start_date="2008", end_date="2012", gpa=3.9)
+            EducationEntry(
+                institution=f"University {i}",
+                degree="Ph.D.",
+                field="Computer Science",
+                start_date="2008",
+                end_date="2012",
+                gpa=3.9,
+            )
             for i in range(3)
         ),
         skills=(
-            SkillGroup(category="Languages", skills=("Python", "Go", "Rust", "TypeScript", "Java", "C++", "C#", "Ruby")),
-            SkillGroup(category="Infrastructure", skills=("Kubernetes", "Docker", "AWS", "Terraform", "Kafka", "PostgreSQL", "Redis", "gRPC")),
+            SkillGroup(
+                category="Languages", skills=("Python", "Go", "Rust", "TypeScript", "Java", "C++", "C#", "Ruby")
+            ),
+            SkillGroup(
+                category="Infrastructure",
+                skills=("Kubernetes", "Docker", "AWS", "Terraform", "Kafka", "PostgreSQL", "Redis", "gRPC"),
+            ),
         ),
         certifications=tuple(
-            CertificationEntry(name=f"Certification {i}", issuer="Major Vendor", date="2022")
-            for i in range(4)
+            CertificationEntry(name=f"Certification {i}", issuer="Major Vendor", date="2022") for i in range(4)
         ),
         projects=tuple(
             ProjectEntry(
@@ -605,9 +613,9 @@ class TestLongContent:
             body = _body_text(render_layout_html(cvm, layout, blue_theme()))
             assert "Alexandra Rivera" in body
             assert "Company 5 International Solutions Group" in body  # 6th job
-            assert "Large Scale Distributed Project 2" in body      # 3rd project
-            assert "Best Platform Initiative" in body                # 2nd award
-            assert "Spanish — Conversational" in body               # 3rd language
+            assert "Large Scale Distributed Project 2" in body  # 3rd project
+            assert "Best Platform Initiative" in body  # 2nd award
+            assert "Spanish — Conversational" in body  # 3rd language
 
 
 # ── Projects / Awards / Languages coverage ────────────────────────────────────
@@ -619,8 +627,14 @@ def _comprehensive_cvm() -> ContentView:
         profile=Profile(full_name="Jane Doe", professional_title="Senior Project Manager"),
         summary="Backend platform engineer focused on distributed systems.",
         experience=(
-            ExperienceEntry(company="Acme Corp", title="Senior Engineer", location="Boston, MA",
-                            start_date="2021", end_date="2024", description=("Led the platform team", "Cut latency")),
+            ExperienceEntry(
+                company="Acme Corp",
+                title="Senior Engineer",
+                location="Boston, MA",
+                start_date="2021",
+                end_date="2024",
+                description=("Led the platform team", "Cut latency"),
+            ),
             ExperienceEntry(company="Beta Inc", title="Engineer", start_date="2018", end_date="2021"),
         ),
         education=(EducationEntry(institution="MIT", degree="M.S.", field="Computer Science", gpa=3.9),),
@@ -635,7 +649,10 @@ def _comprehensive_cvm() -> ContentView:
             ),
         ),
         awards=(AwardEntry(title="Employee of the Year", issuer="Acme", date="2023"),),
-        languages=(LanguageEntry(name="English", proficiency="Native"), LanguageEntry(name="German", proficiency="Professional")),
+        languages=(
+            LanguageEntry(name="English", proficiency="Native"),
+            LanguageEntry(name="German", proficiency="Professional"),
+        ),
     )
 
 

@@ -61,9 +61,7 @@ class TestPreviewCanonicalOnly:
 
     async def test_template_id_with_layout_id_rejected(self, client):
         rid = _save_resume()
-        response = await client.get(
-            f"/api/v1/resume/{rid}/preview?template_id=executive&layout_id=sidebar"
-        )
+        response = await client.get(f"/api/v1/resume/{rid}/preview?template_id=executive&layout_id=sidebar")
         assert response.status_code == 400
 
     async def test_layout_mode_is_canonical(self, client):

@@ -30,11 +30,7 @@ def _layout(engine: tuple[int, int, int] = (1, 0, 0)) -> LayoutDefinition:
     return executive_layout().model_copy(
         update={
             "metadata": executive_layout().metadata.model_copy(
-                update={
-                    "engine_version": LayoutVersion(
-                        major=engine[0], minor=engine[1], patch=engine[2]
-                    )
-                }
+                update={"engine_version": LayoutVersion(major=engine[0], minor=engine[1], patch=engine[2])}
             )
         }
     )
@@ -44,11 +40,7 @@ def _theme(engine: tuple[int, int, int] = (1, 0, 0)) -> ThemePalette:
     return blue_theme().model_copy(
         update={
             "metadata": blue_theme().metadata.model_copy(
-                update={
-                    "engine_version": ThemeVersion(
-                        major=engine[0], minor=engine[1], patch=engine[2]
-                    )
-                }
+                update={"engine_version": ThemeVersion(major=engine[0], minor=engine[1], patch=engine[2])}
             )
         }
     )
@@ -77,9 +69,7 @@ class TestConstruction:
 
     def test_content_ref_optional(self):
         assert _context().content_ref is None
-        context = _context(
-            content_ref=ContentReference(stable_id="resume.abc", content_hash="a" * 32)
-        )
+        context = _context(content_ref=ContentReference(stable_id="resume.abc", content_hash="a" * 32))
         assert context.content_ref.stable_id == "resume.abc"
 
     def test_default_state(self):
@@ -155,7 +145,12 @@ class TestRenderState:
 class TestOutputFormat:
     def test_enum_values(self):
         assert {f.value for f in OutputFormat} == {
-            "html", "pdf", "docx", "pptx", "png", "json",
+            "html",
+            "pdf",
+            "docx",
+            "pptx",
+            "png",
+            "json",
         }
 
     def test_state_accepts_each_format(self):

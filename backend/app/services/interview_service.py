@@ -1,6 +1,6 @@
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.core.logging import get_logger
 from app.models.application import TimelineEvent, TimelineEventType
@@ -31,7 +31,7 @@ logger = get_logger(__name__)
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _add_timeline(app_id: str, etype: TimelineEventType, title: str, desc: str = ""):

@@ -52,10 +52,25 @@ def _fresh_registry(allow_replacement: bool = False) -> SectionRegistry:
 class TestSectionTypeEnum:
     def test_required_members_present(self):
         expected = {
-            "summary", "profile", "experience", "education", "projects", "skills",
-            "certifications", "awards", "publications", "patents", "languages",
-            "volunteer", "interests", "references", "portfolio", "header", "footer",
-            "cover_letter", "custom",
+            "summary",
+            "profile",
+            "experience",
+            "education",
+            "projects",
+            "skills",
+            "certifications",
+            "awards",
+            "publications",
+            "patents",
+            "languages",
+            "volunteer",
+            "interests",
+            "references",
+            "portfolio",
+            "header",
+            "footer",
+            "cover_letter",
+            "custom",
         }
         assert {s.value for s in SectionType} == expected
 
@@ -86,10 +101,22 @@ class TestStableIds:
 
     def test_every_definition_exposes_required_fields(self):
         required = {
-            "section_type", "stable_id", "display_name", "category", "default_order",
-            "ats_priority", "visible_by_default", "supports_sidebar", "supports_timeline",
-            "supports_metrics", "supports_photo", "supports_badges", "supports_multicolumn",
-            "supports_multiple", "plugin_origin", "version",
+            "section_type",
+            "stable_id",
+            "display_name",
+            "category",
+            "default_order",
+            "ats_priority",
+            "visible_by_default",
+            "supports_sidebar",
+            "supports_timeline",
+            "supports_metrics",
+            "supports_photo",
+            "supports_badges",
+            "supports_multicolumn",
+            "supports_multiple",
+            "plugin_origin",
+            "version",
         }
         for definition in SECTION_REGISTRY.definitions():
             for field in required:

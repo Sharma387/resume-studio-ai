@@ -53,9 +53,7 @@ class ComponentRegistry:
         or per-call override).
         """
         if not isinstance(component, SectionComponent):
-            raise ComponentRegistrationError(
-                f"component must be a SectionComponent, got {type(component).__name__}"
-            )
+            raise ComponentRegistrationError(f"component must be a SectionComponent, got {type(component).__name__}")
 
         try:
             section_type = component.section_type()
@@ -74,9 +72,7 @@ class ComponentRegistry:
         effective = self._allow_replacement if allow_replacement is None else allow_replacement
         with self._lock:
             if section_type in self._components and not effective:
-                raise ComponentRegistrationError(
-                    f"section type '{section_type}' is already registered"
-                )
+                raise ComponentRegistrationError(f"section type '{section_type}' is already registered")
             self._components[section_type] = component
 
     def unregister(self, section_type: str) -> SectionComponent | None:
@@ -119,9 +115,7 @@ class ComponentRegistry:
     def metadata_map(self) -> Mapping[str, ComponentMetadata]:
         """Return an immutable section-type → metadata mapping."""
         with self._lock:
-            return MappingProxyType(
-                {key: component.metadata() for key, component in self._components.items()}
-            )
+            return MappingProxyType({key: component.metadata() for key, component in self._components.items()})
 
     def __len__(self) -> int:
         with self._lock:

@@ -293,9 +293,7 @@ class RenderTreeHTMLRenderer:
         gap_mm: float | None = None,
         density: str | None = None,
     ) -> str:
-        root = "".join(
-            f"{key}: {value};" for key, value in RenderTreeHTMLRenderer._theme_vars(theme).items()
-        )
+        root = "".join(f"{key}: {value};" for key, value in RenderTreeHTMLRenderer._theme_vars(theme).items())
         root_block = f":root {{{root}}}" if root else ""
         if column_ratios is not None:
             columns = f"{column_ratios[0]}fr {column_ratios[1]}fr"
@@ -461,7 +459,7 @@ a:hover {{ text-decoration: underline; }}
 .layout-minimal .resume-muted { color: var(--muted); }
 .layout-minimal .resume-list { list-style: none; padding-left: 0; margin-top: 4px; }
 .layout-minimal .resume-list li { padding-left: 1.2em; position: relative; margin-bottom: 3px; line-height: 1.55; }
-.layout-minimal .resume-list li::before { content: "\u00B7"; position: absolute; left: 0.15em; color: var(--primary);
+.layout-minimal .resume-list li::before { content: "\u00b7"; position: absolute; left: 0.15em; color: var(--primary);
        font-size: 1.2em; line-height: 1.2; background: none; width: auto; height: auto; border-radius: 0; top: 0; }
 .layout-minimal .resume-time { font-size: 0.83em; font-variant-numeric: tabular-nums; }
 """,

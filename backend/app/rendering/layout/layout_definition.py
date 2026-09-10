@@ -38,9 +38,7 @@ class GridConfig(BaseModel):
 
     @model_validator(mode="after")
     def _validate_grid(self) -> GridConfig:
-        if self.column_ratios is not None and (
-            self.column_ratios[0] <= 0 or self.column_ratios[1] <= 0
-        ):
+        if self.column_ratios is not None and (self.column_ratios[0] <= 0 or self.column_ratios[1] <= 0):
             raise ValueError("column_ratios entries must be positive")
         return self
 
@@ -113,13 +111,9 @@ class LayoutDefinition(BaseModel):
             raise ValueError("region identifiers must be unique")
         if len(self.regions) > self.grid.columns:
             raise ValueError("more regions than grid columns")
-        partial_span = sum(
-            region.column_span for region in self.regions if region.column_span < self.grid.columns
-        )
+        partial_span = sum(region.column_span for region in self.regions if region.column_span < self.grid.columns)
         if partial_span > self.grid.columns:
-            raise ValueError(
-                f"region column spans sum {partial_span} exceeds grid columns {self.grid.columns}"
-            )
+            raise ValueError(f"region column spans sum {partial_span} exceeds grid columns {self.grid.columns}")
         for region in self.regions:
             if region.column_span > self.grid.columns:
                 raise ValueError(f"region '{region.identifier}' column span exceeds grid columns")
@@ -135,9 +129,7 @@ class LayoutDefinition(BaseModel):
         # Capability consistency
         for meta_field, cap_field in _CAPABILITY_SYNC:
             if getattr(metadata, meta_field) != getattr(self.capabilities, cap_field):
-                raise ValueError(
-                    f"capability conflict: metadata.{meta_field} != capabilities.{cap_field}"
-                )
+                raise ValueError(f"capability conflict: metadata.{meta_field} != capabilities.{cap_field}")
         if any(region.region_type is RegionType.SIDEBAR for region in self.regions):
             if not self.capabilities.sidebar:
                 raise ValueError("layout has a SIDEBAR region but capabilities.sidebar is false")
@@ -159,13 +151,9 @@ class LayoutDefinition(BaseModel):
             declared = set(region_ids)
             for region in rule.allowed_regions:
                 if region not in declared:
-                    raise ValueError(
-                        f"placement for '{rule.section}' references unknown region '{region}'"
-                    )
+                    raise ValueError(f"placement for '{rule.section}' references unknown region '{region}'")
             for region in (rule.preferred_region, rule.fallback_region):
                 if region is not None and region not in declared:
-                    raise ValueError(
-                        f"placement for '{rule.section}' references unknown region '{region}'"
-                    )
+                    raise ValueError(f"placement for '{rule.section}' references unknown region '{region}'")
 
         return self

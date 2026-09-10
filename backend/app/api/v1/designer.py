@@ -19,8 +19,7 @@ class SaveVersionRequest(BaseModel):
 
 
 @router.post("/designer/{variant_id}/versions")
-async def create_version(variant_id: str, body: SaveVersionRequest,
-                          current_user: User = Depends(require_user)):
+async def create_version(variant_id: str, body: SaveVersionRequest, current_user: User = Depends(require_user)):
     version = save_version(variant_id, body.resume_data, body.label)
     return {"success": True, "data": version}
 
@@ -31,8 +30,7 @@ async def get_versions(variant_id: str, current_user: User = Depends(require_use
 
 
 @router.post("/designer/{variant_id}/autosave")
-async def save_autosave(variant_id: str, body: SaveVersionRequest,
-                         current_user: User = Depends(require_user)):
+async def save_autosave(variant_id: str, body: SaveVersionRequest, current_user: User = Depends(require_user)):
     autosave(variant_id, body.resume_data)
     return {"success": True}
 
@@ -52,10 +50,10 @@ async def get_ats_analysis(resume_id: str, current_user: User = Depends(require_
 
 
 @router.post("/designer/{variant_id}/optimize")
-async def get_design_recommendations(variant_id: str, body: dict,
-                                      current_user: User = Depends(require_user)):
+async def get_design_recommendations(variant_id: str, body: dict, current_user: User = Depends(require_user)):
     resume_data = body.get("resume_data", {})
     from app.models.resume import Resume
+
     resume = Resume(**resume_data)
     ats = analyze_ats(resume)
     recs = recommend_layouts(resume)

@@ -89,7 +89,5 @@ class LayoutConfig(BaseModel):
     def _validate(self) -> LayoutConfig:
         for section in self.sections:
             if not SECTION_REGISTRY.is_valid(section):
-                raise ValueError(
-                    f"layout config references unknown section '{section}'"
-                )
+                raise ValueError(f"layout config references unknown section '{section}'")
         return self
