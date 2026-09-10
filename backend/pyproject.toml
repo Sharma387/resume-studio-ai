@@ -4,7 +4,13 @@ line-length = 120
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP"]
-ignore = ["E501"]
+ignore = [
+    "E501",
+    # UP042: converting `class X(str, Enum)` → `enum.StrEnum` is a behavioural
+    # change — `str(member)` returns different values.  Keep for now; revisit
+    # when upgrading to a StrEnum-aware codebase.
+    "UP042",
+]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -17,4 +23,51 @@ asyncio_default_fixture_loop_scope = "function"
 filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::PendingDeprecationWarning",
+]
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+exclude = ["alembic/", "tests/"]
+warn_return_any = false
+warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_any_generics = false
+
+# ── Pre-existing type issues in modules not yet typed ──────────────────────
+# These modules have pre-existing mypy errors.  Once the module is touched
+# for real work, fix the errors and remove its override.
+
+[[tool.mypy.overrides]]
+module = [
+    "app.rendering.*",
+    "app.services.repositories.*",
+    "app.services.admin_service",
+    "app.services.matching_service",
+    "app.services.parser_service",
+    "app.services.interview_service",
+    "app.services.cover_letter_service",
+    "app.services.recommendation_service",
+    "app.services.application_service",
+    "app.services.writer_service",
+    "app.db.models.user",
+    "app.core.error_handler",
+    "app.api.v1.writer",
+    "app.api.v1.rendering",
+    "app.api.v1.parse",
+]
+# Disable all error codes for these modules until they are actively typed.
+# Run mypy without this override to see what remains.
+disable_error_code = [
+    "arg-type",
+    "assignment",
+    "attr-defined",
+    "call-arg",
+    "index",
+    "list-item",
+    "misc",
+    "return-value",
+    "union-attr",
+    "valid-type",
+    "var-annotated",
 ]

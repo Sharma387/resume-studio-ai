@@ -44,10 +44,13 @@ jobs:
           pip install -r requirements.txt
 
       - name: Lint (ruff check)
-        run: ruff check app/ --output-format=github || true
+        run: ruff check app/ --output-format=github
 
       - name: Format check (ruff format)
-        run: ruff format app/ --check --diff || true
+        run: ruff format app/ --check --diff
+
+      - name: Type check (mypy)
+        run: mypy app/
 
   # ─────────────── Tests: JSON Backend ───────────────
   test-json:

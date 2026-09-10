@@ -21,3 +21,4 @@ ruff
 greenlet
 weasyprint
 pypdf
+mypy
