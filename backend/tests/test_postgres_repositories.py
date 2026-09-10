@@ -12,20 +12,19 @@ Tests cover:
 """
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import patch
 
 import pytest
 
 from app.core.config import settings
 from app.db.database import get_sync_session
-from app.db.models.user import UserModel, RefreshTokenModel
+from app.db.models.user import RefreshTokenModel, UserModel
 from app.models.user import User
-from app.services.repositories.factory import get_user_repository, get_refresh_token_repository
-from app.services.repositories.interfaces import UserRepository, RefreshTokenRepository
-from app.services.repositories.postgres.user_repository import PostgresUserRepository
+from app.services.repositories.factory import get_refresh_token_repository, get_user_repository
+from app.services.repositories.interfaces import UserRepository
 from app.services.repositories.postgres.token_repository import PostgresRefreshTokenRepository
-
+from app.services.repositories.postgres.user_repository import PostgresUserRepository
 
 # ── Fixtures for PostgreSQL-dependent tests ──────────────────────────────────
 
@@ -38,7 +37,6 @@ def _requires_db():
 def _reset_db():
     """Clean all rows from both tables."""
     _requires_db()
-    from app.db.database import get_sync_session
     session = get_sync_session()
     try:
         session.query(RefreshTokenModel).delete()
@@ -55,7 +53,6 @@ def _reset_db():
 def pg_session():
     """Provide a clean sync session for ORM-level tests."""
     _requires_db()
-    from app.db.database import get_sync_session
     _reset_db()
     session = get_sync_session()
     try:
@@ -163,15 +160,21 @@ class TestUserRepositoryFactory:
 
     def test_factory_returns_postgres_when_postgres(self):
         with patch.object(settings, "storage_backend", "postgres"):
-    
             repo = get_user_repository()
             assert isinstance(repo, PostgresUserRepository)
 
     def test_postgres_raises_without_database(self):
-        with patch.object(settings, "storage_backend", "postgres"):
-            with patch.object(settings, "database_url", ""):
-                with pytest.raises(RuntimeError, match="Database not configured"):
-                    get_user_repository().get_by_id("x")
+        import app.db.database as db_mod
+
+        old_factory = db_mod._sync_session_factory
+        try:
+            db_mod._sync_session_factory = None
+            with patch.object(settings, "storage_backend", "postgres"):
+                with patch.object(settings, "database_url", ""):
+                    with pytest.raises(RuntimeError, match="Database not configured"):
+                        get_user_repository().get_by_id("x")
+        finally:
+            db_mod._sync_session_factory = old_factory
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -240,7 +243,7 @@ class TestPostgresUserRepository:
 
         user = _make_user()
         pg_user_repo.save(user)
-        user.last_login = datetime.now(timezone.utc).isoformat()
+        user.last_login = datetime.now(UTC).isoformat()
         pg_user_repo.save(user)
         loaded = pg_user_repo.get_by_id(user.id)
         assert loaded is not None
@@ -267,12 +270,15 @@ class TestPostgresUserRepository:
 
     def test_email_unique_index(self, pg_session):
 
-        from sqlalchemy import text
         uid1 = uuid.uuid4().hex
         uid2 = uuid.uuid4().hex
-        now = datetime.now(timezone.utc).isoformat()
-        pg_session.add(UserModel(id=uid1, email="unique@test.com", password_hash="hash1", full_name="A", created_at=now))
-        pg_session.add(UserModel(id=uid2, email="unique@test.com", password_hash="hash2", full_name="B", created_at=now))
+        now = datetime.now(UTC).isoformat()
+        pg_session.add(
+            UserModel(id=uid1, email="unique@test.com", password_hash="hash1", full_name="A", created_at=now)
+        )
+        pg_session.add(
+            UserModel(id=uid2, email="unique@test.com", password_hash="hash2", full_name="B", created_at=now)
+        )
         with pytest.raises(Exception):
             pg_session.commit()
         pg_session.rollback()
@@ -365,19 +371,19 @@ class TestFactory:
     def test_get_user_repository_json(self):
         with patch.object(settings, "storage_backend", "json"):
             from app.services.repositories.json_user_repo import JsonUserRepository
+
             assert isinstance(get_user_repository(), JsonUserRepository)
 
     def test_get_refresh_token_repository_json(self):
         with patch.object(settings, "storage_backend", "json"):
             from app.services.repositories.json_token_repo import JsonRefreshTokenRepository
+
             assert isinstance(get_refresh_token_repository(), JsonRefreshTokenRepository)
 
     def test_get_user_repository_postgres(self):
         with patch.object(settings, "storage_backend", "postgres"):
-    
             assert isinstance(get_user_repository(), PostgresUserRepository)
 
     def test_get_refresh_token_repository_postgres(self):
         with patch.object(settings, "storage_backend", "postgres"):
-    
             assert isinstance(get_refresh_token_repository(), PostgresRefreshTokenRepository)

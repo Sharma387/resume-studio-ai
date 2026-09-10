@@ -11,51 +11,44 @@ Tests cover:
 """
 
 import os
-from unittest.mock import patch, ANY
+from unittest.mock import patch
 
 import pytest
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
 
+import app.db.models  # noqa: F401  ensure ORM models are registered on Base.metadata
 from app.core.config import settings
 from app.db.base import Base
 from app.db.database import build_async_database_url, create_engine, dispose_engine, get_engine
-import app.db.models  # noqa: ensure ORM models are registered on Base.metadata
 from app.main import app
 from app.services.repositories.factory import (
-    get_resume_repository,
     get_application_repository,
     get_cover_letter_repository,
-    get_match_repository,
-    get_version_repository,
-    get_suggestion_repository,
-    get_interview_session_repository,
-    get_timeline_event_repository,
-    get_interview_question_repository,
     get_interview_answer_repository,
+    get_interview_question_repository,
+    get_interview_session_repository,
+    get_match_repository,
     get_readiness_assessment_repository,
+    get_resume_repository,
     get_session_summary_repository,
+    get_suggestion_repository,
+    get_timeline_event_repository,
+    get_version_repository,
 )
-from app.services.repositories.json.resume_repository import JsonResumeRepository
 from app.services.repositories.json.application_repository import JsonApplicationRepository
 from app.services.repositories.json.cover_letter_repository import JsonCoverLetterRepository
-from app.services.repositories.json.match_repository import JsonMatchRepository
-from app.services.repositories.json.version_repository import JsonResumeVersionRepository
-from app.services.repositories.json.suggestion_repository import JsonWriterSuggestionRepository
 from app.services.repositories.json.interview_repository import (
-    JsonInterviewSessionRepository,
-    JsonInterviewQuestionRepository,
     JsonInterviewAnswerRepository,
+    JsonInterviewQuestionRepository,
+    JsonInterviewSessionRepository,
     JsonReadinessAssessmentRepository,
     JsonSessionSummaryRepository,
 )
+from app.services.repositories.json.match_repository import JsonMatchRepository
+from app.services.repositories.json.resume_repository import JsonResumeRepository
+from app.services.repositories.json.suggestion_repository import JsonWriterSuggestionRepository
 from app.services.repositories.json.timeline_repository import JsonTimelineEventRepository
-from app.services.repositories.interfaces import (
-    ResumeRepository, ApplicationRepository, CoverLetterRepository,
-    MatchRepository, ResumeVersionRepository, WriterSuggestionRepository,
-    InterviewSessionRepository, TimelineEventRepository,
-    InterviewQuestionRepository, InterviewAnswerRepository,
-    ReadinessAssessmentRepository, SessionSummaryRepository,
-)
+from app.services.repositories.json.version_repository import JsonResumeVersionRepository
 
 
 @pytest.fixture
@@ -119,42 +112,70 @@ class TestDatabaseUrlBuilder:
 
 
 def _reset_db_globals():
-    """Reset engine and session_factory globals to None."""
+    """Reset engine and session_factory globals to None, returning a restore function."""
     import app.db.database as db_mod
-    db_mod._engine = None
-    db_mod._session_factory = None
+
+    snapshot = (
+        db_mod._async_engine,
+        db_mod._async_session_factory,
+        db_mod._sync_engine,
+        db_mod._sync_session_factory,
+    )
+    db_mod._async_engine = None
+    db_mod._async_session_factory = None
+    db_mod._sync_engine = None
+    db_mod._sync_session_factory = None
+
+    def restore():
+        (
+            db_mod._async_engine,
+            db_mod._async_session_factory,
+            db_mod._sync_engine,
+            db_mod._sync_session_factory,
+        ) = snapshot
+
+    return restore
 
 
 class TestEngineCreation:
     @pytest.mark.asyncio
     async def test_engine_not_created_without_url(self):
-        _reset_db_globals()
-        with patch.object(settings, "database_url", ""):
-            engine = await create_engine()
-            assert engine is None
-            await dispose_engine()
+        restore = _reset_db_globals()
+        try:
+            with patch.object(settings, "database_url", ""):
+                engine = await create_engine()
+                assert engine is None
+                await dispose_engine()
+        finally:
+            restore()
 
     @pytest.mark.asyncio
     async def test_engine_creation_uses_async_driver(self):
-        _reset_db_globals()
-        with patch("app.db.database.create_async_engine") as mock_create:
-            with patch.object(settings, "database_url", "postgresql://rsai:rsai@localhost:5432/rsai"):
-                engine = await create_engine()
-                mock_create.assert_called_once()
-                url_arg = mock_create.call_args[0][0]
-                assert url_arg == "postgresql+asyncpg://rsai:rsai@localhost:5432/rsai"
-                assert engine is not None
-                await dispose_engine()
+        restore = _reset_db_globals()
+        try:
+            with patch("app.db.database.create_async_engine") as mock_create:
+                with patch.object(settings, "database_url", "postgresql://rsai:rsai@localhost:5432/rsai"):
+                    engine = await create_engine()
+                    mock_create.assert_called_once()
+                    url_arg = mock_create.call_args[0][0]
+                    assert url_arg == "postgresql+asyncpg://rsai:rsai@localhost:5432/rsai"
+                    assert engine is not None
+                    await dispose_engine()
+        finally:
+            restore()
 
     @pytest.mark.asyncio
     async def test_dispose_engine_clears_globals(self):
-        _reset_db_globals()
-        with patch("app.db.database.create_async_engine"):
-            with patch.object(settings, "database_url", "postgresql://rsai:rsai@localhost:5432/rsai"):
-                await create_engine()
-                assert get_engine() is not None
-                await dispose_engine()
-                assert get_engine() is None
+        restore = _reset_db_globals()
+        try:
+            with patch("app.db.database.create_async_engine"):
+                with patch.object(settings, "database_url", "postgresql://rsai:rsai@localhost:5432/rsai"):
+                    await create_engine()
+                    assert get_engine() is not None
+                    await dispose_engine()
+                    assert get_engine() is None
+        finally:
+            restore()
 
 
 # ── Session Tests ────────────────────────────────────────────────────────────────
@@ -165,6 +186,7 @@ class TestSession:
     async def test_get_session_raises_without_engine(self):
         with patch("app.db.session.get_session_factory", return_value=None):
             from app.db.session import get_db_session
+
             with pytest.raises(RuntimeError, match="Database not configured"):
                 async for _ in get_db_session():
                     pass
@@ -230,36 +252,43 @@ class TestFactoryReturnsPostgresImplementations:
     def test_get_resume_repository_postgres(self):
         with patch.object(settings, "storage_backend", "postgres"):
             from app.services.repositories.postgres.content_repository import PostgresResumeRepository
+
             assert isinstance(get_resume_repository(), PostgresResumeRepository)
 
     def test_get_application_repository_postgres(self):
         with patch.object(settings, "storage_backend", "postgres"):
             from app.services.repositories.postgres.content_repository import PostgresApplicationRepository
+
             assert isinstance(get_application_repository(), PostgresApplicationRepository)
 
     def test_get_cover_letter_repository_postgres(self):
         with patch.object(settings, "storage_backend", "postgres"):
             from app.services.repositories.postgres.content_repository import PostgresCoverLetterRepository
+
             assert isinstance(get_cover_letter_repository(), PostgresCoverLetterRepository)
 
     def test_get_match_repository_postgres(self):
         with patch.object(settings, "storage_backend", "postgres"):
             from app.services.repositories.postgres.content_repository import PostgresMatchRepository
+
             assert isinstance(get_match_repository(), PostgresMatchRepository)
 
     def test_get_version_repository_postgres(self):
         with patch.object(settings, "storage_backend", "postgres"):
             from app.services.repositories.postgres.content_repository import PostgresResumeVersionRepository
+
             assert isinstance(get_version_repository(), PostgresResumeVersionRepository)
 
     def test_get_suggestion_repository_postgres(self):
         with patch.object(settings, "storage_backend", "postgres"):
             from app.services.repositories.postgres.content_repository import PostgresWriterSuggestionRepository
+
             assert isinstance(get_suggestion_repository(), PostgresWriterSuggestionRepository)
 
     def test_get_interview_session_repository_postgres(self):
         with patch.object(settings, "storage_backend", "postgres"):
             from app.services.repositories.postgres.content_repository import PostgresInterviewSessionRepository
+
             assert isinstance(get_interview_session_repository(), PostgresInterviewSessionRepository)
 
 
@@ -280,15 +309,18 @@ class TestHealthEndpoint:
 
     @pytest.mark.asyncio
     async def test_health_detects_postgres_backend(self, client):
-        _reset_db_globals()
-        with patch.object(settings, "storage_backend", "postgres"):
-            async with client as ac:
-                response = await ac.get("/api/v1/health")
-            assert response.status_code == 200
-            data = response.json()
-            assert data["storage_backend"] == "postgres"
-            assert "database_connected" in data
-            assert data["database_connected"] is False
+        restore = _reset_db_globals()
+        try:
+            with patch.object(settings, "storage_backend", "postgres"):
+                async with client as ac:
+                    response = await ac.get("/api/v1/health")
+                assert response.status_code == 200
+                data = response.json()
+                assert data["storage_backend"] == "postgres"
+                assert "database_connected" in data
+                assert data["database_connected"] is False
+        finally:
+            restore()
 
 
 # ── Alembic Tests ─────────────────────────────────────────────────────────────
@@ -297,9 +329,8 @@ class TestHealthEndpoint:
 class TestAlembicMigration:
     def test_migration_file_exists(self):
         import glob
-        migrations = glob.glob(
-            os.path.join(os.path.dirname(__file__), "..", "alembic", "versions", "*.py")
-        )
+
+        migrations = glob.glob(os.path.join(os.path.dirname(__file__), "..", "alembic", "versions", "*.py"))
         assert len(migrations) >= 1
 
     def test_upgrade_and_downgrade(self):
