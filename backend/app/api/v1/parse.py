@@ -1,3 +1,4 @@
+import uuid
 from pathlib import Path
 
 from fastapi import APIRouter, Depends
@@ -26,9 +27,13 @@ class ParseResponse(BaseModel):
 @router.post("/parse", response_model=ParseResponse)
 async def parse(req: ParseRequest, current_user: User = Depends(require_user)):
     resume = await parse_resume(req.text)
-    resume_id = None
+    resume.user_id = current_user.id
+    
+    # Generate resume_id from filename or create a UUID
     if req.filename:
         resume_id = Path(req.filename).stem
-        resume.user_id = current_user.id
+    else:
+        resume_id = uuid.uuid4().hex
+    
     get_resume_repository().save(resume_id, resume)
     return ParseResponse(success=True, id=resume_id, data=resume)

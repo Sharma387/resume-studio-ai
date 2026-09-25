@@ -80,7 +80,7 @@ def client() -> AsyncClient:
 def _save_resume() -> str:
     resume_id = uuid.uuid4().hex
     resume = Resume(
-        user_id="test",
+        user_id="dev-user",
         full_name="Jane Doe",
         email="jane@test.com",
         summary="Full-stack engineer with 8 years building platforms.",

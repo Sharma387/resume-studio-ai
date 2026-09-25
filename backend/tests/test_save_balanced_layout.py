@@ -29,7 +29,7 @@ def client() -> AsyncClient:
     return AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
 
 
-def _save_resume_long(user_id="test") -> str:
+def _save_resume_long(user_id="dev-user") -> str:
     resume_id = uuid.uuid4().hex
     experiences = [
         Experience(

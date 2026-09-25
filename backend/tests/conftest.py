@@ -17,6 +17,23 @@ if not settings.database_url:
     settings.database_url = "postgresql://rsai:rsai@localhost:5432/rsai"
 
 
+# ── AI provider isolation ─────────────────────────────────────────────────────
+
+
+@pytest.fixture(autouse=True)
+def _disable_local_ollama(monkeypatch):
+    """Never contact a real local Ollama server during tests.
+
+    The provider router defaults to Ollama-first; tests force the OmniRoute
+    path (which individual tests mock) so runs are deterministic and fast.
+    """
+
+    async def _no_ollama() -> None:
+        return None
+
+    monkeypatch.setattr("app.services.ollama_service.detect_ollama_model", _no_ollama)
+
+
 # ── JSON storage cleanup between test runs ────────────────────────────────────
 
 _STORAGE_DIRS = [Path("storage") / "users", Path("storage") / "refresh_tokens"]

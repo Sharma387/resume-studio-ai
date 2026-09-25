@@ -138,8 +138,11 @@ class TestResume:
             Resume(user_id="test", full_name="John Doe", email="not-an-email")
 
     def test_invalid_url(self):
+        # Note: scheme-less strings like "not-a-url" are now auto-normalized to
+        # "https://not-a-url/" (a valid URL) by Resume.normalize_empty_urls, so
+        # the truly-invalid case used here is one that even normalization keeps broken.
         with pytest.raises(ValidationError):
-            Resume(user_id="test", full_name="John Doe", email="john@example.com", website="not-a-url")
+            Resume(user_id="test", full_name="John Doe", email="john@example.com", website="http://")
 
     def test_valid_full(self):
         r = Resume(

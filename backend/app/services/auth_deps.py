@@ -27,15 +27,17 @@ async def require_user(current_user: User | None = Depends(get_current_user)) ->
     if current_user is None:
         if settings.debug:
             from app.models.user import User as MockUser
-            from app.services.repositories.json_user_repo import JsonUserRepository
-
-            repo = JsonUserRepository()
+            from app.services.repositories.factory import get_user_repository
+            from app.services.auth_service import AuthenticationService
+            
+            repo = get_user_repository()
             mock = repo.get_by_email("dev@resume-studio.ai")
             if not mock:
+                auth_service = AuthenticationService()
                 mock = MockUser(
-                    id="test",
+                    id="dev-user",
                     email="dev@resume-studio.ai",
-                    password_hash=_auth_service.user_service.hash_password("dev-password"),
+                    password_hash=auth_service.user_service.hash_password("dev-password"),
                     full_name="Dev User",
                 )
                 repo.save(mock)

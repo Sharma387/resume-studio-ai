@@ -105,7 +105,7 @@ async def list_readiness(app_id: str, current_user=Depends(require_user)):
 @router.post("/applications/{app_id}/interview/sessions/{session_id}/summary")
 async def generate_summary(app_id: str, session_id: str, current_user=Depends(require_user)):
     try:
-        summary = await svc.generate_summary(session_id)
+        summary = await svc.generate_summary(session_id, app_id)
         return {"success": True, "data": summary}
     except RuntimeError as e:
         raise HTTPException(status_code=503, detail=str(e))

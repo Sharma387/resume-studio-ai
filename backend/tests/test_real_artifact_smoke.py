@@ -40,7 +40,7 @@ def client() -> AsyncClient:
 def _save_real_resume() -> str:
     resume_id = uuid.uuid4().hex
     resume = Resume(
-        user_id="test",
+        user_id="dev-user",
         full_name=EXPECTED_CONTENT["name"],
         email="regina@example.com",
         phone="+64 21 555 0199",
@@ -157,7 +157,7 @@ async def test_cover_letter_pdf_still_valid(client, tmp_path: Path):
 
     resume_id = _save_real_resume()
     letter = CoverLetter(
-        user_id="test",
+        user_id="dev-user",
         id="cl-smoke",
         resume_id=resume_id,
         company_name="Northwind Systems",

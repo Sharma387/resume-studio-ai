@@ -27,11 +27,11 @@ def client() -> AsyncClient:
     return AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
 
 
-def _make_resume(user_id="test") -> Resume:
+def _make_resume(user_id="dev-user") -> Resume:
     return Resume(user_id=user_id, full_name="Migrate User", email="mig@test.com")
 
 
-def _save_resume(user_id="test") -> str:
+def _save_resume(user_id="dev-user") -> str:
     resume_id = uuid.uuid4().hex
     save_resume(resume_id, _make_resume(user_id))
     return resume_id
@@ -227,7 +227,7 @@ class TestVariantsIndependence:
         from app.services.storage_service import load_resume
 
         rid = _save_resume()
-        resume = load_resume(rid, user_id="test")
+        resume = load_resume(rid, user_id="dev-user")
         assert resume is not None
 
         variant = create_variant(resume, "test", "Classic Variant", template_id="modern-ats")

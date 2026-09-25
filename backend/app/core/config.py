@@ -32,10 +32,19 @@ class Settings(BaseSettings):
     allow_mock_ai_data: bool = False
     # ── AI Model Router ─────────────────────────────────────────────
     ollama_api_url: str = "http://localhost:11434/v1/chat/completions"
+    # Provider order for AI calls, tried in sequence until one succeeds.
+    # Supported values: "ollama" (local model), "omniroute" (cloud gateway).
+    # Dev default is Ollama-first; production sets "omniroute,ollama".
+    ai_provider_order: str = "ollama,omniroute"
     ai_model_auto: bool = True
     ai_probe_timeout: int = 6
     ai_probe_limit: int = 10
     ai_route_cache_ttl: int = 300
+
+    @property
+    def ai_providers(self) -> list[str]:
+        """Parsed AI provider list (lowercased, blank entries dropped)."""
+        return [p.strip().lower() for p in self.ai_provider_order.split(",") if p.strip()]
 
     # ── JWT ─────────────────────────────────────────────────────
     jwt_secret_key: str = ""

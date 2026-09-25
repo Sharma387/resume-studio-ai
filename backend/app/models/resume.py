@@ -82,17 +82,31 @@ class Resume(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def normalize_empty_urls(cls, data: dict) -> dict:
-        """Convert empty strings to None for HttpUrl | None fields before validation."""
+        """Convert empty strings to None for HttpUrl | None fields before validation.
+
+        Also prefixes URLs that are missing a scheme (LLM output often drops
+        ``https://``, e.g. ``linkedin.com/in/jane``) so they validate.
+        """
+        def _normalize(value):
+            if not isinstance(value, str):
+                return value
+            value = value.strip()
+            if not value:
+                return None
+            if "://" not in value:
+                return "https://" + value
+            return value
+
         # Top-level URL fields
         for field in ("linkedin", "github", "website"):
-            if field in data and data[field] == "":
-                data[field] = None
+            if field in data:
+                data[field] = _normalize(data[field])
         # Project.url
         for item in data.get("projects", []):
-            if isinstance(item, dict) and "url" in item and item["url"] == "":
-                item["url"] = None
+            if isinstance(item, dict) and "url" in item:
+                item["url"] = _normalize(item["url"])
         # Certification.url
         for item in data.get("certifications", []):
-            if isinstance(item, dict) and "url" in item and item["url"] == "":
-                item["url"] = None
+            if isinstance(item, dict) and "url" in item:
+                item["url"] = _normalize(item["url"])
         return data

@@ -42,7 +42,7 @@ def client() -> AsyncClient:
 
 def _resume(**overrides) -> Resume:
     data = dict(
-        user_id="test",
+        user_id="dev-user",
         full_name="Sharma Rajasekar",
         email="sharma@test.com",
         professional_title="Senior Software Engineering Lead",
@@ -76,7 +76,7 @@ def _resume_data(**overrides) -> dict:
     return _resume(**overrides).model_dump(mode="json")
 
 
-def _save_resume(user_id="test") -> str:
+def _save_resume(user_id="dev-user") -> str:
     resume_id = uuid.uuid4().hex
     save_resume(resume_id, _resume())
     return resume_id
@@ -140,7 +140,7 @@ class TestRecommendationsBehavior:
             assert "best_for" in r
 
     def test_empty_resume_still_returns_all_layouts(self):
-        recs = recommend(Resume(user_id="test", full_name="Edge", email="edge@test.com"))
+        recs = recommend(Resume(user_id="dev-user", full_name="Edge", email="edge@test.com"))
         assert len(recs) == len(default_layout_registry().list())
         for r in recs:
             assert 0 <= r["score"] <= 100

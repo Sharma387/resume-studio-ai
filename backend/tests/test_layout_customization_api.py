@@ -40,7 +40,7 @@ def client() -> AsyncClient:
     return AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
 
 
-def _save_resume(user_id="test") -> str:
+def _save_resume(user_id="dev-user") -> str:
     resume_id = uuid.uuid4().hex
     resume = Resume(
         user_id=user_id,
@@ -87,7 +87,7 @@ class TestLayoutConfigPersistence:
         path = VARIANT_PATH / f"{rid}.json"
         assert path.exists()
         record = json.loads(path.read_text(encoding="utf-8"))
-        assert record["user_id"] == "test"
+        assert record["user_id"] == "dev-user"
         assert record["customization"]["layout_config"]["gap"] == "wide"
 
     async def test_preserves_other_customization_keys(self, client):

@@ -2,6 +2,8 @@ import json
 import uuid
 from datetime import UTC, datetime
 
+from pydantic import ValidationError
+
 from app.core.logging import get_logger
 from app.models.application import TimelineEvent, TimelineEventType
 from app.models.interview import (
@@ -13,7 +15,8 @@ from app.models.interview import (
     SessionType,
     STARAttempt,
 )
-from app.services.ai_core import AIServiceUnavailable, call_with_retry, extract_json
+from app.services.ai_core import AIServiceUnavailable, extract_json, extract_json_array
+from app.services.ollama_service import compact_resume, run_with_providers
 from app.services.prompt_service import PromptService
 from app.services.repositories.factory import (
     get_application_repository,
@@ -28,6 +31,25 @@ from app.services.repositories.factory import (
 )
 
 logger = get_logger(__name__)
+
+INTERVIEW_QUESTIONS_SYSTEM_PROMPT = """You are an interview coach generating tailored interview questions. Return ONLY a JSON array of question objects with fields:
+- question_type: "behavioral", "technical", "situational", "role_specific", or "culture_fit"
+- question_text: string (the full question)
+- focus_area: string or null (e.g. "leadership", "cloud architecture")
+- tips: [string] — brief advice for answering well
+- tags: [string] — short subject tags
+- difficulty: "easy", "medium", or "hard"
+
+Do not include id or session_id — the backend manages those. Use lowercase null."""
+
+READINESS_SYSTEM_PROMPT = """You are an interview readiness assessor. Analyse the candidate's resume against the target role and return ONLY a JSON object with:
+- overall_score: number from 0 to 100
+- category_scores: object of category → score (0-100), e.g. {"technical": 80, "behavioral": 65}
+- strengths: [string]
+- weaknesses: [string]
+- recommendations: [string]
+
+Use lowercase null. Keep every list item concise."""
 
 
 def _now() -> str:
@@ -98,7 +120,7 @@ async def generate_questions(application_id: str, session_id: str, count: int = 
 
     prompt_service = PromptService()
 
-    async def build():
+    async def build_omniroute_prompt():
         return prompt_service.build_interview_questions_prompt(
             resume_json=resume_json,
             job_context=job_context,
@@ -106,24 +128,42 @@ async def generate_questions(application_id: str, session_id: str, count: int = 
             count=count,
         )
 
+    async def build_ollama_prompt():
+        user_prompt = (
+            f"Candidate resume (JSON):\n{compact_resume(resume) if resume else '{}'}\n\n"
+            f"Target role: {job_context}\n"
+            f"ATS skill gaps to probe: {ats_gaps or 'none'}\n"
+            f"Number of questions: {count}"
+        )
+        return INTERVIEW_QUESTIONS_SYSTEM_PROMPT, user_prompt
+
     def parse(raw: str) -> list[InterviewQuestion]:
-        cleaned = extract_json(raw)
+        # Output is a JSON ARRAY of questions; extract_json_array keeps the
+        # brackets (object-mode extract_json would return {..},{..} → "Extra data").
+        cleaned = extract_json_array(raw)
         data = json.loads(cleaned)
         if not isinstance(data, list):
             data = [data]
         questions = []
         for item in data:
-            q = InterviewQuestion(
-                id=uuid.uuid4().hex,
-                session_id=session_id,
-                **{
-                    k: v
-                    for k, v in item.items()
-                    if k in InterviewQuestion.model_fields and k not in ("id", "session_id")
-                },
-            )
+            try:
+                q = InterviewQuestion(
+                    id=uuid.uuid4().hex,
+                    session_id=session_id,
+                    **{
+                        k: v
+                        for k, v in item.items()
+                        if k in InterviewQuestion.model_fields and k not in ("id", "session_id")
+                    },
+                )
+            except ValidationError as e:
+                logger.warning("Skipping invalid interview question: %s", e)
+                continue
             get_interview_question_repository().save(q)
             questions.append(q)
+        if not questions:
+            # Nothing usable from the model — let the dispatcher try the next provider.
+            raise ValueError("no valid interview questions in model output")
         session = get_interview_session_repository().get_by_id(application_id, session_id)
         if session:
             session.question_count = len(questions)
@@ -132,7 +172,13 @@ async def generate_questions(application_id: str, session_id: str, count: int = 
         return questions
 
     try:
-        return await call_with_retry(build, parse, service_name="InterviewQuestions")
+        return await run_with_providers(
+            service_name="InterviewQuestions",
+            build_ollama_prompt=build_ollama_prompt,
+            build_omniroute_prompt=build_omniroute_prompt,
+            parse=parse,
+            allow_mock=False,
+        )
     except AIServiceUnavailable as e:
         raise RuntimeError("Question generation unavailable") from e
 
@@ -150,7 +196,7 @@ async def submit_answer(question_id: str, user_answer: str) -> InterviewAnswer:
 async def coach_answer(question_id: str, question_text: str, user_answer: str) -> InterviewAnswer:
     prompt_service = PromptService()
 
-    async def build():
+    async def build_hint() -> tuple[str, str]:
         return prompt_service.build_answer_coach_prompt(question_text, user_answer)
 
     def parse(raw: str) -> InterviewAnswer:
@@ -168,7 +214,13 @@ async def coach_answer(question_id: str, question_text: str, user_answer: str) -
         )
 
     try:
-        coached = await call_with_retry(build, parse, service_name="AnswerCoach")
+        coached = await run_with_providers(
+            service_name="AnswerCoach",
+            build_ollama_prompt=build_hint,  # prompt is small; fine for local models
+            build_omniroute_prompt=build_hint,
+            parse=parse,
+            allow_mock=False,
+        )
         get_interview_answer_repository().save(coached)
         return coached
     except AIServiceUnavailable as e:
@@ -189,8 +241,15 @@ async def assess_readiness(application_id: str) -> ReadinessAssessment:
 
     prompt_service = PromptService()
 
-    async def build():
+    async def build_omniroute_prompt():
         return prompt_service.build_readiness_prompt(resume_json, job_context, "")
+
+    async def build_ollama_prompt():
+        user_prompt = (
+            f"Candidate resume (JSON):\n{compact_resume(resume) if resume else '{}'}\n\n"
+            f"Target role: {job_context}"
+        )
+        return READINESS_SYSTEM_PROMPT, user_prompt
 
     def parse(raw: str) -> ReadinessAssessment:
         cleaned = extract_json(raw)
@@ -208,7 +267,13 @@ async def assess_readiness(application_id: str) -> ReadinessAssessment:
         return assessment
 
     try:
-        return await call_with_retry(build, parse, service_name="Readiness")
+        return await run_with_providers(
+            service_name="Readiness",
+            build_ollama_prompt=build_ollama_prompt,
+            build_omniroute_prompt=build_omniroute_prompt,
+            parse=parse,
+            allow_mock=False,
+        )
     except AIServiceUnavailable as e:
         raise RuntimeError("Readiness assessment unavailable") from e
 
@@ -217,8 +282,10 @@ def list_readiness(application_id: str) -> list[ReadinessAssessment]:
     return get_readiness_assessment_repository().list_by_application(application_id)
 
 
-async def generate_summary(session_id: str) -> SessionSummary:
-    app_id = session_id.split("-")[0]
+async def generate_summary(session_id: str, application_id: str | None = None) -> SessionSummary:
+    # Session ids are bare hex (not "<application_id>-<random>"), so the app id
+    # must come from the caller; keep the split as a fallback for safety.
+    app_id = application_id or session_id.split("-")[0]
     questions = get_interview_question_repository().list_by_session(session_id)
     qa_pairs = []
     for q in questions:
@@ -227,7 +294,7 @@ async def generate_summary(session_id: str) -> SessionSummary:
 
     prompt_service = PromptService()
 
-    async def build():
+    async def build_summary() -> tuple[str, str]:
         return prompt_service.build_interview_summary_prompt("\n\n".join(qa_pairs))
 
     def parse(raw: str) -> SessionSummary:
@@ -247,6 +314,12 @@ async def generate_summary(session_id: str) -> SessionSummary:
         return summary
 
     try:
-        return await call_with_retry(build, parse, service_name="SessionSummary")
+        return await run_with_providers(
+            service_name="SessionSummary",
+            build_ollama_prompt=build_summary,  # QA transcript prompt; small enough for local models
+            build_omniroute_prompt=build_summary,
+            parse=parse,
+            allow_mock=False,
+        )
     except AIServiceUnavailable as e:
         raise RuntimeError("Summary generation unavailable") from e

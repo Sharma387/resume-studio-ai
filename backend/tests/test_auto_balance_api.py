@@ -31,7 +31,7 @@ def client() -> AsyncClient:
     return AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
 
 
-def _save_resume_long(user_id="test") -> str:
+def _save_resume_long(user_id="dev-user") -> str:
     """Persist a content-heavy resume that triggers a two-column recommendation."""
     resume_id = uuid.uuid4().hex
     experiences = [
@@ -224,7 +224,7 @@ class TestAutoBalanceRationale:
         from app.rendering import layout_preview
         from app.services.repositories.factory import get_resume_repository
 
-        resume = get_resume_repository().get_by_id(rid, "test")
+        resume = get_resume_repository().get_by_id(rid, "dev-user")
         cvm = cvm_from_resume(resume)
         base = layout_preview.resolve_preview_layout("sidebar", None)
         analysis = ContentAnalyzer().analyze(cvm)

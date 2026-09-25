@@ -39,7 +39,7 @@ def mock_omniroute(monkeypatch):
     async def fake_call_with_retry(build_prompt, parse_response, omniroute=None, service_name="AI"):
         return parse_response(json_response)
 
-    monkeypatch.setattr("app.services.parser_service.call_with_retry", fake_call_with_retry)
+    monkeypatch.setattr("app.services.ollama_service.call_with_retry", fake_call_with_retry)
 
 
 @pytest.mark.asyncio

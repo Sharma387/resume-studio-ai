@@ -6,10 +6,23 @@ from app.core.config import settings
 from app.core.logging import get_logger
 from app.models.match import MatchResult
 from app.models.resume import Resume
-from app.services.ai_core import AIServiceUnavailable, call_with_retry, extract_json
+from app.services.ai_core import AIServiceUnavailable, extract_json
+from app.services.ollama_service import compact_resume, run_with_providers
 from app.services.prompt_service import PromptService
 
 logger = get_logger(__name__)
+
+MATCH_SYSTEM_PROMPT = """You are an ATS resume matcher. Analyse the candidate's resume against the job description and return ONLY a JSON object with these fields:
+- overall_score: number from 0 to 100
+- skill_matches: [{"skill": string, "required": bool, "matched": bool, "category": string or null}]
+- matched_skills: [string]
+- missing_skills: [string]
+- recommendations: [{"section": string, "priority": "high" or "medium" or "low", "message": string, "suggestion": string or null}]
+- summary: string (2-3 sentences)
+- job_title: string or null
+
+Do NOT include id, resume_id, user_id, or created_at — the backend manages those.
+Use lowercase null for missing values. Base the analysis strictly on the actual resume content shown."""
 
 
 def _mock_match(resume_id: str, job_title: str | None, resume: Resume, user_id: str) -> MatchResult:
@@ -53,33 +66,45 @@ def _mock_match(resume_id: str, job_title: str | None, resume: Resume, user_id: 
 async def analyze_match(
     resume_id: str, job_title: str | None, job_description: str, resume: Resume, user_id: str
 ) -> MatchResult:
-    if "localhost" not in settings.omniroute_api_url and not settings.omniroute_api_key:
-        if settings.allow_mock_ai_data:
-            logger.info("Mock AI data enabled; returning mock match")
-            return _mock_match(resume_id, job_title, resume, user_id)
-        raise RuntimeError("AI service is not configured. Set OMNIROUTE_API_URL or ALLOW_MOCK_AI_DATA=true.")
-
     prompt_service = PromptService()
 
-    async def build() -> tuple[str, str]:
+    async def build_omniroute_prompt() -> tuple[str, str]:
         resume_json = json.dumps(resume.model_dump(), indent=2, default=str)
         match_schema = json.dumps(MatchResult.model_json_schema(), indent=2)
         return prompt_service.build_match_prompt(resume_json, job_description, match_schema)
 
-    def parse(raw: str) -> MatchResult:
-        cleaned = extract_json(raw)
-        data = json.loads(cleaned)
-        result = MatchResult(**data)
-        result.id = uuid.uuid4().hex
-        result.resume_id = resume_id
-        result.job_title = job_title or result.job_title
-        result.created_at = datetime.now(UTC).isoformat()
-        return result
+    async def build_ollama_prompt() -> tuple[str, str]:
+        return (
+            MATCH_SYSTEM_PROMPT,
+            f"Candidate resume (JSON):\n{compact_resume(resume)}\n\n"
+            f"Job title: {job_title or 'Not specified'}\n\n"
+            f"Job description:\n{job_description}",
+        )
 
     try:
-        return await call_with_retry(build, parse, service_name="Matcher")
-    except AIServiceUnavailable:
-        if settings.allow_mock_ai_data:
-            logger.warning("AI matching failed; returning mock match")
-            return _mock_match(resume_id, job_title, resume, user_id)
-        raise RuntimeError("AI service unavailable. Please try again later.")
+        return await run_with_providers(
+            service_name="Matcher",
+            build_ollama_prompt=build_ollama_prompt,
+            build_omniroute_prompt=build_omniroute_prompt,
+            parse=lambda raw: _parse_match(raw, resume_id, user_id, job_title),
+            allow_mock=settings.allow_mock_ai_data,
+            mock_factory=lambda: _mock_match(resume_id, job_title, resume, user_id),
+        )
+    except AIServiceUnavailable as e:
+        raise RuntimeError("AI service unavailable. Please try again later.") from e
+
+
+def _parse_match(raw: str, resume_id: str, user_id: str, job_title: str | None) -> MatchResult:
+    """Build a MatchResult from LLM output, filling backend-managed fields."""
+    data = json.loads(extract_json(raw))
+    for key in ("id", "resume_id", "user_id", "created_at"):
+        data.pop(key, None)
+    model_job_title = data.pop("job_title", None)
+    return MatchResult(
+        user_id=user_id,
+        id=uuid.uuid4().hex,
+        resume_id=resume_id,
+        job_title=job_title or model_job_title,
+        created_at=datetime.now(UTC).isoformat(),
+        **data,
+    )

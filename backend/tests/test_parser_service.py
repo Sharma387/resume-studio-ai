@@ -27,7 +27,7 @@ def _enable_mock(monkeypatch):
 
 
 def _mock_call_with_retry(return_values: list, monkeypatch):
-    """Replace call_with_retry with a mock that returns given values."""
+    """Replace call_with_retry (in the provider dispatcher) with a mock."""
     _enable_mock(monkeypatch)
     idx = 0
 
@@ -58,7 +58,7 @@ def _mock_call_with_retry(return_values: list, monkeypatch):
 
         raise AIServiceUnavailable("exhausted")
 
-    monkeypatch.setattr("app.services.parser_service.call_with_retry", fake_call_with_retry)
+    monkeypatch.setattr("app.services.ollama_service.call_with_retry", fake_call_with_retry)
 
 
 @pytest.mark.asyncio

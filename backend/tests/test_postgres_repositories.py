@@ -35,12 +35,30 @@ def _requires_db():
 
 
 def _reset_db():
-    """Clean all rows from both tables."""
+    """Clean only rows created by this suite's fixtures.
+
+    The previous implementation deleted *every* user. Because the
+    user-owned content tables (resumes, applications, cover_letters,
+    match_results, interview_sessions, ...) all have ON DELETE CASCADE
+    foreign keys back to ``users``, running the suite wiped the shared
+    local dev database of all live data (dev user, parsed resumes, ...).
+
+    All fixtures in this file create users with ``@example.com`` /
+    ``@test.com`` emails, so scope the cleanup to those two domains
+    (case-insensitive) instead of deleting globally.
+    """
     _requires_db()
     session = get_sync_session()
     try:
-        session.query(RefreshTokenModel).delete()
-        session.query(UserModel).delete()
+        test_users = session.query(UserModel.id).filter(
+            UserModel.email.ilike("%@example.com") | UserModel.email.ilike("%@test.com")
+        )
+        session.query(RefreshTokenModel).filter(
+            RefreshTokenModel.user_id.in_(test_users)
+        ).delete(synchronize_session=False)
+        session.query(UserModel).filter(
+            UserModel.email.ilike("%@example.com") | UserModel.email.ilike("%@test.com")
+        ).delete(synchronize_session=False)
         session.commit()
     except Exception:
         session.rollback()

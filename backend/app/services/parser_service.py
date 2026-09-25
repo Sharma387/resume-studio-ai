@@ -1,15 +1,45 @@
 import json
 
-import httpx
-
 from app.core.config import settings  # noqa: F401 — referenced by test monkeypatch
 from app.core.exceptions import AppError
 from app.core.logging import get_logger
 from app.models.resume import Certification, Education, Experience, Project, Resume, Skill
-from app.services.ai_core import AIServiceUnavailable, call_with_retry, extract_json
+from app.services.ai_core import AIServiceUnavailable, extract_json
+from app.services.ollama_service import run_with_providers
 from app.services.prompt_service import PromptService
 
 logger = get_logger(__name__)
+
+# Compact field instructions sent to Ollama instead of the full 10KB+ JSON
+# schema. Local models have small context windows and slower generation, so a
+# short prompt parses faster and still validates against the real Resume model
+# server-side.
+OLLAMA_SCHEMA_INSTRUCTIONS = """Return ONLY a JSON object (no markdown, no commentary) with these fields:
+
+Top-level strings:
+- full_name, email, phone, location, linkedin, github, website, professional_title, summary
+
+Arrays (use [] and null when absent):
+- education: [{"institution", "degree", "field", "start_date", "end_date", "gpa", "achievements": []}]
+- experience: [{"company", "title", "location", "start_date", "end_date", "current": bool, "description": []}]
+- projects: [{"name", "description", "url", "technologies": []}]
+- skills: [{"category", "skills": []}]
+- certifications: [{"name", "issuer", "date", "url"}]
+- awards: [{"name", "issuer", "date", "description"}]
+- languages: [{"name", "proficiency"}]
+
+Use lowercase null (not None) for missing values. Keep descriptions concise."""
+
+
+def _salvage_llm_dict(data: dict, text: str) -> dict:
+    """Repair common LLM output quirks that would fail strict validation."""
+    import re
+
+    if not str(data.get("email") or "").strip() or "@" not in str(data.get("email") or ""):
+        match = re.search(r"[\w.+-]+@[\w-]+\.[\w.]+", text)
+        if match:
+            data["email"] = match.group(0)
+    return data
 
 
 class ParseError(AppError):
@@ -114,116 +144,34 @@ def _mock_resume() -> Resume:
 
 
 async def parse_resume(text: str) -> Resume:
-    # ── Ollama-first probe ──────────────────────────────────────────────
-    # Discover available local Ollama models
-    ollama_models: list[str] = []
+    async def build_ollama_prompt() -> tuple[str, str]:
+        return ("You are a resume parser. " + OLLAMA_SCHEMA_INSTRUCTIONS, text)
+
+    async def build_omniroute_prompt() -> tuple[str, str]:
+        prompt_service = PromptService()
+        schema = json.dumps(Resume.model_json_schema(), indent=2)
+        return prompt_service.build_prompt(text, schema)
+
+    def parse(raw: str) -> Resume:
+        cleaned = extract_json(raw)
+        data = json.loads(cleaned)
+        try:
+            return Resume(**_coerce_model_dict(data))
+        except Exception as ve:
+            # LLMs often emit URLs without a scheme or hallucinate the email —
+            # repair what we can before giving up on the output.
+            logger.warning("Parser output failed validation, attempting salvage: %s", ve)
+            return Resume(**_coerce_model_dict(_salvage_llm_dict(data, text)))
+
     try:
-        async with httpx.AsyncClient(timeout=5) as client:
-            r = await client.get("http://localhost:11434/api/tags")
-            if r.status_code == 200:
-                data = r.json()
-                ollama_models = [m["name"] for m in data.get("models", [])]
-    except Exception as e:
-        logger.warning("Ollama discovery failed: %s", e)
-
-    # Use the first available Ollama model (prefer qwen2 if present)
-    ollama_model: str | None = None
-    for model in ollama_models or []:
-        if "qwen" in model.lower():
-            ollama_model = model
-            break
-    if ollama_model is None and ollama_models:
-        ollama_model = ollama_models[0]
-
-    # Probe the chosen Ollama model with a tiny completion
-    ollama_success: bool | None = None
-    ollama_error: str | None = None
-    parsed_resume: Resume | None = None
-    if ollama_model:
-        try:
-            async with httpx.AsyncClient(timeout=5) as client:
-                body = json.dumps(
-                    {
-                        "model": ollama_model,
-                        "messages": [{"role": "user", "content": "Reply with the single word: OK"}],
-                        "stream": False,
-                    }
-                )
-                r = await client.post(
-                    "http://localhost:11434/v1/chat/completions",
-                    headers={"Content-Type": "application/json"},
-                    data=body,
-                    timeout=5,
-                )
-                if r.status_code == 200:
-                    d = r.json()
-                    content = d.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
-                    if content.upper() == "OK":
-                        ollama_success = True
-                        # Try to parse as Resume
-                        try:
-                            cleaned = extract_json(d.get("choices", [{}])[0].get("message", {}).get("content", ""))
-                            data = json.loads(cleaned)
-                            parsed_resume = Resume(**_coerce_model_dict(data))
-                        except Exception:
-                            ollama_success = True  # completion succeeded, just not a valid Resume schema
-                    else:
-                        ollama_success = False
-                else:
-                    ollama_success = False
-                ollama_error = f"HTTP {r.status_code}"
-        except Exception as e:
-            ollama_success = False
-            ollama_error = str(e)
-
-    # ── Fallthrough: existing OmniRoute path ─────────────────────────────
-    if not ollama_success:
-        # Existing call_with_retry logic
-        prompt_service = PromptService()
-        schema = json.dumps(Resume.model_json_schema(), indent=2)
-
-        async def build() -> tuple[str, str]:
-            return prompt_service.build_prompt(text, schema)
-
-        def parse(raw: str) -> Resume:
-            cleaned = extract_json(raw)
-            data = json.loads(cleaned)
-            return Resume(**_coerce_model_dict(data))
-
-        try:
-            return await call_with_retry(build, parse, service_name="Parser")
-        except AIServiceUnavailable:
-            # No mock data – raise a clear service-unavailable error
-            logger.error(
-                "AI parsing unavailable: Ollama and OmniRoute could not process the resume",
-                ollama_model=ollama_model,
-                ollama_error=ollama_error,
-            )
-            raise ParseError("AI parsing unavailable. Please try again later.") from None
-    else:
-        # Ollama succeeded – return the real parsed resume
-        if parsed_resume is not None:
-            logger.info("Ollama parsing succeeded", model=ollama_model, name=parsed_resume.full_name)
-            return parsed_resume
-        # If we got here without a parsed resume but ollama_success=True,
-        # still try the existing path as fallback
-        prompt_service = PromptService()
-        schema = json.dumps(Resume.model_json_schema(), indent=2)
-
-        async def build() -> tuple[str, str]:
-            return prompt_service.build_prompt(text, schema)
-
-        def parse(raw: str) -> Resume:
-            cleaned = extract_json(raw)
-            data = json.loads(cleaned)
-            return Resume(**_coerce_model_dict(data))
-
-        try:
-            return await call_with_retry(build, parse, service_name="Parser")
-        except AIServiceUnavailable:
-            logger.error(
-                "AI parsing unavailable: Ollama and OmniRoute could not process the resume",
-                ollama_model=ollama_model,
-                ollama_error=ollama_error,
-            )
-            raise ParseError("AI parsing unavailable. Please try again later.") from None
+        return await run_with_providers(
+            service_name="Parser",
+            build_ollama_prompt=build_ollama_prompt,
+            build_omniroute_prompt=build_omniroute_prompt,
+            parse=parse,
+            allow_mock=False,
+        )
+    except AIServiceUnavailable:
+        # Parsing has no mock fallback — surface a clear service error.
+        logger.error("AI parsing unavailable: configured providers could not process the resume")
+        raise ParseError("AI parsing unavailable. Please try again later.") from None
