@@ -5,8 +5,10 @@ from app.core.exceptions import AppError
 from app.core.logging import get_logger
 from app.models.resume import Certification, Education, Experience, Project, Resume, Skill
 from app.services.ai_core import AIServiceUnavailable, extract_json
-from app.services.ollama_service import run_with_providers
+from app.services.ollama_service import chat_ollama, run_with_providers
 from app.services.prompt_service import PromptService
+from app.services.resume_chunk_parser import merge_chunks, parse_chunk, verify_completeness
+from app.services.resume_chunker import chunk_resume
 
 logger = get_logger(__name__)
 
@@ -14,21 +16,32 @@ logger = get_logger(__name__)
 # schema. Local models have small context windows and slower generation, so a
 # short prompt parses faster and still validates against the real Resume model
 # server-side.
-OLLAMA_SCHEMA_INSTRUCTIONS = """Return ONLY a JSON object (no markdown, no commentary) with these fields:
+OLLAMA_SCHEMA_INSTRUCTIONS = """You are a resume parser. Convert the resume text into a single JSON object (no markdown, no commentary).
+
+Be COMPLETE AND FAITHFUL: capture EVERY detail. Never omit, merge, shorten, or paraphrase any role, bullet point, achievement, certification, award, or education entry. Preserve numbers, dates, amounts (e.g. $5M+, 60+, 25+), acronyms, and metric details exactly as written.
+
+Return ONLY a JSON object with these fields:
 
 Top-level strings:
 - full_name, email, phone, location, linkedin, github, website, professional_title, summary
+  - summary: the resume's professional summary/profile paragraph, verbatim.
+  - linkedin/github/website: full URL when present (e.g. "https://linkedin.com/in/..."); null otherwise.
 
 Arrays (use [] and null when absent):
 - education: [{"institution", "degree", "field", "start_date", "end_date", "gpa", "achievements": []}]
+  - achievements: EVERY bullet listed under the degree, verbatim.
 - experience: [{"company", "title", "location", "start_date", "end_date", "current": bool, "description": []}]
+  - Include EVERY role in the resume (all jobs, past and early-career roles, and study roles), in resume order.
+  - description: EVERY bullet/achievement for the role, verbatim — do not truncate or merge.
 - projects: [{"name", "description", "url", "technologies": []}]
-- skills: [{"category", "skills": []}]
-- certifications: [{"name", "issuer", "date", "url"}]
-- awards: [{"name", "issuer", "date", "description"}]
+- skills: [{"category", "skills": []}] — group skills exactly as the resume groups them.
+- certifications: [{"name", "issuer", "date", "url", "category", "values": []}]
+  - One entry per named credential (e.g. PRINCE2 Practitioner, Certified Scrum Master, ITIL) with issuer if given.
+  - ALSO one entry per grouping heading (e.g. category "AI & Emerging Technologies", values = each listed item).
+- awards: [{"name", "issuer", "date", "description"}] — EVERY award; include the year in name or date and the issuing company.
 - languages: [{"name", "proficiency"}]
 
-Use lowercase null (not None) for missing values. Keep descriptions concise."""
+Use lowercase null (not None) for missing values."""
 
 
 def _salvage_llm_dict(data: dict, text: str) -> dict:
@@ -143,7 +156,8 @@ def _mock_resume() -> Resume:
     )
 
 
-async def parse_resume(text: str) -> Resume:
+async def _parse_single_shot(text: str) -> Resume:
+    """Parse the entire resume in one AI call (legacy path)."""
     async def build_ollama_prompt() -> tuple[str, str]:
         return ("You are a resume parser. " + OLLAMA_SCHEMA_INSTRUCTIONS, text)
 
@@ -163,14 +177,89 @@ async def parse_resume(text: str) -> Resume:
             logger.warning("Parser output failed validation, attempting salvage: %s", ve)
             return Resume(**_coerce_model_dict(_salvage_llm_dict(data, text)))
 
-    try:
-        return await run_with_providers(
-            service_name="Parser",
-            build_ollama_prompt=build_ollama_prompt,
-            build_omniroute_prompt=build_omniroute_prompt,
-            parse=parse,
-            allow_mock=False,
+    return await run_with_providers(
+        service_name="Parser",
+        build_ollama_prompt=build_ollama_prompt,
+        build_omniroute_prompt=build_omniroute_prompt,
+        parse=parse,
+        allow_mock=False,
+    )
+
+
+async def _parse_chunked(text: str) -> Resume | None:
+    """Parse the resume section-by-section and merge the results.
+
+    Each section is a small, independent AI call, so the model produces a
+    small JSON per call. This is both far faster on a local model and far
+    more complete than a single call, which overruns the context window and
+    truncates roles/bullets. Returns None if no usable provider is present.
+    """
+    chunks = chunk_resume(text, max_chars=settings.parse_max_chunk_chars)
+    if not chunks:
+        return None
+
+    # Thin wrapper over the provider dispatch that returns raw text.
+    async def call(system: str, user: str) -> str:
+        result = await chat_ollama(
+            system,
+            user,
+            timeout=settings.parse_chunk_timeout,
+            num_predict=settings.parse_chunk_num_predict,
         )
+        if result is None:
+            raise AIServiceUnavailable("no provider returned output for chunk parse")
+        return result if isinstance(result, str) else str(result)
+
+    results: list[tuple[str, dict]] = []
+    for chunk in chunks:
+        section = chunk["section"]
+        data = await parse_chunk(section, chunk["text"], call)
+        if not data:
+            # A single dropped chunk silently loses a whole section, so give it
+            # one more chance before moving on.
+            logger.info("Chunk %s produced nothing; retrying once", section)
+            data = await parse_chunk(section, chunk["text"], call)
+        results.append((section, data))
+
+    merged = merge_chunks(results)
+    if not (merged.get("full_name") and merged.get("email")):
+        logger.warning("Chunked parse produced no identity; trying single-shot")
+        return None
+
+    # Best-effort completeness audit against the source text.
+    if settings.parse_verify_completeness:
+        missing = await verify_completeness(text, merged, call)
+        if missing:
+            logger.warning("Completeness audit flagged %d possibly-missing facts", len(missing))
+            for fact in missing:
+                logger.warning("  possibly missing: %s", fact[:160])
+
+    try:
+        return Resume(**_coerce_model_dict(merged))
+    except Exception as ve:  # noqa: BLE001
+        logger.warning("Chunked merge failed validation: %s", ve)
+        return None
+
+
+async def parse_resume(text: str) -> Resume:
+    if settings.parse_chunked:
+        try:
+            resume = await _parse_chunked(text)
+            if resume is not None:
+                return resume
+            logger.warning("Chunked parse returned nothing; falling back to single-shot")
+        except AIServiceUnavailable:
+            if not settings.parse_chunk_fallback_single_shot:
+                raise
+            logger.warning("Chunked parse hit no provider; falling back to single-shot")
+        except Exception as e:  # noqa: BLE001 - never let chunking break parsing
+            logger.warning("Chunked parse failed (%s); falling back to single-shot", e)
+
+    if not settings.parse_chunked and not settings.parse_chunk_fallback_single_shot:
+        return await _parse_single_shot(text)
+
+    try:
+        return await _parse_single_shot(text)
     except AIServiceUnavailable:
         # Parsing has no mock fallback — surface a clear service error.
         logger.error("AI parsing unavailable: configured providers could not process the resume")

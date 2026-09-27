@@ -5,6 +5,8 @@ from pathlib import Path
 import pytest
 
 from app.core.config import settings
+from app.services.ai_core import AIServiceUnavailable
+from app.services.omniroute_service import OmniRouteError
 
 # Enable debug mode so auth dependency auto-creates a mock user
 settings.debug = True
@@ -26,12 +28,31 @@ def _disable_local_ollama(monkeypatch):
 
     The provider router defaults to Ollama-first; tests force the OmniRoute
     path (which individual tests mock) so runs are deterministic and fast.
+    Both real providers are stubbed out: the local OmniRoute gateway accepts
+    the request and can then hold it open for many minutes before returning
+    504, so any test reaching it un-mocked stalled the whole suite.
+    AI PDF OCR is a local model call too, so it is disabled here as well —
+    otherwise extracting a short PDF would try to load a multi-GB model and
+    hang the run. Tests that exercise OCR re-enable it themselves.
     """
 
     async def _no_ollama() -> None:
         return None
 
+    async def _no_omniroute(*args, **kwargs):
+        raise AIServiceUnavailable("omniroute disabled during tests")
+
     monkeypatch.setattr("app.services.ollama_service.detect_ollama_model", _no_ollama)
+    monkeypatch.setattr("app.services.ollama_service.call_with_retry", _no_omniroute)
+    monkeypatch.setattr(settings, "pdf_ai_ocr_fallback", False)
+
+    # The local OmniRoute gateway is reachable but can hold a request open for
+    # many minutes, so block it at the transport too. Unit tests of the service
+    # itself patch the client and are unaffected.
+    async def _no_gateway(*args, **kwargs):
+        raise OmniRouteError("omniroute disabled during tests")
+
+    monkeypatch.setattr("app.services.omniroute_service.OmniRouteService.send_prompt", _no_gateway)
 
 
 # ── JSON storage cleanup between test runs ────────────────────────────────────

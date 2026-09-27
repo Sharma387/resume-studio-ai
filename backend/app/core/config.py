@@ -32,6 +32,11 @@ class Settings(BaseSettings):
     allow_mock_ai_data: bool = False
     # ── AI Model Router ─────────────────────────────────────────────
     ollama_api_url: str = "http://localhost:11434/v1/chat/completions"
+    # Pin a specific local model, e.g. "deepseek-coder-v2:16b". Empty (the
+    # default) picks the smallest installed model, because on a 16GB machine a
+    # 9GB model plus its context cache exhausts RAM and swap and generation
+    # crawls. Set AI_OLLAMA_MODEL to use a larger, more capable model.
+    ollama_model: str = ""
     # Provider order for AI calls, tried in sequence until one succeeds.
     # Supported values: "ollama" (local model), "omniroute" (cloud gateway).
     # Dev default is Ollama-first; production sets "omniroute,ollama".
@@ -40,6 +45,37 @@ class Settings(BaseSettings):
     ai_probe_timeout: int = 6
     ai_probe_limit: int = 10
     ai_route_cache_ttl: int = 300
+
+    # ── Resume parsing ───────────────────────────────────────────
+    # Parse the resume section-by-section (each section is one AI call)
+    # instead of one giant call. Local models generate a few tokens/sec,
+    # so a single full-resume JSON takes tens of minutes and overruns the
+    # model context window, which silently truncates roles and bullets.
+    parse_chunked: bool = True
+    parse_max_chunk_chars: int = 2600
+    # Per-chunk generation cap. Chunks are small, so this only guards
+    # against a runaway generation; it is not a target.
+    parse_chunk_num_predict: int = 3000
+    # Local models are slow once warm (~4 tok/s on modest hardware), so a
+    # chunk call needs a generous ceiling before it counts as failed.
+    parse_chunk_timeout: int = 420
+    # Extra AI pass that diffs the merged resume against the source text
+    # and reports omissions (best effort; never fails the parse).
+    parse_verify_completeness: bool = True
+    # Fall back to the single-shot whole-resume prompt if chunking yields
+    # nothing usable.
+    parse_chunk_fallback_single_shot: bool = True
+
+    # ── PDF extraction ──────────────────────────────────────────
+    # A PDF whose text layer holds fewer than this many characters is treated
+    # as image-only and routed to AI OCR.
+    pdf_text_layer_min_chars: int = 200
+    pdf_ai_ocr_fallback: bool = True
+    pdf_ai_ocr_model: str = "qwen3-vl:8b"
+    pdf_ai_ocr_dpi: int = 150
+    pdf_ai_ocr_num_predict: int = 4096
+    pdf_ai_ocr_timeout: int = 300
+    pdf_ai_ocr_probe_timeout: int = 5
 
     @property
     def ai_providers(self) -> list[str]:

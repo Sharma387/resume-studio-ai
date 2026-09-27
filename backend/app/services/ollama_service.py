@@ -29,23 +29,37 @@ OLLAMA_TIMEOUT = 180
 # 3500 was too low: verbose generations (e.g. full-resume JSON) got truncated
 # mid-document and failed to parse. 8192 covers the worst case at no cost to
 # small outputs like match scores or cover letters.
-OLLAMA_NUM_PREDICT = 8192
+OLLAMA_NUM_PREDICT = 16384
 
 
 def _pick_ollama_model(models: list[str]) -> str | None:
-    """Prefer the model that generates fastest for resume-shaped tasks."""
+    """Choose the local model to use, honouring an explicit preference first.
+
+    ``AI_OLLAMA_MODEL`` pins a model by name. Otherwise the smallest installed
+    model wins: on a 16GB machine a 9GB model plus its context cache exhausts
+    RAM and swap and generation crawls, so picking by size is what keeps local
+    AI usable. Set the variable to opt back into a larger model.
+    """
     if not models:
         return None
 
-    def rank(m: str) -> int:
-        ml = m.lower()
-        if "deepseek" in ml:
-            return 0
-        if "qwen" in ml:
-            return 1
-        return 2
+    preferred = settings.ollama_model.strip()
+    if preferred:
+        for name in models:
+            if name == preferred or name.split(":")[0] == preferred.split(":")[0]:
+                return name
 
-    return min(models, key=rank)
+    try:
+        response = httpx.get(f"{OLLAMA_BASE}/api/tags", timeout=5)
+        sizes = {
+            entry.get("name"): float(entry.get("size", 0)) / 1e9
+            for entry in response.json().get("models", [])
+        }
+    except Exception:  # noqa: BLE001 - size is only a tiebreak hint
+        sizes = {}
+
+    # Unknown sizes sort last so a model with a known size is preferred.
+    return min(models, key=lambda name: sizes.get(name, 99.0))
 
 
 async def detect_ollama_model() -> str | None:

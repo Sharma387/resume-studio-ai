@@ -3,6 +3,19 @@ import pytest
 
 from app.services.omniroute_service import OmniRouteError, OmniRouteService
 
+_REAL_SEND_PROMPT = OmniRouteService.send_prompt
+
+
+@pytest.fixture(autouse=True)
+def _exercise_real_client(monkeypatch):
+    """These tests cover OmniRouteService itself.
+
+    The global test-isolation fixture blocks real provider calls by stubbing
+    ``send_prompt``; these tests fake the HTTP client instead, so the real
+    method must be restored.
+    """
+    monkeypatch.setattr(OmniRouteService, "send_prompt", _REAL_SEND_PROMPT)
+
 
 @pytest.mark.asyncio
 async def test_send_prompt_success():
