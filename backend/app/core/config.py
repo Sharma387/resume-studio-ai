@@ -53,17 +53,32 @@ class Settings(BaseSettings):
     # model context window, which silently truncates roles and bullets.
     parse_chunked: bool = True
     parse_max_chunk_chars: int = 2600
-    # Per-chunk generation cap. Chunks are small, so this only guards
-    # against a runaway generation; it is not a target.
-    parse_chunk_num_predict: int = 3000
-    # Local models are slow once warm (~4 tok/s on modest hardware), so a
-    # chunk call needs a generous ceiling before it counts as failed.
-    parse_chunk_timeout: int = 420
-    # Extra AI pass that diffs the merged resume against the source text
-    # and reports omissions (best effort; never fails the parse).
-    parse_verify_completeness: bool = True
+    # Per-chunk generation cap. A section's JSON runs from ~150 tokens (header)
+    # to ~1800 (the certifications block, which is dense), and a cap below that
+    # truncates the response mid-JSON and loses the whole section. It is a max,
+    # not a target, so small sections still finish as soon as they are done.
+    parse_chunk_num_predict: int = 2000
+    # Per-chunk ceiling before the chunk counts as failed. A small section
+    # should take seconds; a long one here means the model or the box is in
+    # trouble, and waiting longer only delays the partial result.
+    parse_chunk_timeout: int = 150
+    # Hard ceiling for the whole chunked parse. When it is hit, whatever has
+    # been parsed so far is merged and returned instead of continuing — a
+    # resume must never sit parsing for hours.
+    parse_time_budget: int = 480
+    # Chunks are retried once, but only while failures look isolated. If this
+    # many chunks fail in a row the provider is unhealthy, and retrying each
+    # one just multiplies the wait, so the parse gives up early.
+    parse_max_consecutive_failures: int = 3
+    # Extra AI pass that diffs the parsed output against the source text and
+    # reports omissions (best effort; never fails the parse). Off by default:
+    # it costs one extra model call per section, which roughly doubles parse
+    # time. Turn it on to check fidelity on a resume you suspect is being
+    # parsed incompletely.
+    parse_verify_completeness: bool = False
     # Fall back to the single-shot whole-resume prompt if chunking yields
-    # nothing usable.
+    # nothing usable. Only used when chunking produced nothing at all — a
+    # partial chunked result is far better than another long call.
     parse_chunk_fallback_single_shot: bool = True
 
     # ── PDF extraction ──────────────────────────────────────────

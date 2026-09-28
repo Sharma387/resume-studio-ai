@@ -27,18 +27,37 @@ OLLAMA_BASE = "http://localhost:11434"
 OLLAMA_TIMEOUT = 180
 # num_predict is a MAX token cap, not a target — short outputs finish early.
 # 3500 was too low: verbose generations (e.g. full-resume JSON) got truncated
-# mid-document and failed to parse. 8192 covers the worst case at no cost to
-# small outputs like match scores or cover letters.
-OLLAMA_NUM_PREDICT = 16384
+# mid-document and failed to parse.
+OLLAMA_NUM_PREDICT = 8192
+# Pinned explicitly rather than inherited from the server: Ollama.app hard-codes
+# 4096, and a request that silently defaults to a bigger window makes the model
+# reserve memory it cannot spare, which starves the box and stalls generation.
+OLLAMA_NUM_CTX = 4096
+
+
+# Model families that emit hidden "thinking" tokens before answering. They are
+# a poor fit for the structured JSON extraction this app does: the thinking is
+# charged against num_predict, so a modest cap truncates the response mid-JSON
+# and the parse fails, and neither the `think` flag nor
+# `chat_template_kwargs.enable_thinking` suppressed it on Ollama 0.34.
+_REASONING_FAMILIES = ("qwen3", "qwen3-vl", "deepseek-r1", "r1-", "magistral-small", "gpt-oss", "phi4-reasoning")
+
+
+def _is_reasoning_model(name: str) -> bool:
+    lowered = name.lower()
+    return any(family in lowered for family in _REASONING_FAMILIES)
 
 
 def _pick_ollama_model(models: list[str]) -> str | None:
     """Choose the local model to use, honouring an explicit preference first.
 
-    ``AI_OLLAMA_MODEL`` pins a model by name. Otherwise the smallest installed
-    model wins: on a 16GB machine a 9GB model plus its context cache exhausts
-    RAM and swap and generation crawls, so picking by size is what keeps local
-    AI usable. Set the variable to opt back into a larger model.
+    ``AI_OLLAMA_MODEL`` pins a model by name and always wins. Otherwise two
+    rules apply, in order:
+
+    1. Avoid reasoning models, whose hidden thinking eats the token budget and
+       truncates the JSON this app depends on.
+    2. Among what is left, prefer the smallest: on a 16GB machine a 9GB model
+       plus its context cache exhausts RAM and swap and generation crawls.
     """
     if not models:
         return None
@@ -58,8 +77,14 @@ def _pick_ollama_model(models: list[str]) -> str | None:
     except Exception:  # noqa: BLE001 - size is only a tiebreak hint
         sizes = {}
 
-    # Unknown sizes sort last so a model with a known size is preferred.
-    return min(models, key=lambda name: sizes.get(name, 99.0))
+    # Prefer a non-reasoning model, then the smallest; unknown sizes sort last.
+    return min(
+        models,
+        key=lambda name: (
+            _is_reasoning_model(name),
+            sizes.get(name, 99.0),
+        ),
+    )
 
 
 async def detect_ollama_model() -> str | None:
@@ -85,8 +110,28 @@ async def generate_with_ollama(
     *,
     timeout: int = OLLAMA_TIMEOUT,
     num_predict: int = OLLAMA_NUM_PREDICT,
+    temperature: float | None = None,
 ) -> str:
-    """Single-shot Ollama completion. Raises AIServiceUnavailable on failure."""
+    """Single-shot Ollama completion. Raises AIServiceUnavailable on failure.
+
+    Uses Ollama's native ``/api/chat`` rather than the OpenAI-compatible
+    ``/v1/chat/completions`` shim, for two reasons measured on this setup:
+
+    * The shim ignored the request entirely and timed out, while the native
+      endpoint returned in seconds.
+    * Only the native endpoint honours ``chat_template_kwargs.enable_thinking``.
+      Reasoning models (Qwen3 and friends) otherwise spend the whole
+      ``num_predict`` budget on hidden thinking tokens and return an empty
+      ``content`` — which is what made every parse chunk fail.
+
+    ``temperature`` is left to the server's default unless a caller asks for
+    something. Structured extraction wants it near zero, but the creative
+    services (cover letter, interview coach) share this function and need
+    variety — pinning it globally made every generated letter read the same.
+    """
+    options: dict = {"num_predict": num_predict, "num_ctx": OLLAMA_NUM_CTX}
+    if temperature is not None:
+        options["temperature"] = temperature
     body = {
         "model": model,
         "messages": [
@@ -94,18 +139,34 @@ async def generate_with_ollama(
             {"role": "user", "content": user},
         ],
         "stream": False,
-        "options": {"num_predict": num_predict},
+        # Belt and braces: `think` is the documented switch, and the chat
+        # template kwarg is what actually takes effect on this Ollama build.
+        "think": False,
+        "chat_template_kwargs": {"enable_thinking": False},
+        "options": options,
     }
     try:
         async with httpx.AsyncClient(timeout=timeout) as client:
-            r = await client.post(f"{OLLAMA_BASE}/v1/chat/completions", json=body, timeout=timeout)
+            r = await client.post(f"{OLLAMA_BASE}/api/chat", json=body, timeout=timeout)
         if r.status_code == 200:
-            content = r.json().get("choices", [{}])[0].get("message", {}).get("content", "")
-            if content.strip():
+            message = r.json().get("message", {}) or {}
+            content = (message.get("content") or "").strip()
+            if content:
                 return content
-        logger.warning("Ollama generation returned status %s", getattr(r, "status_code", "n/a"))
+            # A model that ignored the thinking switch may still have emitted
+            # usable output in its reasoning field; use it rather than nothing.
+            fallback = (message.get("thinking") or "").strip()
+            if fallback:
+                return fallback
+            logger.warning("Ollama returned an empty completion (thinking disabled)")
+        else:
+            logger.warning("Ollama generation returned status %s", getattr(r, "status_code", "n/a"))
+    except httpx.TimeoutException:
+        # Say so plainly: an empty exception message here previously hid a
+        # 7-minute timeout behind "Ollama generation failed: ".
+        logger.warning("Ollama generation timed out after %ss", timeout)
     except Exception as e:
-        logger.warning("Ollama generation failed: %s", e)
+        logger.warning("Ollama generation failed: %s: %s", type(e).__name__, e)
     raise AIServiceUnavailable("local Ollama could not complete the request")
 
 
@@ -115,6 +176,7 @@ async def chat_ollama(
     *,
     timeout: int = OLLAMA_TIMEOUT,
     num_predict: int = OLLAMA_NUM_PREDICT,
+    temperature: float | None = None,
     parse: Callable[[str], object] | None = None,
 ) -> object | None:
     """Run an Ollama call with model auto-selection.
@@ -129,7 +191,9 @@ async def chat_ollama(
     if model is None:
         return None
     try:
-        raw = await generate_with_ollama(model, system, user, timeout=timeout, num_predict=num_predict)
+        raw = await generate_with_ollama(
+            model, system, user, timeout=timeout, num_predict=num_predict, temperature=temperature
+        )
     except AIServiceUnavailable:
         return None
     if parse is None:
@@ -139,7 +203,9 @@ async def chat_ollama(
     except Exception as e:
         logger.warning("Could not parse Ollama output; retrying once: %s", e)
     try:
-        raw = await generate_with_ollama(model, system, user, timeout=timeout, num_predict=num_predict)
+        raw = await generate_with_ollama(
+            model, system, user, timeout=timeout, num_predict=num_predict, temperature=temperature
+        )
     except AIServiceUnavailable:
         return None
     try:
