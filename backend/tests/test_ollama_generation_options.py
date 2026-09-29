@@ -83,7 +83,7 @@ async def test_the_parser_asks_for_determinism(monkeypatch):
         calls.append(kwargs)
         return '{"skills": []}'
 
-    monkeypatch.setattr("app.services.parser_service.chat_ollama", fake_chat)
+    monkeypatch.setattr("app.services.parser_service.chat_providers", fake_chat)
 
     from app.services.parser_service import _parse_chunked
 

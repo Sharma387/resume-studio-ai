@@ -184,7 +184,7 @@ class TestParseCompleteness:
         async def fake_chat(system, user, **kwargs):
             return _fake_model(system, user)
 
-        monkeypatch.setattr("app.services.parser_service.chat_ollama", fake_chat)
+        monkeypatch.setattr("app.services.parser_service.chat_providers", fake_chat)
         # The audit pass is a reporting tool, covered by its own test.
         monkeypatch.setattr(
             "app.services.parser_service.settings.parse_verify_completeness", False

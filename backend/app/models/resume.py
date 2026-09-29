@@ -82,20 +82,33 @@ class Resume(BaseModel):
     @model_validator(mode="before")
     @classmethod
     def normalize_empty_urls(cls, data: dict) -> dict:
-        """Convert empty strings to None for HttpUrl | None fields before validation.
+        """Convert absent URLs to None for ``HttpUrl | None`` fields before validation.
 
         Also prefixes URLs that are missing a scheme (LLM output often drops
         ``https://``, e.g. ``linkedin.com/in/jane``) so they validate.
+
+        Models often answer "unknown" fields with prose placeholders rather than
+        null — "Not specified", "N/A", "none". Those are not URLs, but
+        prefixing them yields ``https://Not specified``, which fails
+        ``HttpUrl`` and takes the whole record down with it: a section full of
+        certifications that happened to carry a placeholder URL was dropped
+        entirely. Treat them as absent.
         """
+        placeholders = {"", "n/a", "na", "none", "null", "nil", "not specified", "not available", "not applicable", "unknown", "not given", "not provided", "-", "--", "tbd"}
+
         def _normalize(value):
             if not isinstance(value, str):
                 return value
             value = value.strip()
-            if not value:
+            if value.lower() in placeholders:
                 return None
             if "://" not in value:
                 return "https://" + value
             return value
+
+        def _blank(value):
+            """Drop prose placeholders a model used in place of a null."""
+            return None if isinstance(value, str) and value.strip().lower() in placeholders else value
 
         # Top-level URL fields
         for field in ("linkedin", "github", "website"):
@@ -105,8 +118,16 @@ class Resume(BaseModel):
         for item in data.get("projects", []):
             if isinstance(item, dict) and "url" in item:
                 item["url"] = _normalize(item["url"])
-        # Certification.url
         for item in data.get("certifications", []):
-            if isinstance(item, dict) and "url" in item:
+            if not isinstance(item, dict):
+                continue
+            if "url" in item:
                 item["url"] = _normalize(item["url"])
+            # A placeholder issuer/date is not metadata: it would render as
+            # "PRINCE2 Practitioner · Not specified · Not specified" and, worse,
+            # make the entry look like a standalone card instead of a member of
+            # its category group.
+            for field in ("issuer", "date"):
+                if field in item:
+                    item[field] = _blank(item[field])
         return data

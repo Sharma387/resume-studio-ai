@@ -36,6 +36,7 @@ from collections.abc import Callable
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.rendering.cert_grouping import group_certs
 from app.rendering.common.section_types import SectionType
 from app.rendering.content.models import ContentView
 
@@ -148,16 +149,16 @@ def _measure_certifications(content: object) -> tuple[int, int, int]:
     records = content
     words = 0
     chars = 0
-    for record in records:
-        if record.category:
-            logical = f"{record.category}: {' | '.join(record.values)}"
-        else:
-            fields = (record.name, record.issuer, record.date, record.url)
-            logical = " ".join(value for value in fields if value)
-        w, c = _counted(logical)
+    # Measure the grouped slots, not the raw records, so the counts match the
+    # text the renderer actually draws. A resume whose credentials arrive as one
+    # record per item (the heading repeated on each) is measured once per
+    # heading, not once per item.
+    slots = group_certs(records)
+    for slot in slots:
+        w, c = _counted(slot.logical_text())
         words += w
         chars += c
-    return len(records), words, chars
+    return len(slots), words, chars
 
 
 def _measure_projects(content: object) -> tuple[int, int, int]:

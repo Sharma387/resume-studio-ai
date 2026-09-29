@@ -85,7 +85,7 @@ def _stub_provider(monkeypatch, handler):
         seen.append(system)
         return handler(len(seen))
 
-    monkeypatch.setattr(parser_service, "chat_ollama", fake_call)
+    monkeypatch.setattr(parser_service, "chat_providers", fake_call)
     return seen
 
 
@@ -112,7 +112,7 @@ class TestBoundedTime:
             calls.append(system)
             return json.dumps({"full_name": "Rajasekar Sharma", "email": "a@b.com"})
 
-        monkeypatch.setattr(parser_service, "chat_ollama", fake_call)
+        monkeypatch.setattr(parser_service, "chat_providers", fake_call)
 
         resume = await parser_service._parse_chunked(RESUME_TEXT)
 
@@ -153,7 +153,7 @@ class TestSystemicFailure:
             attempts.append(system)
             return None
 
-        monkeypatch.setattr(parser_service, "chat_ollama", fake_call)
+        monkeypatch.setattr(parser_service, "chat_providers", fake_call)
 
         assert await parser_service._parse_chunked(RESUME_TEXT) is None
         # 3 failed chunks, each retried once, then it stops.

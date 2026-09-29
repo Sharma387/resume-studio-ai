@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
+from app.rendering.cert_grouping import CertificationSlot, group_certs
 from app.rendering.common.section_types import SectionType
 from app.rendering.components.base import (
     ComponentMetadata,
@@ -333,28 +334,30 @@ class CertificationsComponent(_PlaceholderComponent):
         certs = _entries(content, ref) or [content]
         children: list[RenderNode] = []
         bullets: list[RenderNode] = []
-        for index, cert in enumerate(certs):
-            if _text_str(_get(cert, "category")):
-                bullets.append(self._group_bullet(index, cert, region, ref))
-            else:
+        for index, slot in enumerate(group_certs(certs)):
+            if slot.is_card:
                 if bullets:
                     children.append(_list(f"{ref}-grouped-{len(children)}", region, ref, tuple(bullets)))
                     bullets = []
-                children.append(self._cert_block(index, cert, region, ref))
+                children.append(self._cert_block(index, slot.card, region, ref))
+            else:
+                bullets.append(self._group_bullet(index, slot, region, ref))
         if bullets:
             children.append(_list(f"{ref}-grouped-{len(children)}", region, ref, tuple(bullets)))
         return _section(f"section-{ref}", region, order, tuple(children))
 
-    def _group_bullet(self, index: int, cert: object, region: str | None, ref: str) -> RenderNode:
-        category = _text_str(_get(cert, "category"))
-        values = tuple(item for item in (_get(cert, "values") or ()) if _text_str(item))
-        join = " | ".join(values)
+    def _group_bullet(self, index: int, slot: CertificationSlot, region: str | None, ref: str) -> RenderNode:
+        """One heading and its credentials as a single logical bullet."""
+        prefix = f"{ref}-{index}"
+        if not slot.values:
+            return _bullet(f"{prefix}-heading", region, ref, slot.category)
+        join = " | ".join(slot.values)
         data = BulletData(
             type="bullet",
-            text=f"{category}: {join}",
-            runs=(InlineRun(text=f"{category}:", bold=True), InlineRun(text=f" {join}")),
+            text=f"{slot.category}: {join}",
+            runs=(InlineRun(text=f"{slot.category}:", bold=True), InlineRun(text=f" {join}")),
         )
-        return _node(f"{ref}-{index}-grouped", NodeKind.BULLET, region, ref, data=data)
+        return _node(f"{prefix}-grouped", NodeKind.BULLET, region, ref, data=data)
 
     def _cert_block(self, index: int, cert: object, region: str | None, ref: str) -> RenderNode:
         prefix = f"{ref}-{index}"

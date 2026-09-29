@@ -7,7 +7,7 @@ from app.core.exceptions import AppError
 from app.core.logging import get_logger
 from app.models.resume import Certification, Education, Experience, Project, Resume, Skill
 from app.services.ai_core import AIServiceUnavailable, extract_json
-from app.services.ollama_service import chat_ollama, run_with_providers
+from app.services.ollama_service import chat_providers, run_with_providers
 from app.services.prompt_service import PromptService
 from app.services.resume_chunk_parser import merge_chunks, parse_chunk, verify_sections
 from app.services.resume_chunker import chunk_resume
@@ -44,7 +44,7 @@ Arrays (use [] and null when absent):
 - skills: [{"category", "skills": []}] — group skills exactly as the resume groups them.
 - certifications: [{"name", "issuer", "date", "url", "category", "values": []}]
   - One entry per named credential (e.g. PRINCE2 Practitioner, Certified Scrum Master, ITIL) with issuer if given.
-  - ALSO one entry per grouping heading (e.g. category "AI & Emerging Technologies", values = each listed item).
+  - When the resume groups credentials under a heading (e.g. "AI & Emerging Technologies"), set that heading as the "category" of every credential listed under it. Do NOT also add a separate entry for the heading itself.
 - awards: [{"name", "issuer", "date", "description"}] — EVERY award; include the year in name or date and the issuing company.
 - languages: [{"name", "proficiency"}]
 
@@ -396,20 +396,22 @@ async def _parse_chunked(text: str) -> Resume | None:
     if not chunks:
         return None
 
-    # Thin wrapper over the provider dispatch that returns raw text.
+    # Thin wrapper over the provider dispatch that returns raw text, so
+    # AI_PROVIDER_ORDER decides which provider actually serves the parse.
     # Near-zero temperature: this is transcription, not composition, so a
     # wandering model can only invent detail.
     async def call(system: str, user: str) -> str:
-        result = await chat_ollama(
+        result = await chat_providers(
             system,
             user,
+            service_name="Parser",
             timeout=settings.parse_chunk_timeout,
             num_predict=settings.parse_chunk_num_predict,
             temperature=0.1,
         )
         if result is None:
             raise AIServiceUnavailable("no provider returned output for chunk parse")
-        return result if isinstance(result, str) else str(result)
+        return result
 
     results: list[tuple[str, dict]] = []
     chunks_used: list[dict] = []

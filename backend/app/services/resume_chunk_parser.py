@@ -61,9 +61,9 @@ CHUNK_PROMPTS: dict[str, str] = {
         "Extract EVERY certification, credential, and training item. Return "
         'ONLY JSON: {"certifications": [{"name", "issuer", "date", "url", '
         '"category", "values": []}]}. When the text groups items under a '
-        "heading (e.g. \"Professional Credentials: A | B | C\"), emit one "
-        "entry per named item with category set to the heading, AND one "
-        "entry with category=heading and values=[all items]. Never drop an item."
+        "heading (e.g. \"Professional Credentials: A | B | C\"), set "
+        "category to that heading on EVERY entry it covers. Do not add a "
+        "separate entry for the heading itself. Never drop an item."
     ),
     "awards": (
         "Extract EVERY award and recognition. Return ONLY JSON: "

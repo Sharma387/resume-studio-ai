@@ -20,6 +20,7 @@ from app.core.logging import get_logger
 from app.models.resume import Resume
 from app.services.ai_core.client import call_with_retry
 from app.services.ai_core.exceptions import AIServiceUnavailable
+from app.services.omniroute_service import OmniRouteService
 
 logger = get_logger(__name__)
 
@@ -272,6 +273,60 @@ def compact_resume(resume: Resume, max_chars: int = 6000) -> str:
         rendered = json.dumps(data, default=str)
     # Final safety: hard truncate (may cut JSON, but it's only prompt context)
     return rendered[:max_chars]
+
+
+async def chat_providers(
+    system: str,
+    user: str,
+    *,
+    service_name: str = "AI",
+    timeout: int | None = None,
+    num_predict: int | None = None,
+    temperature: float | None = None,
+) -> str | None:
+    """Raw-text completion dispatched over ``AI_PROVIDER_ORDER``.
+
+    :func:`run_with_providers` needs a per-service prompt builder and a parser,
+    which the section-by-section parse does not have: it holds a fixed
+    ``(system, user)`` pair and wants the model's text back verbatim. This is the
+    same ordering, reduced to that case, so a provider that is configured first
+    is genuinely tried first.
+
+    Returns the first provider's output, or None when every configured provider
+    failed, so the caller can decide whether to retry or give up.
+    """
+    order = settings.ai_providers
+    if not order:
+        logger.warning("%s: no AI providers configured (set AI_PROVIDER_ORDER)", service_name)
+        return None
+
+    for provider in order:
+        try:
+            if provider == "omniroute":
+                service = OmniRouteService(timeout=timeout or settings.omniroute_timeout)
+                # One attempt only: the chunk loop owns retries, and letting both
+                # retry multiplies the wall-clock wait for a dead gateway.
+                service.max_retries = 0
+                content = await service.send_prompt(system, user)
+                if content and content.strip():
+                    return content.strip()
+                logger.warning("%s: OmniRoute returned no content; trying next provider", service_name)
+            elif provider == "ollama":
+                result = await chat_ollama(
+                    system,
+                    user,
+                    timeout=timeout or OLLAMA_TIMEOUT,
+                    **({"num_predict": num_predict} if num_predict is not None else {}),
+                    temperature=temperature,
+                )
+                if isinstance(result, str) and result.strip():
+                    return result
+                logger.warning("%s: Ollama produced no usable output; trying next provider", service_name)
+            else:
+                logger.warning("%s: unknown provider %r in AI_PROVIDER_ORDER; skipping", service_name, provider)
+        except Exception as exc:
+            logger.warning("%s: provider %r failed (%s); trying next", service_name, provider, exc)
+    return None
 
 
 async def run_with_providers[T](
