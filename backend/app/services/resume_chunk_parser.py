@@ -113,6 +113,45 @@ def _coerce_list(value) -> list:
     return [value]
 
 
+# The list-valued field each section's items belong under. "early_career" is
+# keyed as "experience" because both feed the same list on the resume.
+_SECTION_LIST_KEY = {
+    "experience": "experience",
+    "early_career": "experience",
+    "education": "education",
+    "certifications": "certifications",
+    "awards": "awards",
+    "projects": "projects",
+    "skills": "skills",
+    "languages": "languages",
+}
+
+
+def _as_section_dict(section: str, value) -> dict:
+    """Normalise the shapes a model actually emits into a section dict.
+
+    Prompting cannot make a small local model emit one exact shape. Asked for
+    ``{"experience": [...]}`` it also returns a bare ``[{...}]`` array, and
+    sometimes a JSON string that itself contains the JSON. Rejecting those
+    silently threw away a whole job: the output parsed fine and was then
+    discarded for not being a dict, so the section counted as a provider
+    failure and its content never reached the resume.
+    """
+    if isinstance(value, dict):
+        return value
+    if isinstance(value, list):
+        key = _SECTION_LIST_KEY.get(section)
+        return {key: value} if key else {}
+    if isinstance(value, str):
+        # Double-encoded: a JSON string wrapping the real payload. Worth one
+        # more pass, since the payload underneath is usually intact.
+        try:
+            return _as_section_dict(section, json.loads(value))
+        except Exception:  # noqa: BLE001 - genuinely not JSON after all
+            return {}
+    return {}
+
+
 async def parse_chunk(section: str, text: str, call) -> dict:
     """Parse one chunk into a partial dict. Returns {} when unusable."""
     instruction = CHUNK_PROMPTS.get(section, "Extract all resume facts. Return ONLY JSON.")
@@ -129,7 +168,13 @@ async def parse_chunk(section: str, text: str, call) -> dict:
     except Exception as exc:  # noqa: BLE001
         logger.warning("Chunk output was not valid JSON (section=%s): %s", section, exc)
         return {}
-    return data if isinstance(data, dict) else {}
+    shaped = _as_section_dict(section, data)
+    if not shaped:
+        logger.warning(
+            "Chunk output was JSON but not a usable %s shape (got %s)",
+            section, type(data).__name__,
+        )
+    return shaped
 
 
 def merge_chunks(results: list[tuple[str, dict]]) -> dict:

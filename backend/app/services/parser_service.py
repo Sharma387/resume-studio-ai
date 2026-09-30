@@ -1,3 +1,4 @@
+import asyncio
 import json
 import re
 import time
@@ -384,6 +385,88 @@ async def _parse_single_shot(text: str) -> Resume:
     )
 
 
+async def _parse_chunks_concurrently(
+    chunks: list[dict],
+    call,
+    *,
+    concurrency: int,
+    budget: float,
+    started: float,
+) -> list[tuple[int, dict]]:
+    """Parse independent chunks with a bounded pool of workers.
+
+    Returns ``(chunk_index, data)`` for every chunk that was attempted, in
+    chunk order. Each section is a self-contained AI call, so the parse cost is
+    the *sum* of every call when run one after another — which is why a slow
+    provider put a 16-section resume into tens of minutes and, on a cloud
+    gateway costing seconds per call, straight through the time budget. Running
+    them together makes the cost the slowest wave instead of the whole sum.
+
+    The sequential loop's guard rails are kept, because a fast parse that
+    silently loses sections is worse than a slow one:
+
+    * the time budget is checked before a worker picks up its next chunk, so no
+      new work starts once the parse is out of time;
+    * a provider that keeps returning nothing stops the pool rather than
+      running every remaining chunk into the same failure.
+
+    Because chunks finish out of order, "consecutive failures" counts failures
+    as they *complete* rather than by position, so the streak ends sooner when
+    calls are slow. The guard is a circuit breaker, not a fairness rule.
+    """
+    results: dict[int, dict] = {}
+    cursor = 0
+    streak = 0
+    stopped = False
+
+    async def parse_one(index: int, chunk: dict) -> None:
+        nonlocal streak, stopped
+        section = chunk["section"]
+        text = chunk["text"]
+        data = await parse_chunk(section, text, call)
+        if not data and streak < settings.parse_max_consecutive_failures and not stopped:
+            # One bad chunk is worth a second attempt while failures still look
+            # isolated; a run of them means the provider is unhealthy and a
+            # retry only multiplies the wait.
+            logger.info(
+                "Chunk %d/%d (%s) produced nothing; retrying once",
+                index + 1, len(chunks), section,
+            )
+            data = await parse_chunk(section, text, call)
+        if data:
+            streak = 0
+        else:
+            streak += 1
+            if streak >= settings.parse_max_consecutive_failures:
+                logger.error(
+                    "Abandoning parse: %d chunks failed in a row after %d/%d attempts",
+                    streak, len(results), len(chunks),
+                )
+                stopped = True
+        results[index] = data
+
+    async def worker() -> None:
+        nonlocal cursor, stopped
+        while not stopped:
+            if time.monotonic() - started > budget:
+                logger.warning(
+                    "Parse time budget (%ss) reached after %d/%d chunks; returning partial result",
+                    budget, len(results), len(chunks),
+                )
+                stopped = True
+                return
+            index = cursor
+            if index >= len(chunks):
+                return
+            cursor += 1
+            await parse_one(index, chunks[index])
+
+    workers = max(1, min(concurrency, len(chunks)))
+    logger.info("Parsing %d chunks with %d concurrent workers", len(chunks), workers)
+    await asyncio.gather(*(worker() for _ in range(workers)))
+    return sorted(results.items())
+
+
 async def _parse_chunked(text: str) -> Resume | None:
     """Parse the resume section-by-section and merge the results.
 
@@ -413,44 +496,24 @@ async def _parse_chunked(text: str) -> Resume | None:
             raise AIServiceUnavailable("no provider returned output for chunk parse")
         return result
 
-    results: list[tuple[str, dict]] = []
-    chunks_used: list[dict] = []
-    consecutive_failures = 0
     budget = settings.parse_time_budget
     started = time.monotonic()
-    parsed = 0
 
-    for index, chunk in enumerate(chunks, start=1):
-        if time.monotonic() - started > budget:
-            logger.warning(
-                "Parse time budget (%ss) reached after %d/%d chunks; returning partial result",
-                budget, index - 1, len(chunks),
-            )
-            break
+    attempted = await _parse_chunks_concurrently(
+        chunks,
+        call,
+        concurrency=settings.parse_chunk_concurrency,
+        budget=budget,
+        started=started,
+    )
 
-        section = chunk["section"]
-        data = await parse_chunk(section, chunk["text"], call)
-        if not data:
-            # Retry only while the failures look isolated. A run of failures
-            # means the provider is unhealthy, and retrying each chunk just
-            # multiplies the wait by two for no gain.
-            if consecutive_failures < settings.parse_max_consecutive_failures:
-                logger.info("Chunk %d/%d (%s) produced nothing; retrying once", index, len(chunks), section)
-                data = await parse_chunk(section, chunk["text"], call)
+    results: list[tuple[str, dict]] = []
+    chunks_used: list[dict] = []
+    for index, data in attempted:
+        results.append((chunks[index]["section"], data))
+        chunks_used.append(chunks[index])
 
-        if data:
-            consecutive_failures = 0
-            parsed += 1
-        else:
-            consecutive_failures += 1
-            if consecutive_failures >= settings.parse_max_consecutive_failures:
-                logger.error(
-                    "Abandoning parse: %d chunks failed in a row (%d/%d done)",
-                    consecutive_failures, parsed, len(chunks),
-                )
-                break
-        results.append((section, data))
-        chunks_used.append(chunk)
+    parsed = sum(1 for _, data in attempted if data)
 
     merged = merge_chunks(results)
     _correct_identity_from_source(merged, text)

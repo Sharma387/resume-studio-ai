@@ -1,5 +1,7 @@
 """Tests for section chunking and chunk-merge (no AI calls involved)."""
 
+import pytest
+
 from app.services.resume_chunk_parser import merge_chunks, parse_chunk
 from app.services.resume_chunker import chunk_resume
 
@@ -133,6 +135,54 @@ class TestChunkResume:
         assert len(roles) == 2
         assert "Amadeus" in roles[0]["text"] and "Ness" not in roles[0]["text"]
         assert "Ness" in roles[1]["text"] and "Amadeus" not in roles[1]["text"]
+
+    def test_lowercase_employer_still_splits_per_role(self):
+        """'Project Manager  |  healthAlliance' is a role header.
+
+        The employer group required a leading capital, so a lowercase company
+        name was not recognised as a role start. Its lines were then absorbed
+        into the *previous* role's chunk, and the model was handed two jobs at
+        once — on the real resume it returned only the second, and Datacom
+        Systems Ltd vanished with no error logged anywhere.
+        """
+        text = (
+            "PROFESSIONAL EXPERIENCE\n"
+            "Project Manager  |  Datacom Systems Ltd \n"
+            "Auckland, New Zealand   •   Sep 2021 – Apr 2022 \n"
+            "• Delivered a $500K Xero/MYOB API invoice integration.\n"
+            "Project Manager  |  healthAlliance \n"
+            "Auckland, New Zealand   •   Sep 2019 – Sep 2021 \n"
+            "• Managed Northern Region DHB and Ministry of Health initiatives.\n"
+        )
+        roles = [c for c in chunk_resume(text) if c["section"] == "experience"]
+
+        assert len(roles) == 2, "the two roles must not share a chunk"
+        assert "Datacom" in roles[0]["text"] and "healthAlliance" not in roles[0]["text"]
+        assert "healthAlliance" in roles[1]["text"] and "Datacom" not in roles[1]["text"]
+
+    @pytest.mark.parametrize(
+        "line",
+        [
+            "Auckland, New Zealand   •   Nov 2024 – Jun 2026 ",
+            "Leading Australasian IT services provider spanning cloud, data centre, consulting.",
+            "launch; enhanced POS environments for Staples USA.",
+            "disruption. ",
+        ],
+    )
+    def test_lowercase_support_does_not_swallow_non_headers(self, line):
+        """Allowing a lowercase employer must not turn a location line or a
+        wrapped bullet tail into a role boundary, which would orphan content
+        into a chunk of its own."""
+        text = (
+            "PROFESSIONAL EXPERIENCE\n"
+            f"Project Manager  |  Datacom Systems Ltd \n{line}\n"
+            "Project Manager  |  healthAlliance \n"
+            "• Managed Northern Region DHB initiatives.\n"
+        )
+        roles = [c for c in chunk_resume(text) if c["section"] == "experience"]
+
+        assert len(roles) == 2
+        assert "Datacom" in roles[0]["text"] and "healthAlliance" not in roles[0]["text"]
 
 
 class TestMergeChunks:

@@ -62,6 +62,17 @@ class Settings(BaseSettings):
     # should take seconds; a long one here means the model or the box is in
     # trouble, and waiting longer only delays the partial result.
     parse_chunk_timeout: int = 150
+    # How many sections are parsed at once. Chunks are independent, so raising
+    # this turns the parse cost from the sum of every call into the slowest
+    # wave — which is what makes a cloud gateway viable, where seconds-per-call
+    # latency otherwise puts a 16-section resume straight through the budget.
+    #
+    # Defaults to 1 because a local Ollama server serialises requests for a
+    # single model: measured on a 16-section resume, concurrency 1/2/3/4/6 came
+    # out at 186/218/220/225/202s, so extra workers only queue while holding
+    # memory on an already-swapping box. Raise it (PARSE_CHUNK_CONCURRENCY=4)
+    # when AI_PROVIDER_ORDER leads with a remote provider.
+    parse_chunk_concurrency: int = 1
     # Hard ceiling for the whole chunked parse. When it is hit, whatever has
     # been parsed so far is merged and returned instead of continuing — a
     # resume must never sit parsing for hours.

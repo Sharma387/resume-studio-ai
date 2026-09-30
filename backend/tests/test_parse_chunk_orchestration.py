@@ -8,7 +8,9 @@ return whatever it managed to parse rather than all-or-nothing.
 
 from __future__ import annotations
 
+import asyncio
 import json
+import time
 
 import pytest
 
@@ -278,3 +280,117 @@ class TestPartialResultsArePreferred:
         _stub_provider(monkeypatch, handler)
 
         assert await parser_service._parse_chunked(RESUME_TEXT) is None
+
+
+class TestChunksAreParsedConcurrently:
+    """Sections are independent, so they must not queue up behind each other.
+
+    This is the difference between a parse costing the sum of every AI call and
+    it costing the slowest wave. The stubs elsewhere in this file return without
+    ever awaiting, so the pool runs them one after another by accident; these
+    tests yield inside the stub so the overlap is actually observable.
+    """
+
+    async def test_sections_overlap_instead_of_running_one_after_another(self, monkeypatch):
+        monkeypatch.setattr(settings, "parse_chunk_concurrency", 4)
+        in_flight = 0
+        peak = 0
+
+        async def fake_call(system, user, **kwargs):
+            nonlocal in_flight, peak
+            in_flight += 1
+            peak = max(peak, in_flight)
+            await asyncio.sleep(0.01)  # yield, so overlap is measurable
+            in_flight -= 1
+            return json.dumps({"full_name": "Rajasekar Sharma"})
+
+        monkeypatch.setattr(parser_service, "chat_providers", fake_call)
+
+        await parser_service._parse_chunked(RESUME_TEXT)
+
+        assert peak > 1, "chunks must overlap, otherwise the pool is sequential"
+        assert peak <= 4, f"at most the configured pool size may be in flight, saw {peak}"
+
+    async def test_the_pool_fills_up_to_its_configured_size(self, monkeypatch):
+        """A 7-section resume with 4 workers should use all 4, not idle at 1."""
+        monkeypatch.setattr(settings, "parse_chunk_concurrency", 4)
+        in_flight = 0
+        peak = 0
+
+        async def fake_call(system, user, **kwargs):
+            nonlocal in_flight, peak
+            in_flight += 1
+            peak = max(peak, in_flight)
+            await asyncio.sleep(0.01)
+            in_flight -= 1
+            return json.dumps({"full_name": "Rajasekar Sharma"})
+
+        monkeypatch.setattr(parser_service, "chat_providers", fake_call)
+
+        await parser_service._parse_chunked(RESUME_TEXT)
+
+        assert peak == 4
+
+    async def test_results_follow_chunk_order_not_completion_order(self, monkeypatch):
+        """merge_chunks lets a later chunk overwrite identity fields, and the
+        audit pairs results with the chunks they came from, so the pool must
+        hand results back in chunk order even when the calls finish reversed."""
+        chunks = [
+            {"section": "header", "text": f"chunk {i}"}
+            for i in range(4)
+        ]
+        finished: list[int] = []
+
+        async def call(system, user):
+            index = int(user.rsplit(" ", 1)[-1])
+            # The later a chunk is, the sooner it answers.
+            await asyncio.sleep(0.01 * (len(chunks) - index))
+            finished.append(index)
+            return json.dumps({"full_name": "Rajasekar Sharma"})
+
+        attempted = await parser_service._parse_chunks_concurrently(
+            chunks, call, concurrency=4, budget=60, started=time.monotonic()
+        )
+
+        assert [index for index, _ in attempted] == sorted(index for index, _ in attempted)
+        assert finished == sorted(finished, reverse=True), (
+            "the stub was meant to complete in reverse chunk order"
+        )
+
+    async def test_no_more_workers_are_spawned_than_there_are_chunks(self, monkeypatch):
+        """Pointless workers still cost a scheduling round-trip each, and the
+        count is logged, so the pool should not overshoot a short resume."""
+        chunks = [{"section": "header", "text": f"chunk {i}"} for i in range(2)]
+        peak = 0
+        in_flight = 0
+
+        async def call(system, user):
+            nonlocal peak, in_flight
+            in_flight += 1
+            peak = max(peak, in_flight)
+            await asyncio.sleep(0.01)
+            in_flight -= 1
+            return json.dumps({"full_name": "Rajasekar Sharma"})
+
+        monkeypatch.setattr(settings, "parse_chunk_concurrency", 16)
+        await parser_service._parse_chunks_concurrently(
+            chunks, call, concurrency=16, budget=60, started=time.monotonic()
+        )
+
+        assert peak == 2
+
+    async def test_every_chunk_is_still_attempted_when_the_provider_is_healthy(self, monkeypatch):
+        """Parallelism must not cost completeness: all 7 sections come back."""
+        monkeypatch.setattr(settings, "parse_chunk_concurrency", 4)
+        seen: list[str] = []
+
+        async def fake_call(system, user, **kwargs):
+            seen.append(system)
+            await asyncio.sleep(0)
+            return json.dumps({"full_name": "Rajasekar Sharma", "email": "a@b.com"})
+
+        monkeypatch.setattr(parser_service, "chat_providers", fake_call)
+
+        await parser_service._parse_chunked(RESUME_TEXT)
+
+        assert len(seen) == 7

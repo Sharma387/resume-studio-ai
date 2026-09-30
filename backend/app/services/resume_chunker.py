@@ -39,9 +39,25 @@ _HEADING_PATTERNS: list[tuple[str, re.Pattern[str], bool]] = [
 #   "Senior Project Manager (Agile/Waterfall), Amadeus Software Labs, Bangalore"
 # It must NOT look like a location/date line ("Auckland, New Zealand • Jul
 # 2026 – Present") nor a bullet.
-_ROLE_SPLIT = re.compile(
-    r"^[^•]{3,140}?(?:\s\|\s|\s—\s|\s–\s|,\s)\s*[A-Z][\w&.'\-() ]{2,70}$"
+#
+# Split in two because the separator determines how much the employer name can
+# be trusted. A pipe or dash is unambiguous, so the name may start with any
+# letter: "healthAlliance" and "iT" are ordinary company names, and missing one
+# silently merged two roles into a single chunk — the model was then handed
+# Datacom *and* healthAlliance together and returned only the second, losing a
+# job with no error anywhere. A comma is weak, because it also appears in
+# "Auckland, New Zealand" and in wrapped sentence text, so that form still
+# requires a capitalised employer.
+_ROLE_SPLIT_STRONG = re.compile(
+    r"^[^•]{3,140}?(?:\s\|\s|\s—\s|\s–\s)\s*[A-Za-z][\w&.'\-() ]{2,70}$"
 )
+_ROLE_SPLIT_COMMA = re.compile(
+    r"^[^•]{3,140}?,\s[A-Z][\w&.'\-() ]{2,70}$"
+)
+
+
+def _is_role_header(line: str) -> bool:
+    return bool(_ROLE_SPLIT_STRONG.match(line) or _ROLE_SPLIT_COMMA.match(line))
 # A trailing inline date range on a role header, e.g.
 #   "Project Manager, NTT Data, Bangalore — 2003 to 2009"
 # It is stripped before role-header matching so the trailing year doesn't stop
@@ -109,7 +125,7 @@ def _split_experience(chunk_lines: list[str]) -> list[list[str]]:
         is_role = False
         if stripped and not _BULLET.match(line):
             is_meta = bool(_META_LINE.match(stripped)) or bool(_DATE_RANGE.match(stripped))
-            is_role = (not is_meta) and bool(_ROLE_SPLIT.match(_TRAILING_DATES.sub("", stripped)))
+            is_role = (not is_meta) and _is_role_header(_TRAILING_DATES.sub("", stripped))
         if is_role and current and any(c.strip() for c in current):
             blocks.append(current)
             current = [line]
