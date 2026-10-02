@@ -7,7 +7,7 @@ from app.core.config import settings  # noqa: F401 — referenced by test monkey
 from app.core.exceptions import AppError
 from app.core.logging import get_logger
 from app.models.resume import Certification, Education, Experience, Project, Resume, Skill
-from app.services.ai_core import AIServiceUnavailable, extract_json
+from app.services.ai_core import AIServiceUnavailable, ResponseTruncated, extract_json
 from app.services.ollama_service import chat_providers, run_with_providers
 from app.services.prompt_service import PromptService
 from app.services.resume_chunk_parser import merge_chunks, parse_chunk, verify_sections
@@ -392,6 +392,7 @@ async def _parse_chunks_concurrently(
     concurrency: int,
     budget: float,
     started: float,
+    escalated_call=None,
 ) -> list[tuple[int, dict]]:
     """Parse independent chunks with a bounded pool of workers.
 
@@ -413,6 +414,11 @@ async def _parse_chunks_concurrently(
     Because chunks finish out of order, "consecutive failures" counts failures
     as they *complete* rather than by position, so the streak ends sooner when
     calls are slow. The guard is a circuit breaker, not a fairness rule.
+
+    ``escalated_call`` is the same call with a larger output cap, used only for
+    a chunk the provider cut off. It is a separate callable rather than an
+    argument so the escalation stays the caller's business, and so this
+    function never has to know what a token cap is.
     """
     results: dict[int, dict] = {}
     cursor = 0
@@ -423,8 +429,39 @@ async def _parse_chunks_concurrently(
         nonlocal streak, stopped
         section = chunk["section"]
         text = chunk["text"]
-        data = await parse_chunk(section, text, call)
-        if not data and streak < settings.parse_max_consecutive_failures and not stopped:
+        # A chunk that truncated twice is dropped deliberately rather than fed
+        # to the generic retry below, which would ask the same cap for the same
+        # answer and be cut off again.
+        gave_up_on_cap = False
+        try:
+            data = await parse_chunk(section, text, call)
+        except ResponseTruncated as exc:
+            if escalated_call is None:
+                logger.error(
+                    "Chunk %d/%d (%s) was truncated and no larger cap is available: %s",
+                    index + 1, len(chunks), section, exc.describe(),
+                )
+                gave_up_on_cap = True
+                data = {}
+            else:
+                logger.warning(
+                    "Chunk %d/%d (%s) was truncated (%s); retrying with a larger cap",
+                    index + 1, len(chunks), section, exc.describe(),
+                )
+                try:
+                    data = await parse_chunk(section, text, escalated_call)
+                except ResponseTruncated as retry_exc:
+                    # Still too small. Say so loudly — this is the case that
+                    # used to disappear into an empty section.
+                    logger.error(
+                        "Chunk %d/%d (%s) was truncated even at the larger cap (%s); "
+                        "section lost — raise parse_chunk_truncated_num_predict",
+                        index + 1, len(chunks), section, retry_exc.describe(),
+                    )
+                    gave_up_on_cap = True
+                    data = {}
+
+        if not data and not gave_up_on_cap and streak < settings.parse_max_consecutive_failures and not stopped:
             # One bad chunk is worth a second attempt while failures still look
             # isolated; a run of them means the provider is unhealthy and a
             # retry only multiplies the wait.
@@ -483,18 +520,27 @@ async def _parse_chunked(text: str) -> Resume | None:
     # AI_PROVIDER_ORDER decides which provider actually serves the parse.
     # Near-zero temperature: this is transcription, not composition, so a
     # wandering model can only invent detail.
-    async def call(system: str, user: str) -> str:
+    async def call(system: str, user: str, *, num_predict: int | None = None) -> str:
         result = await chat_providers(
             system,
             user,
             service_name="Parser",
             timeout=settings.parse_chunk_timeout,
-            num_predict=settings.parse_chunk_num_predict,
+            num_predict=num_predict or settings.parse_chunk_num_predict,
             temperature=0.1,
         )
         if result is None:
             raise AIServiceUnavailable("no provider returned output for chunk parse")
         return result
+
+    # The same call with a bigger output cap, used only to retry a chunk the
+    # provider cut off. Truncation is a property of the cap, not of the model,
+    # so repeating the original call returns the same cut-off response; this is
+    # the one retry that can actually change the outcome.
+    async def escalated_call(system: str, user: str) -> str:
+        return await call(
+            system, user, num_predict=settings.parse_chunk_truncated_num_predict
+        )
 
     budget = settings.parse_time_budget
     started = time.monotonic()
@@ -505,6 +551,7 @@ async def _parse_chunked(text: str) -> Resume | None:
         concurrency=settings.parse_chunk_concurrency,
         budget=budget,
         started=started,
+        escalated_call=escalated_call,
     )
 
     results: list[tuple[str, dict]] = []

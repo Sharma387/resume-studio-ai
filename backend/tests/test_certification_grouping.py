@@ -19,13 +19,19 @@ from tests.test_tree_html_renderer import _body_text, blue_theme, render_layout_
 
 # The shape the resume parser actually produced: the heading carried on every
 # individual credential, ``values`` empty.
+#
+# Every category here is a credential category. Tool lines from a mixed
+# "CERTIFICATIONS & PROFESSIONAL DEVELOPMENT" section are reconciled into
+# skills by ``merge_chunks`` before they reach the renderer, so they are no
+# longer part of this fixture's intended representation — see
+# ``test_cert_skill_reconciliation.py``. These are all genuine credentials.
 PER_ITEM = (
     CertificationEntry(name="PRINCE2 Practitioner", category="Professional Credentials"),
     CertificationEntry(name="Certified Scrum Master (CSM)", category="Professional Credentials"),
     CertificationEntry(name="ITIL Foundation Certificate", category="Professional Credentials"),
-    CertificationEntry(name="GitHub Copilot", category="AI & Emerging Technologies"),
-    CertificationEntry(name="Claude", category="AI & Emerging Technologies"),
-    CertificationEntry(name="ServiceNow", category="Enterprise Platforms & DevOps"),
+    CertificationEntry(name="AWS Solutions Architect", category="Cloud & Architecture"),
+    CertificationEntry(name="Azure Fundamentals", category="Cloud & Architecture"),
+    CertificationEntry(name="CISSP", category="Security Credentials"),
 )
 
 # The shape with one record per heading holding the whole group.
@@ -34,7 +40,7 @@ PER_GROUP = (
         category="Professional Credentials",
         values=("PRINCE2 Practitioner", "Certified Scrum Master (CSM)", "ITIL Foundation Certificate"),
     ),
-    CertificationEntry(category="AI & Emerging Technologies", values=("GitHub Copilot", "Claude")),
+    CertificationEntry(category="Cloud & Architecture", values=("AWS Solutions Architect", "Azure Fundamentals")),
 )
 
 
@@ -59,11 +65,11 @@ class TestGroupCerts:
         slots = group_certs(PER_ITEM)
         assert [s.category for s in slots] == [
             "Professional Credentials",
-            "AI & Emerging Technologies",
-            "Enterprise Platforms & DevOps",
+            "Cloud & Architecture",
+            "Security Credentials",
         ]
         assert slots[0].values == ["PRINCE2 Practitioner", "Certified Scrum Master (CSM)", "ITIL Foundation Certificate"]
-        assert slots[1].values == ["GitHub Copilot", "Claude"]
+        assert slots[1].values == ["AWS Solutions Architect", "Azure Fundamentals"]
 
     def test_per_group_records_pass_through(self):
         slots = group_certs(PER_GROUP)
@@ -124,18 +130,19 @@ class TestCertificationsComponentGrouping:
         assert _lis(section) == [
             "<li><strong>Professional Credentials:</strong> "
             "PRINCE2 Practitioner | Certified Scrum Master (CSM) | ITIL Foundation Certificate</li>",
-            "<li><strong>AI &amp; Emerging Technologies:</strong> GitHub Copilot | Claude</li>",
-            "<li><strong>Enterprise Platforms &amp; DevOps:</strong> ServiceNow</li>",
+            "<li><strong>Cloud &amp; Architecture:</strong> AWS Solutions Architect | Azure Fundamentals</li>",
+            "<li><strong>Security Credentials:</strong> CISSP</li>",
         ]
 
     def test_heading_appears_once_no_matter_how_many_credentials(self):
         section = _certs_section(PER_ITEM)
         assert section.count("Professional Credentials") == 1
-        assert section.count("AI &amp; Emerging Technologies") == 1
+        assert section.count("Cloud &amp; Architecture") == 1
 
     def test_no_credential_name_is_dropped(self):
         body = _body_text(_certs_section(PER_ITEM))
-        for name in ("PRINCE2 Practitioner", "Certified Scrum Master (CSM)", "ITIL Foundation Certificate", "Claude"):
+        for name in ("PRINCE2 Practitioner", "Certified Scrum Master (CSM)",
+                     "ITIL Foundation Certificate", "AWS Solutions Architect"):
             assert name in body
 
     def test_both_shapes_render_identically(self):
@@ -148,11 +155,11 @@ class TestCertificationsComponentGrouping:
             (
                 CertificationEntry(category="Professional Credentials", values=("PRINCE2 Practitioner",)),
                 CertificationEntry(name="PMP", issuer="PMI", date="2025"),
-                CertificationEntry(category="AI & Emerging Technologies", values=("Claude",)),
+                CertificationEntry(category="Cloud & Architecture", values=("AWS Solutions Architect",)),
             )
         )
         assert section.index("Professional Credentials") < section.index("PMP")
-        assert section.index("PMP") < section.index("AI &amp; Emerging Technologies")
+        assert section.index("PMP") < section.index("Cloud &amp; Architecture")
         assert "PMI · 2025" in section
 
     def test_credential_with_issuer_renders_as_card_under_its_heading(self):

@@ -19,7 +19,7 @@ from app.core.config import settings
 from app.core.logging import get_logger
 from app.models.resume import Resume
 from app.services.ai_core.client import call_with_retry
-from app.services.ai_core.exceptions import AIServiceUnavailable
+from app.services.ai_core.exceptions import AIServiceUnavailable, ResponseTruncated
 from app.services.omniroute_service import OmniRouteService
 
 logger = get_logger(__name__)
@@ -150,7 +150,23 @@ async def generate_with_ollama(
         async with httpx.AsyncClient(timeout=timeout) as client:
             r = await client.post(f"{OLLAMA_BASE}/api/chat", json=body, timeout=timeout)
         if r.status_code == 200:
-            message = r.json().get("message", {}) or {}
+            payload = r.json()
+            message = payload.get("message", {}) or {}
+
+            # A generation that stopped because it reached ``num_predict`` comes
+            # back with done_reason="length" and a body cut mid-structure. That
+            # is not a bad response, it is a small cap, and it must not be
+            # mistaken for one: handing this text on makes it fail JSON parsing
+            # as an anonymous invalid response, which loses the whole section.
+            # Raising here is what lets the caller retry with more room.
+            done_reason = payload.get("done_reason")
+            if done_reason == "length":
+                raise ResponseTruncated(
+                    "Ollama generation hit the num_predict cap and was cut off",
+                    tokens=payload.get("eval_count"),
+                    num_predict=num_predict,
+                )
+
             content = (message.get("content") or "").strip()
             if content:
                 return content
@@ -162,6 +178,11 @@ async def generate_with_ollama(
             logger.warning("Ollama returned an empty completion (thinking disabled)")
         else:
             logger.warning("Ollama generation returned status %s", getattr(r, "status_code", "n/a"))
+    except ResponseTruncated:
+        # Deliberately not folded into AIServiceUnavailable below: the model is
+        # healthy and the answer is recoverable with a bigger cap, so reporting
+        # this as an outage would send the caller down the wrong path.
+        raise
     except httpx.TimeoutException:
         # Say so plainly: an empty exception message here previously hid a
         # 7-minute timeout behind "Ollama generation failed: ".
@@ -195,6 +216,10 @@ async def chat_ollama(
         raw = await generate_with_ollama(
             model, system, user, timeout=timeout, num_predict=num_predict, temperature=temperature
         )
+    except ResponseTruncated:
+        # Never reported as "unavailable": the cap was the problem, so the caller
+        # has to be told to retry with a larger one rather than to give up.
+        raise
     except AIServiceUnavailable:
         return None
     if parse is None:
@@ -207,6 +232,8 @@ async def chat_ollama(
         raw = await generate_with_ollama(
             model, system, user, timeout=timeout, num_predict=num_predict, temperature=temperature
         )
+    except ResponseTruncated:
+        raise
     except AIServiceUnavailable:
         return None
     try:
@@ -324,6 +351,13 @@ async def chat_providers(
                 logger.warning("%s: Ollama produced no usable output; trying next provider", service_name)
             else:
                 logger.warning("%s: unknown provider %r in AI_PROVIDER_ORDER; skipping", service_name, provider)
+        except ResponseTruncated:
+            # Propagated rather than treated as a provider failure. Falling
+            # through here would hand the truncated text to the next provider
+            # and lose the signal that the cap needs raising; and retrying the
+            # next provider is not the fix, because every provider here is
+            # called with the same num_predict.
+            raise
         except Exception as exc:
             logger.warning("%s: provider %r failed (%s); trying next", service_name, provider, exc)
     return None

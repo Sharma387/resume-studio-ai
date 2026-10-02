@@ -28,7 +28,20 @@ _HEADING_PATTERNS: list[tuple[str, re.Pattern[str], bool]] = [
     ("early_career", re.compile(r"^\s*(earlier|early|career\s+highlights?|additional\s+experience|previous\s+roles?)\b", re.I), True),
     ("education", re.compile(r"^\s*(education|academic|qualifications?)\s*:?\s*$", re.I), True),
     ("certifications", re.compile(r"^\s*(certificat\w*|licen[sc]\w*|training|professional\s+development|credentials?|courses?)\b", re.I), False),
-    ("awards", re.compile(r"^\s*(professional\s+)?(awards?|recognition|honou?rs?|achievements?)\b", re.I), False),
+    # "recognition" also takes a plural ("MAJOR RECOGNITIONS"), like the nouns
+    # either side of it already did.
+    ("awards", re.compile(r"^\s*(professional\s+)?(awards?|recognitions?|honou?rs?|achievements?)\b", re.I), False),
+    # Qualified award headings: "KEY ACHIEVEMENTS", "SELECTED AWARDS",
+    # "CAREER ACHIEVEMENTS", "MAJOR RECOGNITIONS". A leading qualifier defeats
+    # the anchored pattern above, so those lines matched no heading at all and
+    # their bullets were absorbed into the following section — on the real
+    # resume that put five achievement bullets inside the skills chunk, where
+    # the model then invented skill groups to hold them ("Project Delivery &
+    # Achievement"). The qualifier is open-ended rather than a fixed word list
+    # so the fix generalises, but it is only honoured on standalone heading
+    # lines: allowing free text ahead of the noun on body prose would turn a
+    # sentence into a section boundary.
+    ("awards", re.compile(r"^\s*[A-Za-z][\w /&+.-]{0,30}?\s+(awards?|recognitions?|honou?rs?|achievements?)\b", re.I), True),
     ("projects", re.compile(r"^\s*(projects?|portfolio|selected\s+work)\s*:?\s*$", re.I), True),
     ("languages", re.compile(r"^\s*(languages?)\s*:?\s*$", re.I), True),
 ]

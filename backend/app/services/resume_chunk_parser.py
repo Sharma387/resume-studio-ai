@@ -14,7 +14,7 @@ import json
 import logging
 import re
 
-from app.services.ai_core import extract_json
+from app.services.ai_core import ResponseTruncated, extract_json
 from app.services.resume_chunker import chunk_resume
 
 logger = logging.getLogger(__name__)
@@ -57,13 +57,45 @@ CHUNK_PROMPTS: dict[str, str] = {
         '"degree", "field", "start_date", "end_date", "gpa", '
         '"achievements": ["<each bullet>"]}]}.'
     ),
+    # The chunk body is all the model sees: the chunker strips the section
+    # heading, so a rule keyed to that heading never fires. Classification is
+    # therefore stated per line, on what the line's items are, and the worked
+    # example below shows one heading that is a credential category and two
+    # that are not — different headings do not make a line a certification.
+    #
+    # Length is measured, not assumed: `prompt + chunk` for this section is the
+    # largest prompt input in the whole parse, and `_MEASURED_MAX_PROMPT_INPUT`
+    # in test_response_truncation records it so that prompt + the escalated cap
+    # still fits num_ctx. Adding text here without re-measuring that number
+    # would silently break the context-window guard.
     "certifications": (
-        "Extract EVERY certification, credential, and training item. Return "
+        'Extract EVERY certification, credential, and training item. Return '
         'ONLY JSON: {"certifications": [{"name", "issuer", "date", "url", '
-        '"category", "values": []}]}. When the text groups items under a '
-        "heading (e.g. \"Professional Credentials: A | B | C\"), set "
-        "category to that heading on EVERY entry it covers. Do not add a "
-        "separate entry for the heading itself. Never drop an item."
+        '"category", "values": []}]}. Use null for issuer/date/url not stated. '
+        'Under a heading like "Professional Credentials: A | B | C" set '
+        'category to that heading on EVERY entry it covers; never add an entry '
+        'for the heading itself. Never drop an item.\n'
+        '\n'
+        'Judge each line by its ITEMS, not by where it sits: credentials '
+        '(certifications, licences, assessed training, qualifications) are '
+        'certifications; tools, technologies, platforms and competencies are '
+        'skills. Skills go in a second top-level "skills" key, each line '
+        'keeping its own heading as its category, so skill lines may carry '
+        'different headings.\n'
+        '\n'
+        'Example (never emit these items):\n'
+        '  in : Professional Credentials: PRINCE2 | Scrum Master\n'
+        '       AI & Emerging Technologies: GitHub Copilot | Claude | RAG\n'
+        '       AI & Automation: Python | Power Automate\n'
+        '  out: {"certifications":[{"name":"PRINCE2","category":"Professional '
+        'Credentials"},{"name":"Scrum Master","category":"Professional '
+        'Credentials"}],"skills":[{"category":"AI & Emerging '
+        'Technologies","skills":["GitHub '
+        'Copilot","Claude","RAG"]},{"category":"AI & '
+        'Automation","skills":["Python","Power Automate"]}]}\n'
+        '\n'
+        'Every item appears in exactly one key, never both. Omit the skills '
+        'key if there are no skill lines.'
     ),
     "awards": (
         "Extract EVERY award and recognition. Return ONLY JSON: "
@@ -153,11 +185,29 @@ def _as_section_dict(section: str, value) -> dict:
 
 
 async def parse_chunk(section: str, text: str, call) -> dict:
-    """Parse one chunk into a partial dict. Returns {} when unusable."""
+    """Parse one chunk into a partial dict. Returns {} when unusable.
+
+    Raises :class:`ResponseTruncated` when the provider stopped at its token
+    cap, and deliberately does *not* turn that into ``{}``. A cut-off response
+    is valid text that stops mid-structure, so it fails the JSON parse below
+    for a reason unrelated to its content — returning ``{}`` here is what made a
+    capped certifications chunk disappear completely, three genuine credentials
+    and all, while the parse reported success. Letting it propagate hands the
+    caller the one piece of information that can fix it: the cap was too small.
+    """
     instruction = CHUNK_PROMPTS.get(section, "Extract all resume facts. Return ONLY JSON.")
     system = f"You are a resume parser. {instruction}"
     try:
         raw = await call(system, text)
+    except ResponseTruncated as exc:
+        # The provider told us where it stopped; that is only useful next to
+        # which section it was, so attach it before passing the signal on.
+        if exc.section is None:
+            exc.section = section
+        logger.error(
+            "Chunk response was truncated (section=%s, %s)", section, exc.describe()
+        )
+        raise
     except Exception as exc:  # noqa: BLE001 - one bad chunk must not kill the parse
         logger.warning("Chunk parse failed (section=%s): %s", section, exc)
         return {}
@@ -175,6 +225,39 @@ async def parse_chunk(section: str, text: str, call) -> dict:
             section, type(data).__name__,
         )
     return shaped
+
+
+def _skill_group_categories(data: dict) -> set[str]:
+    """The category names one chunk will contribute to ``merged["skills"]``.
+
+    Mirrors :func:`_add_skill_groups` exactly — same truthiness test, same
+    coercion — so a group is only counted here if it is also counted there.
+    That equivalence is what makes reconciliation safe: a malformed group can
+    never remove a certification record without a skill group taking its
+    place.
+    """
+    categories: set[str] = set()
+    for item in _coerce_list(data.get("skills")):
+        if isinstance(item, dict) and item.get("category"):
+            categories.add(str(item["category"]))
+    return categories
+
+
+def _add_skill_groups(data: dict, merged: dict) -> None:
+    """Move a chunk's ``skills`` groups into the merged resume.
+
+    Shared by the skills section and the certifications section, which may both
+    carry skill lines: a resume heading that reads "CERTIFICATIONS &
+    PROFESSIONAL DEVELOPMENT" routinely lists tools underneath it, and the
+    prompt for that chunk offers a ``skills`` key so the model can put them
+    where they belong. Routing both sections through one function keeps the
+    validation identical, so a skill group cannot be accepted from one section
+    and rejected from the other.
+    """
+    for item in _coerce_list(data.get("skills")):
+        if isinstance(item, dict) and item.get("category"):
+            item["skills"] = [str(s) for s in _coerce_list(item.get("skills"))]
+            merged["skills"].append(item)
 
 
 def merge_chunks(results: list[tuple[str, dict]]) -> dict:
@@ -242,10 +325,60 @@ def merge_chunks(results: list[tuple[str, dict]]) -> dict:
                     ]
                     merged["education"].append(item)
         elif section == "certifications":
+            # Reconciliation policy: when the same category is emitted by both
+            # certifications and skills from the same mixed chunk, skills takes
+            # precedence because the model explicitly classified that category
+            # as a skill group.
+            #
+            # The chunk is genuinely mixed — "CERTIFICATIONS & PROFESSIONAL
+            # DEVELOPMENT" lists genuine credentials beside topical tool lines,
+            # all in the identical "Heading: items" shape, so the source offers
+            # no structural cue to tell them apart. Measured on the real
+            # resume, the model answers by writing the correct line into
+            # "skills" *and* re-emitting most of those same categories into
+            # "certifications" rather than choosing one; merge then kept both
+            # copies, so the tools rendered under Certifications as well as
+            # under Skills.
+            #
+            # Two limits keep this from reaching beyond the evidence:
+            #
+            # * only this chunk's own "skills" key is consulted. Another
+            #   chunk's skill groups say nothing about where *this* chunk's
+            #   lines belong, so reconciliation never crosses a chunk;
+            # * the categories come from :func:`_skill_group_categories`, which
+            #   mirrors the validation `_add_skill_groups` applies, so nothing
+            #   is ever removed without the matching skill group landing.
+            #
+            # A chunk with no "skills" key yields an empty set and therefore
+            # changes nothing at all — the common single-purpose certifications
+            # section keeps its exact previous behaviour.
+            skill_categories = _skill_group_categories(data)
+            removed: dict[str, int] = {}
             for item in _coerce_list(data.get("certifications")):
                 if isinstance(item, dict) and (item.get("name") or item.get("category")):
+                    category = item.get("category")
+                    if isinstance(category, str) and category in skill_categories:
+                        removed[category] = removed.get(category, 0) + 1
+                        continue
                     item["values"] = [str(v) for v in _coerce_list(item.get("values"))]
                     merged["certifications"].append(item)
+            if removed:
+                # Categories and counts only — never the records themselves,
+                # since these are the lines the candidate's resume already
+                # states and they need no second copy in the log.
+                logger.debug(
+                    "Reconciled %d certification record(s) into skills: %s",
+                    sum(removed.values()),
+                    ", ".join(f"{cat} x{n}" for cat, n in removed.items()),
+                )
+            # A certifications section frequently also lists skills ("Cloud &
+            # Security: ClearPass, ..."). The prompt offers a "skills" key for
+            # those, and reading it here means a model that correctly spots
+            # them is believed. Without this the key was silently discarded:
+            # merge routed by section label and never looked at it, so a good
+            # judgement became data loss. Safe either way — when the key is
+            # absent the loop simply has nothing to add.
+            _add_skill_groups(data, merged)
         elif section == "awards":
             for item in _coerce_list(data.get("awards")):
                 if isinstance(item, dict) and item.get("name"):
@@ -259,10 +392,7 @@ def merge_chunks(results: list[tuple[str, dict]]) -> dict:
                 if isinstance(item, dict) and item.get("name"):
                     merged["languages"].append(item)
         elif section == "skills":
-            for item in _coerce_list(data.get("skills")):
-                if isinstance(item, dict) and item.get("category"):
-                    item["skills"] = [str(s) for s in _coerce_list(item.get("skills"))]
-                    merged["skills"].append(item)
+            _add_skill_groups(data, merged)
 
     merged["experience"].sort(key=_sort_key)
     return merged

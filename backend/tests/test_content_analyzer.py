@@ -162,10 +162,12 @@ class TestWordAndCharacterCounts:
         cvm = ContentView(
             stable_id="resume.no-dup-cert",
             profile=Profile(full_name="J", professional_title="Engineer"),
-            certifications=(CertificationEntry(category="AI & Emerging Tech", values=("GitHub Copilot", "Claude")),),
+            certifications=(
+                CertificationEntry(category="Cloud & Architecture", values=("AWS Solutions Architect", "Azure Fundamentals")),
+            ),
         )
         metrics = _analyze(cvm).sections["certifications"]
-        logical = "AI & Emerging Tech: GitHub Copilot | Claude"
+        logical = "Cloud & Architecture: AWS Solutions Architect | Azure Fundamentals"
         assert metrics.word_count == len(logical.split())
         assert metrics.char_count == len(logical)
 

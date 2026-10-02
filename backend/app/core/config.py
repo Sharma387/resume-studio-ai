@@ -53,11 +53,22 @@ class Settings(BaseSettings):
     # model context window, which silently truncates roles and bullets.
     parse_chunked: bool = True
     parse_max_chunk_chars: int = 2600
-    # Per-chunk generation cap. A section's JSON runs from ~150 tokens (header)
-    # to ~1800 (the certifications block, which is dense), and a cap below that
-    # truncates the response mid-JSON and loses the whole section. It is a max,
+    # Per-chunk generation cap. A section's JSON runs from ~100 tokens (header)
+    # to ~2160 (the certifications block, which is dense), and a cap below that
+    # truncates the response mid-JSON and loses the whole section. Measured on
+    # the real V4.1 resume: the certifications prompt plus its chunk is 397
+    # tokens, and its output needs 1986 (31 certs + 6 skill groups) or 2157
+    # (35 certs + 5 groups) depending on how the model chooses to enumerate.
+    # 2000 was below that requirement and truncated ~40% of runs. It is a max,
     # not a target, so small sections still finish as soon as they are done.
-    parse_chunk_num_predict: int = 2000
+    parse_chunk_num_predict: int = 3200
+    # Cap used for the single retry when a chunk comes back truncated. Raising
+    # it is the only thing that can fix truncation — repeating the same call
+    # reproduces the same cut-off — so the retry must not reuse the cap that
+    # caused it. Bounded at 3500 by the context window: the largest
+    # prompt+input measured across all 18 chunks is 397 tokens, and
+    # num_ctx is pinned at 4096, leaving 3699 as the true ceiling.
+    parse_chunk_truncated_num_predict: int = 3500
     # Per-chunk ceiling before the chunk counts as failed. A small section
     # should take seconds; a long one here means the model or the box is in
     # trouble, and waiting longer only delays the partial result.
