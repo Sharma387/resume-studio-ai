@@ -14,6 +14,15 @@ logger = get_logger(__name__)
 
 COVER_LETTER_SYSTEM_PROMPT = """You are a professional cover letter writer. Write a compelling, personalised cover letter for the candidate based on their resume and the job description.
 
+Before writing, compare the requested Company against the candidate's experience[] entries in the resume JSON.
+- If the resume shows the candidate previously worked for that company, say so plainly in the letter and connect that earlier experience to the role.
+- If the resume does not show that, never claim or imply prior employment with them.
+
+Content rules:
+- Name the company and the role in the opening paragraph.
+- Draw specific skills and experiences from the resume that match the job description.
+- Do not fabricate qualifications, employers or dates.
+
 Return ONLY a JSON object with exactly two fields:
 - "subject": string — a concise email subject line
 - "content": string — the full letter, 3-4 short paragraphs, using "\\n" for line breaks between paragraphs

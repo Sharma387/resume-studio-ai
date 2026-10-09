@@ -194,3 +194,48 @@ def test_cover_letter_pdf_signature_not_alone():
         if has_signature and not has_body:
             assert False, f"Signature found alone on page {i + 1} without body content"
     doc.close()
+
+
+class TestCoverLetterPromptRules:
+    """The live (ollama) cover letter prompt must carry content guidance, not just JSON shape."""
+
+    def _live(self) -> str:
+        from app.services.cover_letter_service import COVER_LETTER_SYSTEM_PROMPT
+
+        return COVER_LETTER_SYSTEM_PROMPT
+
+    def _omniroute(self) -> str:
+        from app.services.prompt_service import PromptService
+
+        system, _ = PromptService().build_cover_letter_prompt(
+            resume_json="{}",
+            job_description="A valid job description here for testing.",
+            company_name="Acme",
+            role_title="Project Manager",
+        )
+        return system
+
+    def test_json_shape_contract_unchanged(self):
+        live = self._live()
+        assert "Return ONLY a JSON object" in live
+        assert '"subject"' in live and '"content"' in live
+        assert "Output ONLY valid JSON" in self._omniroute()
+
+    def test_live_prompt_cross_references_prior_employment(self):
+        """Both directions are required: mention it when present, never invent it when absent."""
+        live = self._live().lower()
+        assert "previously worked" in live, "prompt must instruct looking for prior employment"
+        assert "prior employment" in live, "prompt must forbid claiming prior employment"
+
+    def test_live_prompt_has_content_rules(self):
+        live = self._live().lower()
+        assert "opening paragraph" in live, "must say where to name the company and role"
+        assert "do not fabricate" in live
+
+    def test_both_prompt_sources_stay_in_sync(self):
+        """The omniroute .md and the live constant must not drift apart again."""
+        live = self._live().lower()
+        md = self._omniroute().lower()
+        for phrase in ("prior employment", "previously worked"):
+            assert phrase in live, f"live prompt missing {phrase!r}"
+            assert phrase in md, f"prompts/cover_letter_system.md missing {phrase!r}"

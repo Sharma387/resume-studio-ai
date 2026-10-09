@@ -6,6 +6,8 @@ Rules:
 - Use the specified tone: {tone}
 - Address the hiring manager by name if provided, otherwise use "Hiring Manager".
 - Reference specific skills and experiences from the resume that are relevant to the job.
+- Compare the target company against the resume's experience: if the candidate previously worked there, say so plainly and connect that earlier experience to the role; otherwise never imply prior employment with them.
+- Name the company and the role in the opening paragraph.
 - The opening paragraph should state the position and express interest.
 - The middle paragraphs should connect resume highlights to job requirements.
 - The closing paragraph should express enthusiasm and suggest a next step.
